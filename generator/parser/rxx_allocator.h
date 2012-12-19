@@ -48,6 +48,17 @@
 #include <cstring>
 #include <memory>
 
+// Stride calculation
+template <typename T>
+struct Tchar {
+  T t;
+  char c;
+};
+
+#define strideof(T)                            \
+  ((sizeof(Tchar<T>) > sizeof(T)) ?            \
+  sizeof(Tchar<T>)-sizeof(T) : sizeof(T))
+
 template <class _Tp> class rxx_allocator {
 public:
   typedef _Tp value_type;
@@ -104,6 +115,12 @@ public:
     _M_current_index += bytes;
 
     return p;
+  }
+
+  pointer allocate(size_type __n, size_type stride, const void* = 0) {
+    if (reinterpret_cast<size_type>(_M_current_block + _M_current_index) % stride > 0)
+      _M_current_index += stride - reinterpret_cast<size_type>(_M_current_block + _M_current_index) % stride;
+    return allocate(__n);
   }
 
   void deallocate(pointer __p, size_type __n) {}
