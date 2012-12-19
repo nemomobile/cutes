@@ -12,8 +12,6 @@ xsltproc --stringparam source $PWD/typesystem_xml-qtscript.xml merge.xsl typesys
 
 xsltproc --stringparam source $PWD/typesystem_sql-qtscript.xml merge.xsl typesystem_sql-common.xml > typesystem_sql.xml
 
-xsltproc --stringparam source $PWD/typesystem_phonon-qtscript.xml merge.xsl typesystem_phonon-common.xml > typesystem_phonon.xml
-
 xsltproc --stringparam source $PWD/typesystem_webkit-qtscript.xml merge.xsl typesystem_webkit-common.xml > typesystem_webkit.xml
 
 xsltproc --stringparam source $PWD/typesystem_xmlpatterns-qtscript.xml merge.xsl typesystem_xmlpatterns-common.xml > typesystem_xmlpatterns.xml
