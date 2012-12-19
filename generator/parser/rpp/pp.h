@@ -57,6 +57,7 @@
 #include <cctype>
 
 #include <fcntl.h>
+#include <cstdio>
 
 #ifdef HAVE_MMAP
 #  include <sys/mman.h>
