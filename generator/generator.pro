@@ -1,3 +1,4 @@
+include( ../common.pri)
 include(generator.pri)
 
 # Input

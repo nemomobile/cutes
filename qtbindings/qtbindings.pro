@@ -1,3 +1,4 @@
+include( ../common.pri)
 TEMPLATE = subdirs
 SUBDIRS = qtscript_core \
 	  qtscript_gui \
