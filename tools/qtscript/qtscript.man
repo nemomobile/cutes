@@ -1,0 +1,81 @@
+.TH qtscript 1  "December 21, 2012" "version 0.1" "USER COMMANDS"
+.SH NAME
+qtscript \- run JavaScript files with QtScript supprt
+
+.SH SYNOPSIS
+.B qtscript
+[-h]
+.I script_file
+[script arguments]
+
+.SH DESCRIPTION
+QtScript is the Qt library JavaScript engine. qtscript command
+provides the way to run JavaScript files as shell scripts.
+
+.SH COMMAND LINE OPTIONS
+.TP
+.B -h
+show usage
+.TP
+.I script_file
+name of the javascript file to be executed
+.TP
+.B [script arguments]
+arguments to be passed to javascript in the
+.B app.script.args variable
+
+.SH ENVIRONMENT
+.TP
+.B QTSCRIPT_LIBRARY_PATH
+contains colon\-separated list of paths to directories containing
+QtScript extensions and JavaScript modules, available for
+importing. Because this paths are just library paths, extensions
+themselves (shared objects) should reside in subdirectories ./script/.
+
+.SH JAVASCRIPT CONTEXT
+qtscript provides several objects/functions, available in executed
+scripts. All this variables are members of the global
+.B app
+object.
+.P
+.B app.system
+has
+.B os, env, path
+.TP 2
+.B app.system.os
+OS "name": can be any of ["linux", "macos", "win32", "unknown"]
+.TP
+.B app.system.env
+environment variables
+.TP
+.B app.system.path
+Application library paths
+.P
+.B app.script
+has
+.B eval, use, args, filename, cwd
+.TP
+.B app.script.eval
+function to evaluate/import any javascript code located in the
+directory where running script resides or in the library path
+.TP
+.B app.script.use
+instructs engine to import QtScript extension
+.TP
+.B app.script.args
+list of command line arguments
+.TP
+.B app.script.filename
+currently executed script file name (e.g. in
+.B app.script.eval
+it will be evaluated script path name)
+.TP
+.B app.script.cwd
+current working directory or directory where executed/evaluated script
+is located
+
+.SH AUTHOR
+Jolla Ltd. (Contact: Denis Zalevskiy)
+
+.SH LICENSING
+qtscript is distributed under terms and conditions of the LGPLv2 license.
