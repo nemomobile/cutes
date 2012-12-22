@@ -1,11 +1,11 @@
-Qt Script Generator labs package
+* Qt Script Generator labs package
 
 
 The Qt Script Generator is a tool that generates Qt bindings for Qt Script.
 
 ---
 
-Instructions:
+** Instructions:
 
 1) Build the generator: cd path/to/this/project/generator, qmake && make
 
@@ -20,13 +20,20 @@ Instructions:
    (QCoreApplication::setLibraryPaths()), then call QScriptEngine::importExtension()
    (plugin keys are "qt.core", "qt.gui", etc).
 
+** Example of script "interpreter"
+
 There is a simple script interpreter / launcher in path/to/this/project/qtbindings/qs_eval
 that imports all the bindings. You can use it to run the examples found in
 path/to/this/project/examples. E.g., with the examples directory being the working directory:
 
 ../qtbindings/qs_eval/qs_eval CollidingMice.js
 
-
 See the generated doc/index.html for more information.
 
 Have fun!
+
+** qtscript interpreter
+
+   tools/qtscript contains qtscript "interpreter", intended to be used
+   in real applications (while qsexec was used as some kind of
+   example). It has man page describing how to use it.
