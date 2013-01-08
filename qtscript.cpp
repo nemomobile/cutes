@@ -133,14 +133,14 @@ static QScriptValue eval(QString file_name, QScriptEngine &engine)
     QString contents;
     contents.reserve(file_info.size());
 
-    int line_nr = 1;
+    int line_nr = 2;
 
     QTextStream dst(&contents);
     QTextStream input(&file);
     QString first = input.readLine();
     if (!first.startsWith("#!")) {
         dst << first << "\n";
-        line_nr = 2;
+        line_nr = 1;
     }
 
     while (!input.atEnd())
