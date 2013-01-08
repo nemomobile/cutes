@@ -230,14 +230,15 @@ int main(int argc, char *argv[])
     auto env = std::move(mk_env());
 
     auto lib_paths = env["QTSCRIPT_LIBRARY_PATH"].toString().split(":");
-    app.setLibraryPaths(lib_paths);
+    for (auto path : {"/usr/lib/qt4/plugins", "/usr/lib32/qt4/plugins",
+                "/usr/lib64/qt4/plugins"}) {
+        if (QDir(path).exists())
+            lib_paths.push_back(path);
+    }
+
     for (auto &path : lib_paths)
         lib_dirs.push_back(QDir(path));
-    for (auto path : {"/usr/lib/qt4", "/usr/lib32/qt4", "/usr/lib64/qt4"}) {
-        QDir d(path);
-        if (d.exists())
-            lib_dirs.push_back(d);
-    }
+    app.setLibraryPaths(lib_paths);
 
     QScriptEngine engine;
 
