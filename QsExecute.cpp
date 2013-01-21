@@ -1,3 +1,5 @@
+#include "QsExecute.hpp"
+
 #include <QCoreApplication>
 #include <QtScript>
 #include <QStringList>
@@ -8,40 +10,8 @@
 #include <QtDebug>
 
 #include <iostream>
-#include <stdexcept>
 
-class Error : public std::runtime_error
-{
-public:
-    Error(QString const &s)
-        : std::runtime_error(s.toStdString()),
-          msg(s)
-    { }
-
-    virtual ~Error() throw() {}
-
-    QString msg;
-};
-
-class JsError : public Error
-{
-public:
-    static QString errorMessage(QScriptEngine &engine, QString const &file)
-    {
-        QString res;
-        QTextStream stream(&res);
-        stream << "Exception: "
-               << engine.uncaughtException().toString() << "\n"
-               << file << ":" << engine.uncaughtExceptionLineNumber()
-               << engine.uncaughtExceptionBacktrace().join("\n")
-               << "\n";
-        return res;
-
-    }
-
-    JsError(QScriptEngine &engine, QString const &file)
-        : Error(errorMessage(engine, file)) {}
-};
+namespace QsExecute {
 
 #ifdef Q_OS_WIN32
 static const char *os_name = "windows";
@@ -54,6 +24,19 @@ static const char *os_name = "unix";
 #else
 static const char *os_name = "unknown";
 #endif
+
+QString JsError::errorMessage(QScriptEngine &engine, QString const &file)
+{
+    QString res;
+    QTextStream stream(&res);
+    stream << "Exception: "
+           << engine.uncaughtException().toString() << "\n"
+           << file << ":" << engine.uncaughtExceptionLineNumber()
+           << engine.uncaughtExceptionBacktrace().join("\n")
+           << "\n";
+    return res;
+
+}
 
 struct ScriptValueAccessor
 {
@@ -109,12 +92,6 @@ static QScriptValue globalProp
     return res;
 }
 
-static int usage(int, char *argv[])
-{
-    qDebug() << argv[0] << " <script_name>";
-    return 0;
-}
-
 static QScriptValue eval(QString file_name, QScriptEngine &engine)
 {
     static QSet<QString> loaded_files;
@@ -146,7 +123,7 @@ static QScriptValue eval(QString file_name, QScriptEngine &engine)
     while (!input.atEnd())
         dst << input.readLine() << "\n";
 
-    auto script = globalProp(engine, {"app", "script"});
+    auto script = globalProp(engine, {"qtscript", "script"});
 
     auto saved_props = std::move(saveProps(script, {"filename", "cwd"}));
     script << nameValue("filename", engine.toScriptValue(file_name))
@@ -206,7 +183,7 @@ static QScriptValue jsUse(QScriptContext *context, QScriptEngine *engine)
     return engine->importExtension(context->argument(0).toString());
 }
 
-static QMap<QString, QVariant> mk_env()
+static QMap<QString, QVariant> mkEnv()
 {
     QMap<QString, QVariant> res;
     QStringList env = QProcess::systemEnvironment();
@@ -219,15 +196,12 @@ static QMap<QString, QVariant> mk_env()
     return res;
 }
 
-int main(int argc, char *argv[])
+typedef QScriptValue (*qscript_file_loader_type)(QString, QScriptEngine &);
+
+qscript_file_loader_type setupEngine
+(QCoreApplication &app, QScriptEngine &engine)
 {
-    QCoreApplication app(argc, argv);
-    if (app.arguments().size() < 2)
-        return usage(argc, argv);
-
-    QString script_file(app.arguments().at(1));
-
-    auto env = std::move(mk_env());
+    auto env = std::move(mkEnv());
 
     auto lib_paths = env["QTSCRIPT_LIBRARY_PATH"].toString().split(":");
     for (auto path : {"/usr/lib/qt4/plugins", "/usr/lib32/qt4/plugins",
@@ -240,8 +214,6 @@ int main(int argc, char *argv[])
         lib_dirs.push_back(QDir(path));
     app.setLibraryPaths(lib_paths);
 
-    QScriptEngine engine;
-
     auto obj = [&engine](QString const &name)
         { return nameValue(name, engine.newObject()); };
 
@@ -250,25 +222,19 @@ int main(int argc, char *argv[])
         { return nameValue(name, engine.newFunction(sig)); };
 
     auto global = engine.globalObject();
-    global << (obj("app")
+    auto script_args = app.arguments();
+    script_args.pop_front(); // remove interpreter name
+    global << (obj("qtscript")
                << (obj("system")
                    << nameValue("os", engine.toScriptValue(QString(os_name)))
                    << nameValue("env", engine.toScriptValue(env))
                    << nameValue("path", engine.toScriptValue(lib_paths)))
+               << fn("eval", jsEval)
+               << fn("use", jsUse)
                << (obj("script")
-                   << fn("eval", jsEval)
-                   << fn("use", jsUse)
-                   << nameValue("args", engine.toScriptValue(app.arguments()))))
+                   << nameValue("args", engine.toScriptValue(script_args))))
            << obj("lib");
+    return &eval;
+}
 
-    try {
-        auto res = eval(script_file, engine);
-        std::cout << res.toString().toStdString();
-    } catch (Error const &e) {
-        qDebug() << "Failed to eval:" << script_file;
-        qDebug() << e.msg;
-        return -1;
-    }
-
-    return 0;
 }

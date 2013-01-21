@@ -3,4 +3,5 @@ TEMPLATE = app
 TARGET = qtscript
 DESTDIR = ./
 QT = core script
-SOURCES += qtscript.cpp
+HEADERS += QsExecute.hpp
+SOURCES += QsExecute.cpp main.cpp
