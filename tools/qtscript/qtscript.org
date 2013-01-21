@@ -1,0 +1,56 @@
+#+TITLE:qtscript
+#+MAN_CLASS_OPTIONS: :section-id 1 :company "Jolla Ltd." :date "Dec 21, 2012"
+* NAME
+
+  qtscript allows to run JavaScript files with QtScript support
+
+* SYNOPSIS
+
+  *qtscript* [-h] /script_file/ [script arguments]
+
+* DESCRIPTION
+
+QtScript is the Qt library JavaScript engine. qtscript command
+provides the way to run JavaScript files as shell scripts.
+
+* COMMAND LINE OPTIONS
+
+  - *-h* :: show usage
+  - *script_file* :: name of the javascript file to be executed
+  - *[script arguments]* :: arguments to be passed to javascript in
+       the *qtscript.args* variable
+
+* ENVIRONMENT
+
+  - *QTSCRIPT\_LIBRARY\_PATH* :: contains colon-separated list of paths
+       to directories containing QtScript extensions and JavaScript
+       modules, available for importing. Because this paths are just
+       library paths, extensions themselves (shared objects) should
+       reside in subdirectories ./script/.
+
+* JAVASCRIPT CONTEXT
+
+  qtscript provides several objects/functions, available in executed
+  scripts. All this variables are members of the global *qtscript*
+  object.
+
+- *qtscript.system.os* :: OS "name": can be any of ["linux", "macos",
+     "win32", "unknown"]
+- *qtscript.system.env* :: environment variables
+- *qtscript.system.path* :: Application library paths
+- *qtscript.eval* :: function to evaluate/import any javascript code
+     located in the directory where running script resides or in the
+     library path
+- *qtscript.use* :: instructs engine to import QtScript extension
+- *qtscript.script.args* :: list of command line arguments
+- *qtscript.script.filename* :: currently executed script file name
+     (e.g. in *qtscript.eval* it will be evaluated script path name)
+- *qtscript.script.cwd* :: current working directory or directory where
+                    executed/evaluated script is located
+
+* AUTHOR
+  Denis Zalevskiy <denis.zalevskiy@jollamobile.com>
+
+* LICENSING
+  qtscript is distributed under terms and conditions of the LGPLv2
+  license.
