@@ -199,7 +199,7 @@ static QMap<QString, QVariant> mkEnv()
 typedef QScriptValue (*qscript_file_loader_type)(QString, QScriptEngine &);
 
 qscript_file_loader_type setupEngine
-(QCoreApplication &app, QScriptEngine &engine)
+(QCoreApplication &app, QScriptEngine &engine, QScriptValue global)
 {
     auto env = std::move(mkEnv());
 
@@ -221,7 +221,7 @@ qscript_file_loader_type setupEngine
         (QString const &name, QScriptEngine::FunctionSignature sig)
         { return nameValue(name, engine.newFunction(sig)); };
 
-    auto global = engine.globalObject();
+    //auto global = engine.globalObject();
     auto script_args = app.arguments();
     script_args.pop_front(); // remove interpreter name
     global << (obj("qtscript")
