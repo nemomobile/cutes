@@ -1,21 +1,24 @@
-.TH "qtscript" "1" "Jolla Ltd." "Dec 21, 2012"
+.TH "qtscript" "1" "Jolla Ltd." "Jan 30, 2013"
 .SH "NAME"
 .PP
-qtscript allows to run JavaScript files with QtScript support
+qtscript allows to run JavaScript and QML files with QtScript support
 .SH "SYNOPSIS"
 .PP
 \fBqtscript\fP [-h] \fIscript\d\s-2file\s+2\u\fP [script arguments]
 .SH "DESCRIPTION"
 .PP
 QtScript is the Qt library JavaScript engine. qtscript command
-provides the way to run JavaScript files as shell scripts.
+provides the way to run JavaScript files as shell scripts or to load QML
+UI with QtScript support.
 .SH "COMMAND LINE OPTIONS"
 .TP
 \fB\fB-h\fP\fP
 show usage
 .TP
 \fB\fBscript\d\s-2file\s+2\u\fP\fP
-name of the javascript file to be executed
+name of the javascript or qml file to be executed,
+files with .qml extension will be considered as 
+QML UI files, other - as JS files
 .TP
 \fB\fB[script arguments]\fP\fP
 arguments to be passed to javascript in
@@ -23,11 +26,13 @@ the \fBqtscript.args\fP variable
 .SH "ENVIRONMENT"
 .TP
 \fB\fBQTSCRIPT\_LIBRARY\_PATH\fP\fP
-contains colon-separated list of paths
-to directories containing QtScript extensions and JavaScript
-modules, available for importing. Because this paths are just
-library paths, extensions themselves (shared objects) should
-reside in subdirectories ./script/.
+contains colon-separated list of
+paths to directories containing QtScript extensions and
+JavaScript modules, available for importing. Because this paths
+are just library paths, extensions themselves (shared objects)
+should reside in subdirectories ./script/. JavaScript modules
+should reside in ./. By default qtscript is trying to add
+/usr/lib{,32,64}/qt4/plugins directories.
 .SH "JAVASCRIPT CONTEXT"
 .PP
 qtscript provides several objects/functions, available in executed
