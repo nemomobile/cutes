@@ -25,8 +25,6 @@ int executeScript(int argc, char *argv[])
 
     try {
         auto res = load(script_file, engine);
-        if (!res.isUndefined())
-            std::cout << res.toString().toStdString();
         if (engine.uncaughtException().isValid())
             rc = EXIT_FAILURE;
     } catch (Error const &e) {
