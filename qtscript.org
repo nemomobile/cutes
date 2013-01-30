@@ -1,8 +1,8 @@
 #+TITLE:qtscript
-#+MAN_CLASS_OPTIONS: :section-id 1 :company "Jolla Ltd." :date "Dec 21, 2012"
+#+MAN_CLASS_OPTIONS: :section-id 1 :company "Jolla Ltd." :date "Jan 30, 2013"
 * NAME
 
-  qtscript allows to run JavaScript files with QtScript support
+  qtscript allows to run JavaScript and QML files with QtScript support
 
 * SYNOPSIS
 
@@ -11,22 +11,27 @@
 * DESCRIPTION
 
 QtScript is the Qt library JavaScript engine. qtscript command
-provides the way to run JavaScript files as shell scripts.
+provides the way to run JavaScript files as shell scripts or to load QML
+UI with QtScript support.
 
 * COMMAND LINE OPTIONS
 
   - *-h* :: show usage
-  - *script_file* :: name of the javascript file to be executed
+  - *script_file* :: name of the javascript or qml file to be executed,
+                     files with .qml extension will be considered as 
+                     QML UI files, other - as JS files
   - *[script arguments]* :: arguments to be passed to javascript in
        the *qtscript.args* variable
 
 * ENVIRONMENT
 
-  - *QTSCRIPT\_LIBRARY\_PATH* :: contains colon-separated list of paths
-       to directories containing QtScript extensions and JavaScript
-       modules, available for importing. Because this paths are just
-       library paths, extensions themselves (shared objects) should
-       reside in subdirectories ./script/.
+  - *QTSCRIPT\_LIBRARY\_PATH* :: contains colon-separated list of
+       paths to directories containing QtScript extensions and
+       JavaScript modules, available for importing. Because this paths
+       are just library paths, extensions themselves (shared objects)
+       should reside in subdirectories ./script/. JavaScript modules
+       should reside in ./. By default qtscript is trying to add
+       /usr/lib{,32,64}/qt4/plugins directories.
 
 * JAVASCRIPT CONTEXT
 
