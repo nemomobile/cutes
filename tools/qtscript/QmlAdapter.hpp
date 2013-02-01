@@ -4,7 +4,10 @@
 #include <QCoreApplication>
 #include <QDeclarativeView>
 
+namespace QsExecute {
+
 void setupDeclarative(QCoreApplication &app, QDeclarativeView &view);
 
+}
 
 #endif // _QTSCRIPT_QML_ADAPTER_H_

@@ -5,6 +5,7 @@
 #include <QDeclarativeContext>
 #include <QDeclarativeEngine>
 #include <QDeclarativeExpression>
+namespace QsExecute {
 
 EngineAccess::EngineAccess(QScriptEngine **e) : engine_(e) {}
 EngineAccess::~EngineAccess() {}
@@ -30,4 +31,6 @@ void setupDeclarative(QCoreApplication &app, QDeclarativeView &view)
 
     QsExecute::setupEngine(app, *pengine, global);
     pengine->setGlobalObject(global);
+}
+
 }
