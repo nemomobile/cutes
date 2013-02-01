@@ -3,6 +3,8 @@
 
 #include <QtScript/QScriptEngine>
 
+namespace QsExecute {
+
 class EngineAccess : public QObject
 {
     Q_OBJECT;
@@ -17,4 +19,5 @@ private:
 
 };
 
+}
 #endif // _QMLSCRIPT_PRIVATE_ENGINE_HPP_

@@ -5,6 +5,8 @@
 
 using namespace QsExecute;
 
+namespace QsExecute {
+
 static int usage(int, char *argv[])
 {
     qDebug() << argv[0] << " <script_name>";
@@ -50,8 +52,12 @@ int executeDeclarative(int argc, char *argv[])
     return app.exec();
 }
 
+}
+
+
 int main(int argc, char *argv[])
 {
+    using namespace QsExecute;
     if (argc < 2)
         return usage(argc, argv);
 
