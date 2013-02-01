@@ -50,10 +50,9 @@ environment variables
 \fB\fBqtscript.system.path\fP\fP
 Application library paths
 .TP
-\fB\fBqtscript.eval\fP\fP
-function to evaluate/import any javascript code
-located in the directory where running script resides or in the
-library path
+\fB\fBqtscript.load\fP\fP
+function to load javascript file located in the
+directory where running script resides or in the library path
 .TP
 \fB\fBqtscript.use\fP\fP
 instructs engine to import QtScript extension

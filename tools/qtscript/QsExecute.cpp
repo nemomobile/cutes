@@ -92,7 +92,7 @@ static QScriptValue globalProp
     return res;
 }
 
-static QScriptValue eval(QString file_name, QScriptEngine &engine)
+static QScriptValue load(QString file_name, QScriptEngine &engine)
 {
     static QSet<QString> loaded_files;
 
@@ -161,14 +161,14 @@ static QString findFile(QScriptEngine &engine, QString const &file_name)
     return QString();
 }
 
-static QScriptValue jsEval(QScriptContext *context, QScriptEngine *engine)
+static QScriptValue jsLoad(QScriptContext *context, QScriptEngine *engine)
 {
     QString file_name = context->argument(0).toString();
     try {
         QString full_name = findFile(*engine, file_name);
         if (full_name.isEmpty())
             throw Error(QString("Can't find file %1").arg(file_name));
-        return eval(full_name, *engine);
+        return load(full_name, *engine);
     } catch (JsError const &e) {
         return context->throwError
             (QString("Exception loading file %1").arg(file_name) + e.msg);
@@ -229,12 +229,12 @@ qscript_file_loader_type setupEngine
                    << nameValue("os", engine.toScriptValue(QString(os_name)))
                    << nameValue("env", engine.toScriptValue(env))
                    << nameValue("path", engine.toScriptValue(lib_paths)))
-               << fn("eval", jsEval)
+               << fn("load", jsLoad)
                << fn("use", jsUse)
                << (obj("script")
                    << nameValue("args", engine.toScriptValue(script_args))))
            << obj("lib");
-    return &eval;
+    return &load;
 }
 
 }
