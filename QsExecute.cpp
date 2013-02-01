@@ -175,6 +175,9 @@ static QScriptValue jsLoad(QScriptContext *context, QScriptEngine *engine)
     } catch (Error const &e) {
         return context->throwError
             (QString("Exception loading file %1:\n%2").arg(file_name, e.msg));
+    } catch (...) {
+        return context->throwError
+            (QString("Unknown error loading file %1:\n").arg(file_name));
     }
 }
 

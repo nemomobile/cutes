@@ -1,10 +1,13 @@
 #include "EngineAccess.hpp"
 #include "QmlAdapter.hpp"
 #include "QsExecute.hpp"
+#include "QsActor.hpp"
 
 #include <QDeclarativeContext>
 #include <QDeclarativeEngine>
 #include <QDeclarativeExpression>
+#include <QtDeclarative>
+
 namespace QsExecute {
 
 EngineAccess::EngineAccess(QScriptEngine **e) : engine_(e) {}
@@ -31,6 +34,7 @@ void setupDeclarative(QCoreApplication &app, QDeclarativeView &view)
 
     QsExecute::setupEngine(app, *pengine, global);
     pengine->setGlobalObject(global);
+    qmlRegisterType<QsExecute::Actor>("Mer.QtScript", 1, 0, "QtScriptActor");
 }
 
 }
