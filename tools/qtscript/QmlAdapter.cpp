@@ -45,6 +45,8 @@ void setupDeclarative
     auto script = findProperty(global, {"qtscript", "script"});
     script.setProperty("cwd", pengine->toScriptValue(cwd));
 
+    view.engine()->setBaseUrl(cwd);
+
     qmlRegisterType<QsExecute::Actor>("Mer.QtScript", 1, 0, "QtScriptActor");
 }
 

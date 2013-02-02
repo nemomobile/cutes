@@ -25,7 +25,7 @@ public:
     static QString errorMessage(QScriptEngine &engine, QString const &file);
 };
 
-typedef QScriptValue (*qscript_file_loader_type)(QString, QScriptEngine &);
+typedef QScriptValue (*qscript_file_loader_type)(QString const&, QScriptEngine &);
 
 qscript_file_loader_type setupEngine
 (QCoreApplication &app, QScriptEngine &engine, QScriptValue global);

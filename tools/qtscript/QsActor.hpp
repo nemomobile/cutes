@@ -48,14 +48,21 @@ public:
     };
 
     Event();
-    Event(QString const&);
     virtual ~Event();
-
-    QString src_;
 
 protected:
     Event(Type t);
 
+};
+
+class Load : public Event
+{
+public:
+    Load(QString const&, QString const&);
+    virtual ~Load() {}
+
+    QString src_;
+    QString cwd_;
 };
 
 class Message : public Event
@@ -111,7 +118,7 @@ signals:
     void onQuit();
 
 private:
-    void load(QString const&);
+    void load(Load *);
     void processMessage(Message*);
     void toActor(Event*);
 
@@ -126,7 +133,7 @@ class WorkerThread : public QThread
 {
     Q_OBJECT;
 public:
-    WorkerThread(Actor *parent, QString const &src);
+    WorkerThread(Actor *, QString const &, QString const &);
     virtual ~WorkerThread();
 
     void run();
