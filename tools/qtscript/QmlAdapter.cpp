@@ -18,15 +18,20 @@ void EngineAccess::setEngine(QScriptValue val)
     *engine_ = val.engine();
 }
 
-void setupDeclarative(QCoreApplication &app, QDeclarativeView &view)
+QScriptEngine *getDeclarativeScriptEngine(QDeclarativeContext &ctx)
 {
     QScriptEngine *pengine;
-    QDeclarativeContext *ctx = view.rootContext();
 
-    ctx->setContextProperty("__engineAccess", new EngineAccess(&pengine));
-    QDeclarativeExpression expr(ctx, ctx->contextObject(),
+    ctx.setContextProperty("__engineAccess", new EngineAccess(&pengine));
+    QDeclarativeExpression expr(&ctx, ctx.contextObject(),
                                 "__engineAccess.setEngine(this)");
     expr.evaluate();
+    return pengine;
+}
+
+void setupDeclarative(QCoreApplication &app, QDeclarativeView &view)
+{
+    QScriptEngine *pengine = getDeclarativeScriptEngine(*view.rootContext());
 
     auto old = pengine->globalObject();
     auto global = pengine->newObject();
