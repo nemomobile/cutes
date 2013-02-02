@@ -30,6 +30,7 @@
 #include <QScriptEngine>
 #include <QDebug>
 #include <QCoreApplication>
+#include <QDeclarativeContext>
 
 namespace QsExecute {
 
@@ -52,8 +53,8 @@ void Actor::setSource(QString const &src)
     if (src == src_)
         return;
 
-    if (!worker_)
-        worker_.reset(new WorkerThread(this, src));
+    auto cwd = engine()->baseUrl().toLocalFile();
+    worker_.reset(new WorkerThread(this, src, cwd));
 
     src_ = src;
 }
@@ -92,27 +93,25 @@ Event::Event()
 
 Event::Event(Event::Type t)
     : QEvent(static_cast<QEvent::Type>(t))
-{
-}
+{ }
 
-Event::Event(QString const &src)
-    : QEvent(static_cast<QEvent::Type>(Event::LoadScript)),
-      src_(src)
-{
-}
+Load::Load(QString const &src, QString const &cwd)
+    : Event(Event::LoadScript),
+      src_(src), cwd_(cwd)
+{ }
 
 Event::~Event() {}
 
-WorkerThread::WorkerThread(Actor *parent, QString const &src)
+WorkerThread::WorkerThread
+(Actor *parent, QString const &src, QString const &cwd)
     : QThread(nullptr)
     , actor_(parent)
 {
     mutex_.lock();
     start();
     cond_.wait(&mutex_);
-    QCoreApplication::postEvent(engine_.data(), new Event(src));
-    connect(engine_.data(), SIGNAL(onQuit())
-            , this, SLOT(quit()));
+    QCoreApplication::postEvent(engine_.data(), new Load(src, cwd));
+    connect(engine_.data(), SIGNAL(onQuit()), this, SLOT(quit()));
 }
 
 void Engine::toActor(Event *ev)
@@ -132,18 +131,21 @@ Message::Message(QVariant const& data, QScriptValue const& cb)
 {
 }
 
-void Engine::load(QString const &src)
+void Engine::load(Load *msg)
 {
     engine_ = new QScriptEngine(this);
-    auto load = QsExecute::setupEngine(*QCoreApplication::instance(),
-                                       *engine_, engine_->globalObject());
     try {
-        handler_ = load(src, *engine_);
+        auto load = QsExecute::setupEngine
+            (*QCoreApplication::instance(), *engine_, engine_->globalObject());
+        auto script = findProperty
+            (engine_->globalObject(), {"qtscript", "script"});
+        script.setProperty("cwd", engine_->toScriptValue(msg->cwd_));
+        handler_ = load(msg->src_, *engine_);
         if (!handler_.isFunction()) {
             qDebug() << "Not a function";
         }
     } catch (Error const &e) {
-        qDebug() << "Failed to eval:" << src;
+        qDebug() << "Failed to eval:" << msg->src_;
         qDebug() << e.msg;
         if (engine_->hasUncaughtException()) {
             toActor(new EngineException(*engine_));
@@ -188,11 +190,9 @@ void Engine::processMessage(Message *msg)
 
 bool Engine::event(QEvent *e)
 {
-    Event *self;
     switch (static_cast<Event::Type>(e->type())) {
     case (Event::LoadScript):
-        self = static_cast<Event*>(e);
-        load(self->src_);
+        load(static_cast<Load*>(e));
         return true;
     case (Event::ProcessMessage):
         processMessage(static_cast<Message*>(e));

@@ -106,53 +106,6 @@ static QScriptValue findProperty
     return findProperty(engine.globalObject(), path);
 }
 
-static QScriptValue load(QString file_name, QScriptEngine &engine)
-{
-    static QSet<QString> loaded_files;
-
-    QFileInfo file_info(file_name);
-    file_name = file_info.absoluteFilePath();
-
-    QString canonical_name = file_info.canonicalFilePath();
-    if (loaded_files.contains(canonical_name))
-        return QScriptValue();
-
-    QFile file(file_name);
-    if (!file.open(QFile::ReadOnly))
-        throw Error(QString("Can't open %1").arg(file_name));
-
-    QString contents;
-    contents.reserve(file_info.size());
-
-    int line_nr = 2;
-
-    QTextStream dst(&contents);
-    QTextStream input(&file);
-    QString first = input.readLine();
-    if (!first.startsWith("#!")) {
-        dst << first << "\n";
-        line_nr = 1;
-    }
-
-    while (!input.atEnd())
-        dst << input.readLine() << "\n";
-
-    auto script = findProperty(engine, {"qtscript", "script"});
-
-    auto saved_props = std::move(saveProps(script, {"filename", "cwd"}));
-    script << nameValue("filename", engine.toScriptValue(file_name))
-           << nameValue("cwd", engine.toScriptValue(file_info.absolutePath()));
-
-    auto res = engine.evaluate(contents, file_name, line_nr);
-    restoreProps(script, saved_props);
-
-    if (engine.hasUncaughtException())
-        throw JsError(engine, file_name);
-
-    loaded_files.insert(canonical_name);
-    return res;
-}
-
 static QList<QDir> lib_dirs;
 
 static QString findFile(QScriptEngine &engine, QString const &file_name)
@@ -183,14 +136,64 @@ static QString findFile(QScriptEngine &engine, QString const &file_name)
     return QString();
 }
 
+static QScriptValue load(QString const &file_name, QScriptEngine &engine)
+{
+    QString full_name = findFile(engine, file_name);
+
+    if (full_name.isEmpty())
+        throw Error(QString("Can't find file %1").arg(file_name));
+
+    static QSet<QString> loaded_files;
+
+    QFileInfo file_info(full_name);
+    full_name = file_info.absoluteFilePath();
+
+    QString canonical_name = file_info.canonicalFilePath();
+    if (loaded_files.contains(canonical_name))
+        return QScriptValue();
+
+    QFile file(full_name);
+    if (!file.open(QFile::ReadOnly))
+        throw Error(QString("Can't open %1").arg(full_name));
+
+    QString contents;
+    contents.reserve(file_info.size());
+
+    int line_nr = 2;
+
+    QTextStream dst(&contents);
+    QTextStream input(&file);
+    QString first = input.readLine();
+    if (!first.startsWith("#!")) {
+        dst << first << "\n";
+        line_nr = 1;
+    }
+
+    while (!input.atEnd())
+        dst << input.readLine() << "\n";
+
+    auto script = findProperty(engine, {"qtscript", "script"});
+
+    auto saved_props = std::move(saveProps(script, {"filename", "cwd"}));
+    script << nameValue("filename", engine.toScriptValue(full_name))
+           << nameValue("cwd", engine.toScriptValue(file_info.absolutePath()));
+
+    auto res = engine.evaluate(contents, full_name, line_nr);
+    restoreProps(script, saved_props);
+
+    if (engine.hasUncaughtException())
+        throw JsError(engine, full_name);
+
+    loaded_files.insert(canonical_name);
+    return res;
+}
+
+
 static QScriptValue jsLoad(QScriptContext *context, QScriptEngine *engine)
 {
     QString file_name = context->argument(0).toString();
     try {
-        QString full_name = findFile(*engine, file_name);
-        if (full_name.isEmpty())
-            throw Error(QString("Can't find file %1").arg(file_name));
-        return load(full_name, *engine);
+        return load(file_name, *engine);
     } catch (JsError const &e) {
         return context->throwError
             (QString("Exception loading file %1").arg(file_name) + e.msg);
@@ -220,8 +223,6 @@ static QMap<QString, QVariant> mkEnv()
     }
     return res;
 }
-
-typedef QScriptValue (*qscript_file_loader_type)(QString, QScriptEngine &);
 
 qscript_file_loader_type setupEngine
 (QCoreApplication &app, QScriptEngine &engine, QScriptValue global)
