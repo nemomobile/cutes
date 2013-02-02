@@ -29,7 +29,8 @@ QScriptEngine *getDeclarativeScriptEngine(QDeclarativeContext &ctx)
     return pengine;
 }
 
-void setupDeclarative(QCoreApplication &app, QDeclarativeView &view)
+void setupDeclarative
+(QCoreApplication &app, QDeclarativeView &view, QString const &cwd)
 {
     QScriptEngine *pengine = getDeclarativeScriptEngine(*view.rootContext());
 
@@ -39,6 +40,11 @@ void setupDeclarative(QCoreApplication &app, QDeclarativeView &view)
 
     QsExecute::setupEngine(app, *pengine, global);
     pengine->setGlobalObject(global);
+
+    // add current working directory to env
+    auto script = findProperty(global, {"qtscript", "script"});
+    script.setProperty("cwd", pengine->toScriptValue(cwd));
+
     qmlRegisterType<QsExecute::Actor>("Mer.QtScript", 1, 0, "QtScriptActor");
 }
 
