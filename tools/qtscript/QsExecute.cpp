@@ -157,21 +157,29 @@ static QList<QDir> lib_dirs;
 
 static QString findFile(QScriptEngine &engine, QString const &file_name)
 {
-    auto script = findProperty(engine, {"app", "script"});
-    QDir cwd(script.property("cwd").toString());
+    if (QFileInfo(file_name).isAbsolute())
+        return file_name;
+
     QString res;
 
-    if (QFileInfo(file_name).isRelative())
-        res = cwd.filePath(file_name);
+    auto mkRelative = [&res, &file_name](QDir const& dir) {
+        res = dir.filePath(file_name);
+        return (QFileInfo(res).exists());
+    };
 
-    if (QFileInfo(res).exists())
+    auto script = findProperty(engine, {"qtscript", "script"});
+
+    // first - relative to cwd
+    // then - relative to file_name dir
+    if (mkRelative(QDir(script.property("cwd").toString()))
+        || mkRelative(QDir(QFileInfo(file_name).path())))
         return res;
 
-    for (auto &d : lib_dirs) {
-        res = d.filePath(file_name);
-        if (QFileInfo(res).exists())
+    // search in path
+    for (auto &d : lib_dirs)
+        if (mkRelative(d))
             return res;
-    }
+
     return QString();
 }
 
