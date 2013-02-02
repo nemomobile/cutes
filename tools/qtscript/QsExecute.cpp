@@ -91,14 +91,19 @@ static void restoreProps
         parent.setProperty(kv.key(), kv.value());
 }
 
-static QScriptValue globalProp
-(QScriptEngine const& engine, QStringList const &path)
+QScriptValue findProperty(QScriptValue const& root, QStringList const &path)
 {
-    auto res = engine.globalObject();
+    QScriptValue res(root);
     for (auto &name : path)
         res = res.property(name);
 
     return res;
+}
+
+static QScriptValue findProperty
+(QScriptEngine const& engine, QStringList const &path)
+{
+    return findProperty(engine.globalObject(), path);
 }
 
 static QScriptValue load(QString file_name, QScriptEngine &engine)
@@ -132,7 +137,7 @@ static QScriptValue load(QString file_name, QScriptEngine &engine)
     while (!input.atEnd())
         dst << input.readLine() << "\n";
 
-    auto script = globalProp(engine, {"qtscript", "script"});
+    auto script = findProperty(engine, {"qtscript", "script"});
 
     auto saved_props = std::move(saveProps(script, {"filename", "cwd"}));
     script << nameValue("filename", engine.toScriptValue(file_name))
@@ -152,7 +157,7 @@ static QList<QDir> lib_dirs;
 
 static QString findFile(QScriptEngine &engine, QString const &file_name)
 {
-    auto script = globalProp(engine, {"app", "script"});
+    auto script = findProperty(engine, {"app", "script"});
     QDir cwd(script.property("cwd").toString());
     QString res;
 

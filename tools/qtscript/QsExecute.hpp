@@ -30,6 +30,8 @@ typedef QScriptValue (*qscript_file_loader_type)(QString, QScriptEngine &);
 qscript_file_loader_type setupEngine
 (QCoreApplication &app, QScriptEngine &engine, QScriptValue global);
 
+QScriptValue findProperty(QScriptValue const&, QStringList const &);
+
 }
 
 #endif // _QSEXECUTE_HPP_
