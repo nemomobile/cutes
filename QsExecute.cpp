@@ -25,6 +25,15 @@ static const char *os_name = "unix";
 static const char *os_name = "unknown";
 #endif
 
+Error::Error(QString const &s)
+    : std::runtime_error(s.toStdString()),
+      msg(s)
+{ }
+
+JsError::JsError(QScriptEngine &engine, QString const &file)
+    : Error(errorMessage(engine, file))
+{}
+
 QString JsError::errorMessage(QScriptEngine &engine, QString const &file)
 {
     QString res;
