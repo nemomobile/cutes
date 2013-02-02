@@ -52,24 +52,17 @@ void Actor::setSource(QString const &src)
     if (src == src_)
         return;
 
-    if (!engine_) {
-        engine_.reset(new EngineThread(this, src));
-    }
+    if (!worker_)
+        worker_.reset(new WorkerThread(this, src));
 
     src_ = src;
 }
 
-void Actor::exitEngine()
-{
-    if (engine_)
-        QCoreApplication::postEvent(engine_.data(), new EngineEvent());
-}
-
-void EngineThread::sendMessage(QScriptValue m, QScriptValue cb)
+void WorkerThread::sendMessage(QScriptValue m, QScriptValue cb)
 {
     try {
         QCoreApplication::postEvent
-            (engine_.data(), new EngineEvent(m.toVariant(), cb));
+            (engine_.data(), new Message(m.toVariant(), cb));
     } catch (...) {
         qDebug() << "Caught exception processing sendMessage"
                  << m.toString() << cb.toString();
@@ -78,50 +71,65 @@ void EngineThread::sendMessage(QScriptValue m, QScriptValue cb)
 
 void Actor::sendMessage(QScriptValue m, QScriptValue cb)
 {
-    engine_->sendMessage(m, cb);
+    worker_->sendMessage(m, cb);
 }
 
-void Actor::onReply(QVariant var, QScriptValue cb)
+void Actor::reply(Message *reply)
 {
+    auto &cb = reply->cb_;
     auto params = cb.engine()->newArray(1);
-    auto data = cb.engine()->toScriptValue(var);
+    auto data = cb.engine()->toScriptValue(reply->data_);
     params.setProperty(0, data);
     if (cb.isFunction())
         cb.call(QScriptValue(), params);
     emit message(data);
 }
 
-EngineEvent::EngineEvent()
-    : QEvent(static_cast<QEvent::Type>(EngineEvent::QuitThread))
+Event::Event()
+    : QEvent(static_cast<QEvent::Type>(Event::QuitThread))
 {
 }
 
-EngineEvent::EngineEvent(QString const &src)
-    : QEvent(static_cast<QEvent::Type>(EngineEvent::LoadScript)),
+Event::Event(Event::Type t)
+    : QEvent(static_cast<QEvent::Type>(t))
+{
+}
+
+Event::Event(QString const &src)
+    : QEvent(static_cast<QEvent::Type>(Event::LoadScript)),
       src_(src)
 {
 }
 
-EngineEvent::EngineEvent(QVariant const &data, QScriptValue cb)
-    : QEvent(static_cast<QEvent::Type>(EngineEvent::ProcessMessage)),
-      data_(data), cb_(cb)
-{
-}
+Event::~Event() {}
 
-EngineEvent::~EngineEvent() {}
-
-EngineThread::EngineThread(Actor *parent, QString const &src)
+WorkerThread::WorkerThread(Actor *parent, QString const &src)
     : QThread(nullptr)
     , actor_(parent)
 {
     mutex_.lock();
     start();
     cond_.wait(&mutex_);
-    QCoreApplication::postEvent(engine_.data(), new EngineEvent(src));
-    connect(engine_.data(), SIGNAL(onReply(QVariant, QScriptValue))
-            , actor_, SLOT(onReply(QVariant, QScriptValue)));
+    QCoreApplication::postEvent(engine_.data(), new Event(src));
     connect(engine_.data(), SIGNAL(onQuit())
             , this, SLOT(quit()));
+}
+
+void Engine::toActor(Event *ev)
+{
+    QCoreApplication::postEvent(actor_, ev);
+}
+
+EngineException::EngineException(QScriptEngine const& engine)
+    : Event(Event::LoadException)
+    , exception_(engine.uncaughtException().toVariant())
+    , backtrace_(engine.uncaughtExceptionBacktrace())
+{
+}
+
+Message::Message(QVariant const& data, QScriptValue const& cb)
+    : Event(ProcessMessage), data_(data), cb_(cb)
+{
 }
 
 void Engine::load(QString const &src)
@@ -129,66 +137,67 @@ void Engine::load(QString const &src)
     engine_ = new QScriptEngine(this);
     auto load = QsExecute::setupEngine(*QCoreApplication::instance(),
                                        *engine_, engine_->globalObject());
-    int rc = EXIT_SUCCESS;
-
     try {
         handler_ = load(src, *engine_);
-        if (engine_->uncaughtException().isValid())
-            rc = EXIT_FAILURE;
         if (!handler_.isFunction()) {
             qDebug() << "Not a function";
         }
     } catch (Error const &e) {
         qDebug() << "Failed to eval:" << src;
         qDebug() << e.msg;
-        rc = EXIT_FAILURE;
+        if (engine_->hasUncaughtException()) {
+            toActor(new EngineException(*engine_));
+            engine_->clearExceptions();
+        }
     }
 }
 
-Engine::Engine() {}
+Engine::Engine(Actor *actor) : actor_(actor) {}
 Engine::~Engine() {}
 
-EngineThread::~EngineThread()
+WorkerThread::~WorkerThread()
 {
     if (engine_)
-        QCoreApplication::instance()->notify(engine_.data(), new EngineEvent());
+        QCoreApplication::instance()->notify(engine_.data(), new Event());
 
     wait();
 }
 
-void EngineThread::run()
+void WorkerThread::run()
 {
-    engine_.reset(new Engine());
+    engine_.reset(new Engine(actor_));
     mutex_.lock();
     cond_.wakeAll();
     mutex_.unlock();
     exec();
 }
 
-void Engine::processMessage(QVariant &data, QScriptValue &cb)
+void Engine::processMessage(Message *msg)
 {
+    auto &cb = msg->cb_;
     QVariant res;
+
     if (handler_.isFunction()) {
-        auto params = engine_->newArray(1);
-        params.setProperty(0, engine_->toScriptValue(data));
+        auto params = engine_->newArray(2);
+        params.setProperty(0, engine_->toScriptValue(msg->data_));
+        params.setProperty(1, engine_->newQObject(new MessageContext(this, cb)));
         res = handler_.call(QScriptValue(), params).toVariant();
     }
-    emit onReply(res, cb);
+    reply(res, cb);
 }
 
 bool Engine::event(QEvent *e)
 {
-    EngineEvent *self;
-    switch (static_cast<EngineEvent::Type>(e->type())) {
-    case (EngineEvent::LoadScript):
-        self = static_cast<EngineEvent*>(e);
+    Event *self;
+    switch (static_cast<Event::Type>(e->type())) {
+    case (Event::LoadScript):
+        self = static_cast<Event*>(e);
         load(self->src_);
         return true;
-    case (EngineEvent::ProcessMessage):
-        self = static_cast<EngineEvent*>(e);
-        processMessage(self->data_, self->cb_);
+    case (Event::ProcessMessage):
+        processMessage(static_cast<Message*>(e));
         return true;
-    case (EngineEvent::QuitThread):
+    case (Event::QuitThread):
         emit onQuit();
         return true;
     default:
@@ -196,5 +205,45 @@ bool Engine::event(QEvent *e)
     }
     return false;
 }
+
+bool Actor::event(QEvent *e)
+{
+    EngineException *ex;
+    switch (static_cast<Event::Type>(e->type())) {
+    case (Event::ProcessMessage):
+        reply(static_cast<Message*>(e));
+        return true;
+    case (Event::LoadException):
+        ex = static_cast<EngineException*>(e);
+        emit error(ex->exception_);
+        return true;
+    default:
+        return QObject::event(e);
+    }
+    return false;
+}
+
+
+MessageContext::MessageContext(Engine *engine, QScriptValue cb)
+    : QObject(engine), engine_(engine), cb_(cb)
+{}
+
+MessageContext::~MessageContext() {}
+
+void MessageContext::reply(QScriptValue data)
+{
+    engine_->reply(data.toVariant(), cb_);
+}
+
+void Engine::reply(QVariant const &data, QScriptValue const &cb)
+{
+    toActor(new Message(data, cb));
+}
+
+QDeclarativeEngine *Actor::engine()
+{
+    return qmlEngine(this);
+}
+
 
 }

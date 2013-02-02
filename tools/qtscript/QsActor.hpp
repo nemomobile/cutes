@@ -32,61 +32,102 @@
 #include <QEvent>
 #include <QWaitCondition>
 #include <QMutex>
-
+#include <QStringList>
+#include <QDeclarativeEngine>
 namespace QsExecute
 {
 
-class EngineEvent : public QEvent
+class Event : public QEvent
 {
 public:
     enum Type {
         LoadScript = QEvent::User,
         ProcessMessage,
-        QuitThread
+        QuitThread,
+        LoadException
     };
 
-    EngineEvent();
-    EngineEvent(QString const&);
-    EngineEvent(QVariant const&, QScriptValue);
-    virtual ~EngineEvent();
+    Event();
+    Event(QString const&);
+    virtual ~Event();
 
     QString src_;
+
+protected:
+    Event(Type t);
+
+};
+
+class Message : public Event
+{
+public:
+    Message(QVariant const&, QScriptValue const&);
+    virtual ~Message() {}
+
     QVariant data_;
     QScriptValue cb_;
 };
 
+class EngineException : public Event
+{
+public:
+    EngineException(QScriptEngine const&);
+    virtual ~EngineException() {}
+
+    QVariant exception_;
+    QStringList backtrace_;
+};
+
 class Actor;
 
+class Engine;
+class MessageContext : public QObject
+{
+    Q_OBJECT;
+public:
+    MessageContext(Engine *, QScriptValue);
+    virtual ~MessageContext();
+
+    Q_INVOKABLE void reply(QScriptValue);
+private:
+    Engine *engine_;
+    QScriptValue cb_;
+};
+
+class Actor;
 class Engine : public QObject
 {
     Q_OBJECT;
 public:
-    Engine();
+    Engine(Actor*);
     virtual ~Engine();
 
     void run();
     virtual bool event(QEvent *);
-    void startEngine();
+
+    void reply(QVariant const &, QScriptValue const &);
 
 signals:
-    void onReply(QVariant, QScriptValue);
     void onQuit();
 
 private:
     void load(QString const&);
-    void processMessage(QVariant &, QScriptValue &);
+    void processMessage(Message*);
+    void toActor(Event*);
+
+    Actor *actor_;
     QScriptEngine *engine_;
     QScriptValue handler_;
     QWaitCondition cond_;
     QMutex mutex_;
 };
 
-class EngineThread : public QThread
+class WorkerThread : public QThread
 {
     Q_OBJECT;
 public:
-    EngineThread(Actor *parent, QString const &src);
-    virtual ~EngineThread();
+    WorkerThread(Actor *parent, QString const &src);
+    virtual ~WorkerThread();
 
     void run();
     void sendMessage(QScriptValue, QScriptValue);
@@ -97,6 +138,7 @@ private:
     QMutex mutex_;
     QScopedPointer<Engine> engine_;
 };
+
 
 class Actor : public QObject
 {
@@ -110,21 +152,20 @@ public:
     void setSource(QString const &);
 
     Q_INVOKABLE void sendMessage(QScriptValue, QScriptValue);
-
-    Q_INVOKABLE void exitEngine();
+    virtual bool event(QEvent *);
 
 signals:
-    void message(QScriptValue);
-
-public slots:
-    void onReply(QVariant, QScriptValue);
+    void message(QScriptValue message);
+    void error(QVariant const& error);
 
 protected:
     QString src_;
+    void reply(Message*);
+    QDeclarativeEngine *engine();
 
 private:
 
-    QScopedPointer<EngineThread> engine_;
+    QScopedPointer<WorkerThread> worker_;
 };
 
 }
