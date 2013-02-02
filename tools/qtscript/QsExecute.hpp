@@ -12,11 +12,7 @@ namespace QsExecute
 class Error : public std::runtime_error
 {
 public:
-    Error(QString const &s)
-        : std::runtime_error(s.toStdString()),
-          msg(s)
-    { }
-
+    Error(QString const &s);
     virtual ~Error() throw() {}
 
     QString msg;
@@ -25,9 +21,7 @@ public:
 class JsError : public Error
 {
 public:
-    JsError(QScriptEngine &engine, QString const &file)
-        : Error(errorMessage(engine, file)) {}
-
+    JsError(QScriptEngine &engine, QString const &file);
     static QString errorMessage(QScriptEngine &engine, QString const &file);
 };
 
