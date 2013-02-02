@@ -46,7 +46,7 @@ int executeDeclarative(int argc, char *argv[])
 
     QDeclarativeView view;
 
-    setupDeclarative(app, view);
+    setupDeclarative(app, view, QFileInfo(script_file).absolutePath());
     view.setSource(QUrl::fromLocalFile(script_file));
     view.show();
     return app.exec();

@@ -6,7 +6,7 @@
 
 namespace QsExecute {
 
-void setupDeclarative(QCoreApplication &, QDeclarativeView &);
+void setupDeclarative(QCoreApplication &, QDeclarativeView &, QString const &);
 QScriptEngine *getDeclarativeScriptEngine(QDeclarativeContext &);
 
 }
