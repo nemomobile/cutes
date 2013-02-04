@@ -158,7 +158,7 @@ public:
     QString source() const;
     void setSource(QString const &);
 
-    Q_INVOKABLE void sendMessage(QScriptValue, QScriptValue);
+    Q_INVOKABLE void sendMessage(QScriptValue, QScriptValue cb = QScriptValue());
     virtual bool event(QEvent *);
 
 signals:
