@@ -44,7 +44,8 @@ public:
         LoadScript = QEvent::User,
         ProcessMessage,
         QuitThread,
-        LoadException
+        LoadException,
+        Error
     };
 
     Event();
@@ -68,7 +69,8 @@ public:
 class Message : public Event
 {
 public:
-    Message(QVariant const&, QScriptValue const&);
+    Message(QVariant const&, QScriptValue const&,
+            Event::Type type = Event::ProcessMessage);
     virtual ~Message() {}
 
     QVariant data_;
@@ -113,6 +115,7 @@ public:
     virtual bool event(QEvent *);
 
     void reply(QVariant const &, QScriptValue const &);
+    void error(QVariant const &, QScriptValue const &);
 
 signals:
     void onQuit();
