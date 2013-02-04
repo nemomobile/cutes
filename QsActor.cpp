@@ -132,8 +132,9 @@ EngineException::EngineException(QScriptEngine const& engine)
 {
 }
 
-Message::Message(QVariant const& data, QScriptValue const& cb)
-    : Event(ProcessMessage), data_(data), cb_(cb)
+Message::Message(QVariant const& data, QScriptValue const& cb,
+                 Event::Type type)
+    : Event(type), data_(data), cb_(cb)
 {
 }
 
@@ -218,6 +219,7 @@ bool Engine::event(QEvent *e)
 bool Actor::event(QEvent *e)
 {
     EngineException *ex;
+    Message *m;
     switch (static_cast<Event::Type>(e->type())) {
     case (Event::ProcessMessage):
         reply(static_cast<Message*>(e));
@@ -225,6 +227,10 @@ bool Actor::event(QEvent *e)
     case (Event::LoadException):
         ex = static_cast<EngineException*>(e);
         emit error(ex->exception_);
+        return true;
+    case (Event::Error):
+        m = static_cast<Message*>(e);
+        emit error(m->data_);
         return true;
     default:
         return QObject::event(e);
@@ -247,6 +253,11 @@ void MessageContext::reply(QScriptValue data)
 void Engine::reply(QVariant const &data, QScriptValue const &cb)
 {
     toActor(new Message(data, cb));
+}
+
+void Engine::error(QVariant const &data, QScriptValue const &cb)
+{
+    toActor(new Message(data, cb, Event::Error));
 }
 
 QDeclarativeEngine *Actor::engine()
