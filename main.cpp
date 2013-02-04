@@ -48,7 +48,13 @@ int executeDeclarative(int argc, char *argv[])
 
     setupDeclarative(app, view, QFileInfo(script_file).absolutePath());
     view.setSource(QUrl::fromLocalFile(script_file));
-    view.show();
+
+    view.setAttribute(Qt::WA_OpaquePaintEvent);
+    view.setAttribute(Qt::WA_NoSystemBackground);
+    view.viewport()->setAttribute(Qt::WA_OpaquePaintEvent);
+    view.viewport()->setAttribute(Qt::WA_NoSystemBackground);
+
+    view.showFullScreen();
     return app.exec();
 }
 
