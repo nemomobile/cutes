@@ -78,6 +78,8 @@ void Actor::sendMessage(QScriptValue m, QScriptValue cb)
 void Actor::reply(Message *reply)
 {
     auto &cb = reply->cb_;
+    if (!cb.isValid())
+        return;
     auto params = cb.engine()->newArray(1);
     auto data = cb.engine()->toScriptValue(reply->data_);
     params.setProperty(0, data);
@@ -177,15 +179,18 @@ void WorkerThread::run()
 void Engine::processMessage(Message *msg)
 {
     auto &cb = msg->cb_;
-    QVariant res;
+    QScriptValue ret;
 
     if (handler_.isFunction()) {
         auto params = engine_->newArray(2);
         params.setProperty(0, engine_->toScriptValue(msg->data_));
         params.setProperty(1, engine_->newQObject(new MessageContext(this, cb)));
-        res = handler_.call(QScriptValue(), params).toVariant();
+        ret = handler_.call(QScriptValue(), params);
     }
-    reply(res, cb);
+    if (!ret.isError())
+        reply(ret.toVariant(), cb);
+    else
+        error(ret.toVariant(), cb);
 }
 
 bool Engine::event(QEvent *e)
