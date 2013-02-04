@@ -24,6 +24,7 @@
 
 #include "QsActor.hpp"
 #include "QsExecute.hpp"
+#include "QmlAdapter.hpp"
 
 #include <QtDeclarative/qdeclarative.h>
 #include <QtDeclarative/QDeclarativeExtensionPlugin>
@@ -53,7 +54,10 @@ void Actor::setSource(QString const &src)
     if (src == src_)
         return;
 
-    auto cwd = engine()->baseUrl().toLocalFile();
+    // cwd should be set to the same directory as for main engine
+    auto sengine = getDeclarativeScriptEngine(*engine()->rootContext());
+    auto script = findProperty(sengine->globalObject(), {"qtscript", "script"});
+    auto cwd = script.property("cwd").toString();
     worker_.reset(new WorkerThread(this, src, cwd));
 
     src_ = src;
