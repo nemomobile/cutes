@@ -2,6 +2,7 @@
     qtscript.use("qt.core")
 
     return function(data, ctx) {
+        print("Actor got:", data.from_qml)
         var e = 1
         // delays using mutex tryLock timeout
         var lock = new QMutex()

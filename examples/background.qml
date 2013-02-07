@@ -1,12 +1,11 @@
 import QtQuick 1.1
-import Mer.QtScript 1.0
+import Mer.QtScript 1.1
 
-Item
+Rectangle
 {
     id : main
     width : 300
-    height: 600
-
+    height: 300
     QtScriptActor {
         id : actor
         source : "actor.js"
@@ -20,7 +19,7 @@ Item
     Component.onCompleted : {
         data.append({ name: "before", value : "first item"})
         data.append({ name: "click items while", value : "loading" })
-        actor.sendMessage({ from_qml : "qml data"}, function (reply) {
+        actor.send({ from_qml : "qml data"}, function (reply) {
             for (var n in reply)
                 data.append({ name: n, value : reply[n] })
         })
@@ -42,13 +41,9 @@ Item
     ListView {
         anchors { fill: parent }
         model : data
-        delegate : Text {
+        delegate : TestItem {
             id: txt
             text: model.name + " " + model.value
-            MouseArea {
-                anchors {fill: parent }
-                onClicked : { txt.text = "CLICKED" }
-            }
         }
     }
 

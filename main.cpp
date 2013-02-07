@@ -1,4 +1,4 @@
-#include "QsExecute.hpp"
+#include "QsEnv.hpp"
 #include <iostream>
 #include <QtGui/QApplication>
 #include "QmlAdapter.hpp"
@@ -22,19 +22,21 @@ int executeScript(int argc, char *argv[])
     QString script_file(app.arguments().at(1));
 
     QScriptEngine engine;
-    auto load = QsExecute::setupEngine(app, engine, engine.globalObject());
+    auto script_env = loadEnv(app, engine);
     int rc = EXIT_SUCCESS;
 
     try {
-        auto res = load(script_file, engine);
-        if (engine.uncaughtException().isValid())
+        auto res = script_env->load(script_file);
+        if (engine.hasUncaughtException()
+            && engine.uncaughtException().isValid())
             rc = EXIT_FAILURE;
     } catch (Error const &e) {
         qDebug() << "Failed to eval:" << script_file;
         qDebug() << e.msg;
         rc = EXIT_FAILURE;
     }
-    return rc;
+    return rc == EXIT_SUCCESS && script_env->shouldWait()
+        ? app.exec() : rc;
 }
 
 int executeDeclarative(int argc, char *argv[])
@@ -46,7 +48,7 @@ int executeDeclarative(int argc, char *argv[])
 
     QDeclarativeView view;
 
-    setupDeclarative(app, view, QFileInfo(script_file).absolutePath());
+    setupDeclarative(app, view, QFileInfo(script_file).absoluteFilePath());
     view.setSource(QUrl::fromLocalFile(script_file));
 
     view.setAttribute(Qt::WA_OpaquePaintEvent);

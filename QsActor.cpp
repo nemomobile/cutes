@@ -23,7 +23,7 @@
  */
 
 #include "QsActor.hpp"
-#include "QsExecute.hpp"
+#include "QsEnv.hpp"
 #include "QmlAdapter.hpp"
 
 #include <QtDeclarative/qdeclarative.h>
@@ -35,8 +35,9 @@
 
 namespace QsExecute {
 
-Actor::Actor(QObject *parent)
-        : QObject(parent)
+Actor::Actor(QScriptEngine *engine)
+        : engine_(engine)
+        , unreplied_count_(0)
 {
 }
 
@@ -49,34 +50,52 @@ QString Actor::source() const
     return src_;
 }
 
-void Actor::setSource(QString const &src)
+void Actor::setSource(QString src)
 {
     if (src == src_)
         return;
 
+    // if Actor is created by QtScript environment it should have
+    // engine_ set while declarative view does not provide direct
+    // access to the engine and it will be initialized on first call
+    // to this method
+    if (!engine_)
+        engine_ = getDeclarativeScriptEngine(qmlEngine(this));
+    if (!engine_) {
+        qDebug() << "Can't get engine";
+        return;
+    }
     // cwd should be set to the same directory as for main engine
-    auto sengine = getDeclarativeScriptEngine(*engine()->rootContext());
-    auto script = findProperty(sengine->globalObject(), {"qtscript", "script"});
-    auto cwd = script.property("cwd").toString();
-    worker_.reset(new WorkerThread(this, src, cwd));
+    auto script = static_cast<Script*>
+        (findProperty
+         (engine_->globalObject(), {"qtscript", "script"}).toQObject());
+
+    worker_.reset(new WorkerThread(this, src, script->fileName()));
 
     src_ = src;
 }
 
-void WorkerThread::sendMessage(QScriptValue m, QScriptValue cb)
+void WorkerThread::send(QScriptValue m, QScriptValue cb)
 {
     try {
         QCoreApplication::postEvent
-            (engine_.data(), new Message(m.toVariant(), cb));
+            (engine_.data(), new Message(m.toVariant(), cb, Event::Request));
     } catch (...) {
-        qDebug() << "Caught exception processing sendMessage"
-                 << m.toString() << cb.toString();
+        QString msg = "Caught exception processing sendMessage: %1, %2";
+        msg.arg(m.toString(), cb.toString());
+        qDebug() << msg;
+        QCoreApplication::postEvent
+            (actor_, new Message(msg, cb, Event::Error));
     }
 }
 
-void Actor::sendMessage(QScriptValue m, QScriptValue cb)
+void Actor::send(QScriptValue m, QScriptValue cb)
 {
-    worker_->sendMessage(m, cb);
+    if (!unreplied_count_)
+        emit acquired();
+
+    ++unreplied_count_;
+    worker_->send(m, cb);
 }
 
 void Actor::reply(Message *reply)
@@ -89,7 +108,6 @@ void Actor::reply(Message *reply)
     params.setProperty(0, data);
     if (cb.isFunction())
         cb.call(QScriptValue(), params);
-    emit message(data);
 }
 
 Event::Event()
@@ -101,22 +119,23 @@ Event::Event(Event::Type t)
     : QEvent(static_cast<QEvent::Type>(t))
 { }
 
-Load::Load(QString const &src, QString const &cwd)
-    : Event(Event::LoadScript),
-      src_(src), cwd_(cwd)
+Load::Load(QString const &src, QString const& top_script)
+    : Event(Event::LoadScript)
+    ,  src_(src)
+    , top_script_(top_script)
 { }
 
 Event::~Event() {}
 
 WorkerThread::WorkerThread
-(Actor *parent, QString const &src, QString const &cwd)
+(Actor *parent, QString const &src, QString const& top_script)
     : QThread(nullptr)
     , actor_(parent)
 {
     mutex_.lock();
     start();
     cond_.wait(&mutex_);
-    QCoreApplication::postEvent(engine_.data(), new Load(src, cwd));
+    QCoreApplication::postEvent(engine_.data(), new Load(src, top_script));
     connect(engine_.data(), SIGNAL(onQuit()), this, SLOT(quit()));
 }
 
@@ -142,14 +161,13 @@ void Engine::load(Load *msg)
 {
     engine_ = new QScriptEngine(this);
     try {
-        auto load = QsExecute::setupEngine
-            (*QCoreApplication::instance(), *engine_, engine_->globalObject());
-        auto script = findProperty
-            (engine_->globalObject(), {"qtscript", "script"});
-        script.setProperty("cwd", engine_->toScriptValue(msg->cwd_));
-        handler_ = load(msg->src_, *engine_);
+        auto script_env = loadEnv(*QCoreApplication::instance(), *engine_);
+        script_env->pushParentScriptPath(msg->top_script_);
+        handler_ = script_env->load(msg->src_);
         if (!handler_.isFunction()) {
             qDebug() << "Not a function";
+            if (handler_.isError())
+                error(handler_.toVariant());
         }
     } catch (Error const &e) {
         qDebug() << "Failed to eval:" << msg->src_;
@@ -189,11 +207,12 @@ void Engine::processMessage(Message *msg)
     if (handler_.isFunction()) {
         auto params = engine_->newArray(2);
         params.setProperty(0, engine_->toScriptValue(msg->data_));
-        params.setProperty(1, engine_->newQObject(new MessageContext(this, cb)));
-        ret = handler_.call(QScriptValue(), params);
+        params.setProperty(1, engine_->newQObject
+                           (new MessageContext(this, cb)));
+        ret = handler_.call(handler_, params);
     }
     if (!ret.isError())
-        reply(ret.toVariant(), cb);
+        reply(ret.toVariant(), cb, Event::Return);
     else
         error(ret.toVariant(), cb);
 }
@@ -204,7 +223,7 @@ bool Engine::event(QEvent *e)
     case (Event::LoadScript):
         load(static_cast<Load*>(e));
         return true;
-    case (Event::ProcessMessage):
+    case (Event::Request):
         processMessage(static_cast<Message*>(e));
         return true;
     case (Event::QuitThread):
@@ -220,22 +239,35 @@ bool Actor::event(QEvent *e)
 {
     EngineException *ex;
     Message *m;
+    bool res;
     switch (static_cast<Event::Type>(e->type())) {
-    case (Event::ProcessMessage):
+    case (Event::Reply):
         reply(static_cast<Message*>(e));
-        return true;
+        res = true;
+        break;
+    case (Event::Return):
+        --unreplied_count_;
+        reply(static_cast<Message*>(e));
+        res = true;
+        break;
     case (Event::LoadException):
         ex = static_cast<EngineException*>(e);
         emit error(ex->exception_);
-        return true;
+        res = true;
+        break;
     case (Event::Error):
+        --unreplied_count_;
         m = static_cast<Message*>(e);
         emit error(m->data_);
-        return true;
+        res = true;
+        break;
     default:
-        return QObject::event(e);
+        res = QObject::event(e);
+        break;
     }
-    return false;
+    if (!unreplied_count_)
+        emit released();
+    return res;
 }
 
 
@@ -247,22 +279,18 @@ MessageContext::~MessageContext() {}
 
 void MessageContext::reply(QScriptValue data)
 {
-    engine_->reply(data.toVariant(), cb_);
+    engine_->reply(data.toVariant(), cb_, Event::Reply);
 }
 
-void Engine::reply(QVariant const &data, QScriptValue const &cb)
+void Engine::reply
+(QVariant const &data, QScriptValue const &cb, Event::Type type)
 {
-    toActor(new Message(data, cb));
+    toActor(new Message(data, cb, type));
 }
 
 void Engine::error(QVariant const &data, QScriptValue const &cb)
 {
     toActor(new Message(data, cb, Event::Error));
-}
-
-QDeclarativeEngine *Actor::engine()
-{
-    return qmlEngine(this);
 }
 
 

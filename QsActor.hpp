@@ -34,6 +34,8 @@
 #include <QMutex>
 #include <QStringList>
 #include <QDeclarativeEngine>
+
+
 namespace QsExecute
 {
 
@@ -42,7 +44,9 @@ class Event : public QEvent
 public:
     enum Type {
         LoadScript = QEvent::User,
-        ProcessMessage,
+        Request,
+        Reply,
+        Return,
         QuitThread,
         LoadException,
         Error
@@ -63,14 +67,14 @@ public:
     virtual ~Load() {}
 
     QString src_;
-    QString cwd_;
+    QString top_script_;
 };
 
 class Message : public Event
 {
 public:
     Message(QVariant const&, QScriptValue const&,
-            Event::Type type = Event::ProcessMessage);
+            Event::Type type);
     virtual ~Message() {}
 
     QVariant data_;
@@ -114,8 +118,8 @@ public:
     void run();
     virtual bool event(QEvent *);
 
-    void reply(QVariant const &, QScriptValue const &);
-    void error(QVariant const &, QScriptValue const &);
+    void reply(QVariant const &, QScriptValue const &, Event::Type);
+    void error(QVariant const &, QScriptValue const & = QScriptValue());
 
 signals:
     void onQuit();
@@ -140,7 +144,7 @@ public:
     virtual ~WorkerThread();
 
     void run();
-    void sendMessage(QScriptValue, QScriptValue);
+    void send(QScriptValue, QScriptValue);
 
 private:
     Actor *actor_;
@@ -155,26 +159,28 @@ class Actor : public QObject
     Q_OBJECT;
     Q_PROPERTY(QString source READ source WRITE setSource);
 public:
-    Actor(QObject *parent = nullptr);
+    Actor(QScriptEngine *engine = nullptr);
     virtual ~Actor();
 
     QString source() const;
-    void setSource(QString const &);
+    void setSource(QString);
 
-    Q_INVOKABLE void sendMessage(QScriptValue, QScriptValue cb = QScriptValue());
+    Q_INVOKABLE void send(QScriptValue, QScriptValue cb = QScriptValue());
+
     virtual bool event(QEvent *);
 
 signals:
-    void message(QScriptValue message);
     void error(QVariant const& error);
+    void acquired();
+    void released();
 
 protected:
     QString src_;
     void reply(Message*);
-    QDeclarativeEngine *engine();
 
 private:
-
+    QScriptEngine *engine_;
+    int unreplied_count_;
     QScopedPointer<WorkerThread> worker_;
 };
 

@@ -3,11 +3,13 @@
 
 #include <QCoreApplication>
 #include <QDeclarativeView>
+#include <QDeclarativeEngine>
 
 namespace QsExecute {
 
 void setupDeclarative(QCoreApplication &, QDeclarativeView &, QString const &);
 QScriptEngine *getDeclarativeScriptEngine(QDeclarativeContext &);
+QScriptEngine *getDeclarativeScriptEngine(QDeclarativeEngine *decl_eng);
 
 }
 

@@ -1,7 +1,7 @@
 #include "EngineAccess.hpp"
 #include "QmlAdapter.hpp"
-#include "QsExecute.hpp"
 #include "QsActor.hpp"
+#include "QsEnv.hpp"
 
 #include <QDeclarativeContext>
 #include <QDeclarativeEngine>
@@ -29,8 +29,15 @@ QScriptEngine *getDeclarativeScriptEngine(QDeclarativeContext &ctx)
     return pengine;
 }
 
+QScriptEngine *getDeclarativeScriptEngine(QDeclarativeEngine *decl_eng)
+{
+    return decl_eng
+        ? getDeclarativeScriptEngine(*decl_eng->rootContext())
+        : nullptr;
+}
+
 void setupDeclarative
-(QCoreApplication &app, QDeclarativeView &view, QString const &cwd)
+(QCoreApplication &app, QDeclarativeView &view, QString const &qml_path)
 {
     QScriptEngine *pengine = getDeclarativeScriptEngine(*view.rootContext());
 
@@ -38,12 +45,9 @@ void setupDeclarative
     auto global = pengine->newObject();
     global.setPrototype(old);
 
-    QsExecute::setupEngine(app, *pengine, global);
+    auto script_env = loadEnv(app, *pengine, global);
     pengine->setGlobalObject(global);
-
-    // add current working directory to env
-    auto script = findProperty(global, {"qtscript", "script"});
-    script.setProperty("cwd", pengine->toScriptValue(cwd));
+    script_env->pushParentScriptPath(qml_path);
 
     qmlRegisterType<QsExecute::Actor>("Mer.QtScript", 1, 1, "QtScriptActor");
 }
