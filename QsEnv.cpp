@@ -113,7 +113,9 @@ Env::Env(QCoreApplication &app, QScriptEngine &engine, QScriptValue & global)
         lib_path_.push_back(QDir(path));
     app.setLibraryPaths(paths);
     
-    global.setProperty("qtscript", engine.newQObject(this));
+    auto self = engine.newQObject(this);
+    self.setProperty("lib", engine.newObject());
+    global.setProperty("qtscript", self);
 }
 
 QObject * Env::script() const
