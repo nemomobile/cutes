@@ -157,7 +157,7 @@ void Env::exit(int rc)
     QCoreApplication::instance()->exit(rc);
 }
 
-QScriptValue Env::use(QString const& extension)
+QScriptValue Env::extension(QString const& extension)
 {
     return engine_.importExtension(extension);
 }
@@ -206,7 +206,7 @@ QString Env::findFile(QString const &file_name)
     return QString();
 }
 
-QScriptValue Env::import(QString const &file_name, bool is_reload)
+QScriptValue Env::include(QString const &file_name, bool is_reload)
 {
     auto context = engine_.currentContext();
     try {

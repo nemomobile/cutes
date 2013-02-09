@@ -56,8 +56,8 @@ public:
     Env(QCoreApplication &, QScriptEngine &, QScriptValue &);
     virtual ~Env() {}
 
-    Q_INVOKABLE QScriptValue import(QString const&, bool is_reload = false);
-    Q_INVOKABLE QScriptValue use(QString const&);
+    Q_INVOKABLE QScriptValue include(QString const&, bool is_reload = false);
+    Q_INVOKABLE QScriptValue extension(QString const&);
     Q_INVOKABLE QScriptValue actor();
     Q_INVOKABLE void exit(int);
 
