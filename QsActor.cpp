@@ -62,7 +62,8 @@ void Actor::setSource(QString src)
     if (!engine_)
         engine_ = getDeclarativeScriptEngine(qmlEngine(this));
     if (!engine_) {
-        qDebug() << "Can't get engine";
+        qDebug() << "Can't get script engine."
+                 << " Not qml engine and missing initialization?";
         return;
     }
     // cwd should be set to the same directory as for main engine
@@ -75,18 +76,9 @@ void Actor::setSource(QString src)
     src_ = src;
 }
 
-void WorkerThread::send(QScriptValue m, QScriptValue cb)
+void WorkerThread::send(Message *msg)
 {
-    try {
-        QCoreApplication::postEvent
-            (engine_.data(), new Message(m.toVariant(), cb, Event::Request));
-    } catch (...) {
-        QString msg = "Caught exception processing sendMessage: %1, %2";
-        msg.arg(m.toString(), cb.toString());
-        qDebug() << msg;
-        QCoreApplication::postEvent
-            (actor_, new Message(msg, cb, Event::Error));
-    }
+    QCoreApplication::postEvent(engine_.data(), msg);
 }
 
 void Actor::send(QScriptValue m, QScriptValue cb)
@@ -95,7 +87,18 @@ void Actor::send(QScriptValue m, QScriptValue cb)
         emit acquired();
 
     ++unreplied_count_;
-    worker_->send(m, cb);
+    worker_->send(new Message(m.toVariant(), cb, Event::Message));
+}
+
+void Actor::request
+(QString const &method_name, QScriptValue m, QScriptValue cb)
+{
+    if (!unreplied_count_)
+        emit acquired();
+
+    ++unreplied_count_;
+    worker_->send(new Request(method_name, m.toVariant()
+                              , cb, Event::Request));
 }
 
 void Actor::reply(Message *reply)
@@ -128,9 +131,9 @@ Load::Load(QString const &src, QString const& top_script)
 Event::~Event() {}
 
 WorkerThread::WorkerThread
-(Actor *parent, QString const &src, QString const& top_script)
+(Actor *actor, QString const &src, QString const& top_script)
     : QThread(nullptr)
-    , actor_(parent)
+    , actor_(actor)
 {
     mutex_.lock();
     start();
@@ -154,6 +157,14 @@ EngineException::EngineException(QScriptEngine const& engine)
 Message::Message(QVariant const& data, QScriptValue const& cb,
                  Event::Type type)
     : Event(type), data_(data), cb_(cb)
+{
+}
+
+Request::Request
+(QString const &method_name, QVariant const& data,
+ QScriptValue const& cb, Event::Type type)
+    : Message(data, cb, type)
+    , method_name_(method_name)
 {
 }
 
@@ -210,6 +221,40 @@ void Engine::processMessage(Message *msg)
         params.setProperty(1, engine_->newQObject
                            (new MessageContext(this, cb)));
         ret = handler_.call(handler_, params);
+    } else if (handler_.isValid()) {
+        qDebug() << "Handler is not a function but "
+                 << handler_.scriptClass()->name();
+    } else {
+        qDebug() << "No handler";
+    }
+    if (!ret.isError())
+        reply(ret.toVariant(), cb, Event::Return);
+    else
+        error(ret.toVariant(), cb);
+}
+
+void Engine::processRequest(Request *req)
+{
+    auto &cb = req->cb_;
+    QScriptValue ret;
+
+    if (handler_.isObject()) {
+        auto method = handler_.property(req->method_name_);
+        if (method.isFunction()) {
+            auto params = engine_->newArray(2);
+            params.setProperty(0, engine_->toScriptValue(req->data_));
+            params.setProperty(1, engine_->newQObject
+                               (new MessageContext(this, cb)));
+            ret = method.call(handler_, params);
+        } else if (method.isUndefined()) {
+            qDebug() << "Actor does not have method" << req->method_name_;
+        } else {
+            qDebug() << "Actor property " << req->method_name_
+                     << " is not a method but "
+                     << method.scriptClass()->name();
+        }
+    } else {
+        qDebug() << "Handler is not an object";
     }
     if (!ret.isError())
         reply(ret.toVariant(), cb, Event::Return);
@@ -223,8 +268,11 @@ bool Engine::event(QEvent *e)
     case (Event::LoadScript):
         load(static_cast<Load*>(e));
         return true;
-    case (Event::Request):
+    case (Event::Message):
         processMessage(static_cast<Message*>(e));
+        return true;
+    case (Event::Request):
+        processRequest(static_cast<Request*>(e));
         return true;
     case (Event::QuitThread):
         emit onQuit();

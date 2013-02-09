@@ -44,7 +44,8 @@ class Event : public QEvent
 public:
     enum Type {
         LoadScript = QEvent::User,
-        Request,
+        Message, /// plain message, actor invoked as function
+        Request, /// actor method invokation
         Reply,
         Return,
         QuitThread,
@@ -79,6 +80,16 @@ public:
 
     QVariant data_;
     QScriptValue cb_;
+};
+
+class Request : public Message
+{
+public:
+    Request(QString const&, QVariant const&,
+            QScriptValue const&, Event::Type type);
+    virtual ~Request() {}
+
+    QString method_name_;
 };
 
 class EngineException : public Event
@@ -126,7 +137,8 @@ signals:
 
 private:
     void load(Load *);
-    void processMessage(Message*);
+    void processMessage(Message *);
+    void processRequest(Request *);
     void toActor(Event*);
 
     Actor *actor_;
@@ -144,7 +156,7 @@ public:
     virtual ~WorkerThread();
 
     void run();
-    void send(QScriptValue, QScriptValue);
+    void send(Message*);
 
 private:
     Actor *actor_;
@@ -166,6 +178,8 @@ public:
     void setSource(QString);
 
     Q_INVOKABLE void send(QScriptValue, QScriptValue cb = QScriptValue());
+    Q_INVOKABLE void request
+    (QString const&, QScriptValue, QScriptValue cb = QScriptValue());
 
     virtual bool event(QEvent *);
 
