@@ -1,0 +1,5 @@
+** cutes - QtScript "interpreter" and environment
+
+cutes is used to execute QtScript javascript applications and also Qt
+applications with declarative UI using QtScript environment provided
+by cutes and background tasks using this environment. See doc/
