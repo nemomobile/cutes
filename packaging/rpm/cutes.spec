@@ -5,7 +5,7 @@ Version: 0.1.3
 Release: 1
 
 License: LGPLv2
-Group:	 System Environment/Tools
+Group:	 System/Shells
 URL:     http://github.com/deztructor/cutes
 Source0: %{name}-%{version}.tar.bz2
 
