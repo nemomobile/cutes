@@ -157,7 +157,7 @@ void Env::exit(int rc)
     QCoreApplication::instance()->exit(rc);
 }
 
-QScriptValue Env::extension(QString const& extension)
+QScriptValue Env::extend(QString const& extension)
 {
     return engine_.importExtension(extension);
 }

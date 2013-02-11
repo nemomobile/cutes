@@ -57,7 +57,7 @@ public:
     virtual ~Env() {}
 
     Q_INVOKABLE QScriptValue include(QString const&, bool is_reload = false);
-    Q_INVOKABLE QScriptValue extension(QString const&);
+    Q_INVOKABLE QScriptValue extend(QString const&);
     Q_INVOKABLE QScriptValue actor();
     Q_INVOKABLE void exit(int);
 
