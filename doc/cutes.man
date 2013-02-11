@@ -1,13 +1,13 @@
-.TH "qtscript" "1" "Jolla Ltd." "Jan 30, 2013"
+.TH "cutes" "1" "Jolla Ltd." "Feb 11, 2013"
 .SH "NAME"
 .PP
-qtscript allows to run JavaScript and QML files with QtScript support
+cutes allows to run JavaScript and QML files with QtScript support
 .SH "SYNOPSIS"
 .PP
-\fBqtscript\fP [-h] \fIscript\d\s-2file\s+2\u\fP [script arguments]
+\fBcutes\fP [-h] \fIscript\d\s-2file\s+2\u\fP [script arguments]
 .SH "DESCRIPTION"
 .PP
-QtScript is the Qt library JavaScript engine. qtscript command
+QtScript is the Qt library JavaScript engine. cutes command
 provides the way to run JavaScript files as shell scripts or to load QML
 UI with QtScript support.
 .SH "COMMAND LINE OPTIONS"
@@ -50,11 +50,13 @@ environment variables
 \fB\fBqtscript.system.path\fP\fP
 Application library paths
 .TP
-\fB\fBqtscript.load\fP\fP
-function to load javascript file located in the
-directory where running script resides or in the library path
+\fB\fBqtscript.include\fP\fP
+function to execute javascript file by file
+name. File name can be absolute or relative to the directory
+where running script resides or to any directory in the library
+path. Result of execution is returned
 .TP
-\fB\fBqtscript.use\fP\fP
+\fB\fBqtscript.extend\fP\fP
 instructs engine to import QtScript extension
 .TP
 \fB\fBqtscript.script.args\fP\fP
@@ -62,15 +64,15 @@ list of command line arguments
 .TP
 \fB\fBqtscript.script.filename\fP\fP
 currently executed script file name
-(e.g. in \fBqtscript.eval\fP it will be evaluated script path name)
+(e.g. in \fBqtscript.include\fP it will be included script path name)
 .TP
 \fB\fBqtscript.script.cwd\fP\fP
-current working directory or directory where
-executed/evaluated script is located
+current working directory or directory
+where currently executed/evaluated script is located
 .SH "AUTHOR"
 .PP
 Denis Zalevskiy <denis.zalevskiy@jollamobile.com>
 .SH "LICENSING"
 .PP
-qtscript is distributed under terms and conditions of the LGPLv2
+cutes is distributed under terms and conditions of the LGPLv2
 license.

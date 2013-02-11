@@ -1,16 +1,16 @@
-#+TITLE:qtscript
-#+MAN_CLASS_OPTIONS: :section-id 1 :company "Jolla Ltd." :date "Jan 30, 2013"
+#+TITLE:cutes
+#+MAN_CLASS_OPTIONS: :section-id 1 :company "Jolla Ltd." :date "Feb 11, 2013"
 * NAME
 
-  qtscript allows to run JavaScript and QML files with QtScript support
+  cutes allows to run JavaScript and QML files with QtScript support
 
 * SYNOPSIS
 
-  *qtscript* [-h] /script_file/ [script arguments]
+  *cutes* [-h] /script_file/ [script arguments]
 
 * DESCRIPTION
 
-QtScript is the Qt library JavaScript engine. qtscript command
+QtScript is the Qt library JavaScript engine. cutes command
 provides the way to run JavaScript files as shell scripts or to load QML
 UI with QtScript support.
 
@@ -43,18 +43,20 @@ UI with QtScript support.
      "win32", "unknown"]
 - *qtscript.system.env* :: environment variables
 - *qtscript.system.path* :: Application library paths
-- *qtscript.load* :: function to load javascript file located in the
-     directory where running script resides or in the library path
-- *qtscript.use* :: instructs engine to import QtScript extension
+- *qtscript.include* :: function to execute javascript file by file
+     name. File name can be absolute or relative to the directory
+     where running script resides or to any directory in the library
+     path. Result of execution is returned
+- *qtscript.extend* :: instructs engine to import QtScript extension
 - *qtscript.script.args* :: list of command line arguments
 - *qtscript.script.filename* :: currently executed script file name
-     (e.g. in *qtscript.eval* it will be evaluated script path name)
-- *qtscript.script.cwd* :: current working directory or directory where
-                    executed/evaluated script is located
+     (e.g. in *qtscript.include* it will be included script path name)
+- *qtscript.script.cwd* :: current working directory or directory
+     where currently executed/evaluated script is located
 
 * AUTHOR
   Denis Zalevskiy <denis.zalevskiy@jollamobile.com>
 
 * LICENSING
-  qtscript is distributed under terms and conditions of the LGPLv2
+  cutes is distributed under terms and conditions of the LGPLv2
   license.
