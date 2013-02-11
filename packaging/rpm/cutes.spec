@@ -13,6 +13,7 @@ BuildRequires: pkgconfig(QtCore)
 BuildRequires: pkgconfig(QtGui)
 BuildRequires: pkgconfig(QtDeclarative)
 BuildRequires: pkgconfig(QtScript)
+BuildRequires: cmake
 
 %description
 QtScript environment and "interpreter"
