@@ -58,12 +58,6 @@ QScriptValue findProperty(QScriptValue const& root, QStringList const &path)
     return res;
 }
 
-static QScriptValue findProperty
-(QScriptEngine const& engine, QStringList const &path)
-{
-    return findProperty(engine.globalObject(), path);
-}
-
 static QMap<QString, QVariant> mkEnv()
 {
     QMap<QString, QVariant> res;
