@@ -96,9 +96,10 @@ Env::Env(QCoreApplication &app, QScriptEngine &engine, QScriptValue & global)
 
     auto paths = std::move(env["QTSCRIPT_LIBRARY_PATH"].toString().split(":"));
     for (auto path 
-             : { "/usr/lib/qt4/plugins",
-                 "/usr/lib32/qt4/plugins",
-                 "/usr/lib64/qt4/plugins"})
+             : { "/usr/share/cutes"
+                 , "/usr/lib/qt4/plugins"
+                 , "/usr/lib32/qt4/plugins"
+                 , "/usr/lib64/qt4/plugins" })
         if (QDir(path).exists())
             paths.push_back(path);
 

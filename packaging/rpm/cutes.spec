@@ -18,6 +18,11 @@ BuildRequires: cmake
 %description
 QtScript environment and "interpreter"
 
+%package coffee-script
+Summary: CoffeeScript compiler for cutes
+Group: Applications/Libraries
+%description coffee-script
+CoffeeScript compiler for cutes
 
 %prep
 %setup -q -n %{name}-%{version}
@@ -35,6 +40,12 @@ rm -rf %{buildroot}
 install -D -p -m755 src/%{name} %{buildroot}%{_bindir}/%{name}
 install -d -D -m755 %{buildroot}%{_mandir}/1/
 install -m444 doc/%{name}.1.gz %{buildroot}%{_mandir}/1/
+#install -d -D -m755 %{buildroot}%{_datadir}/cutes/
+%define cuteslibdir %{_datadir}/cutes/
+install -d -D -m755 %{buildroot}%{cuteslibdir}/coffee/
+install -D -p -m644 coffee/coffee-*.js %{buildroot}%{cuteslibdir}/coffee/
+install -d -D -m755 %{buildroot}%{_bindir}
+install -D -p -m755 coffee/coffee-script-compile %{buildroot}%{_bindir}/
 
 %clean
 rm -rf %{buildroot}
@@ -43,3 +54,8 @@ rm -rf %{buildroot}
 %defattr(-,root,root,-)
 %{_bindir}/%{name}
 %{_mandir}/1/%{name}.1.gz
+
+%files coffee-script
+%defattr(-,root,root,-)
+%{cuteslibdir}/coffee/*.js
+%{_bindir}/coffee-script-compile
