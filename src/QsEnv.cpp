@@ -89,8 +89,8 @@ Env::Env(QCoreApplication &app, QScriptEngine &engine, QScriptValue & global)
     , is_waiting_exit_(false)
 {
     setObjectName("qtscript");
-    auto script_args = app.arguments();
-    script_args.pop_front(); // remove interpreter name
+    args_ = app.arguments();
+    args_.pop_front(); // remove interpreter name
 
     auto env = std::move(mkEnv());
 
