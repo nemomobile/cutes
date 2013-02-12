@@ -18,8 +18,6 @@ BuildRequires: cmake
 %description
 QtScript environment and "interpreter"
 
-Group: System Environment/Tools
-%{?_qt:Requires: qt%{?_isa} >= %{_qt_version}}
 
 %prep
 %setup -q -n %{name}-%{version}
