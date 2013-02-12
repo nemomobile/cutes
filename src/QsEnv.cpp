@@ -1,5 +1,4 @@
 #include "QsEnv.hpp"
-
 #include <QMap>
 #include <QDir>
 #include <QFileInfo>
@@ -81,6 +80,20 @@ Env *loadEnv(QCoreApplication &app, QScriptEngine &engine)
     return loadEnv(app, engine, engine.globalObject());
 }
 
+static QScriptValue jsPrintStdout(QScriptContext *context, QScriptEngine *engine)
+{
+    QTextStream out(stdout);
+    auto len = context->argumentCount();
+    if (len) {
+        --len;
+        for (int i = 0; i < len; ++i)
+            out << context->argument(i).toString() << " ";
+
+        out << context->argument(len).toString() << endl;
+    }
+    return engine->undefinedValue();
+}
+
 
 Env::Env(QCoreApplication &app, QScriptEngine &engine, QScriptValue & global)
     : QObject(&engine)
@@ -95,7 +108,7 @@ Env::Env(QCoreApplication &app, QScriptEngine &engine, QScriptValue & global)
     auto env = std::move(mkEnv());
 
     auto paths = std::move(env["QTSCRIPT_LIBRARY_PATH"].toString().split(":"));
-    for (auto path 
+    for (auto path
              : { "/usr/share/cutes"
                  , "/usr/lib/qt4/plugins"
                  , "/usr/lib32/qt4/plugins"
@@ -107,10 +120,10 @@ Env::Env(QCoreApplication &app, QScriptEngine &engine, QScriptValue & global)
     for (auto &path : paths)
         lib_path_.push_back(QDir(path));
     app.setLibraryPaths(paths);
-    
+
     auto self = engine.newQObject(this);
-    self.setProperty("lib", engine.newObject());
     global.setProperty("qtscript", self);
+    global.setProperty("print", engine.newFunction(jsPrintStdout));
 }
 
 QObject * Env::script() const
