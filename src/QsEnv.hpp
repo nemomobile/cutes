@@ -14,6 +14,15 @@
 
 #include <stdexcept>
 
+// workaround for stupid moc namespaces handling
+namespace QsExecute {
+class Module;
+class Env;
+}
+
+typedef QsExecute::Env QsExecuteEnv;
+typedef QsExecute::Module QsExecuteModule;
+
 namespace QsExecute {
 
 class Error : public std::runtime_error
@@ -34,15 +43,11 @@ public:
 
 QScriptValue findProperty(QScriptValue const&, QStringList const &);
 
-
-class Module;
-class Env;
-
 class Global : public QObject
 {
     Q_OBJECT;
 
-    Q_PROPERTY(QObject * module READ module);
+    Q_PROPERTY(QsExecuteModule * module READ module);
     Q_PROPERTY(QObject * qtscript READ qtscript);
     Q_PROPERTY(QScriptValue exports READ exports WRITE setExports);
 
@@ -67,7 +72,7 @@ class Env : public QObject
 {
     Q_OBJECT;
 
-    Q_PROPERTY(Module * module READ module);
+    Q_PROPERTY(QsExecuteModule * module READ module);
     Q_PROPERTY(QString os READ os);
     Q_PROPERTY(QScriptValue env READ env);
     Q_PROPERTY(QScriptValue path READ path);
@@ -157,7 +162,7 @@ private:
 Env *loadEnv(QCoreApplication &app, QScriptEngine &engine, QScriptValue global);
 Env *loadEnv(QCoreApplication &app, QScriptEngine &engine);
 
-}
+} // namespace
 
 template <typename T>
 QScriptValue anyToScriptValue(QScriptEngine *engine, T* const &in)

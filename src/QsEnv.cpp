@@ -5,10 +5,7 @@
 #include <QFileInfo>
 #include <QFile>
 
-typedef QsExecute::Env QsExecuteEnv;
 Q_DECLARE_METATYPE(QsExecuteEnv*);
-
-typedef QsExecute::Module QsExecuteModule;
 Q_DECLARE_METATYPE(QsExecuteModule*);
 
 Q_DECLARE_METATYPE(QDir);
@@ -254,14 +251,13 @@ QString Env::findFile(QString const &file_name)
         return QFileInfo(res).exists();
     };
 
-    if (!scripts_.empty()) {
-        auto script = scripts_.top();
+    auto script = scripts_.top();
 
-        // first - relative to cwd
-        // then - relative to file_name dir
-        if (mkRelative(QDir(script->cwd())))
-            return res;
-    }
+    // first - relative to cwd
+    if (mkRelative(QDir(script->cwd())))
+        return res;
+
+    // then - relative to file_name dir
     if (mkRelative(QDir(QFileInfo(file_name).path())))
         return res;
 

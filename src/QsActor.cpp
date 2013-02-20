@@ -69,7 +69,7 @@ void Actor::setSource(QString src)
     // cwd should be set to the same directory as for main engine
     auto script = static_cast<Module*>
         (findProperty
-         (engine_->globalObject(), {"qtscript", "script"}).toQObject());
+         (engine_->globalObject(), {"qtscript", "module"}).toQObject());
 
     worker_.reset(new WorkerThread(this, src, script->fileName()));
 
