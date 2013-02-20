@@ -36,8 +36,7 @@ should reside in ./. By default qtscript is trying to add
 .SH "JAVASCRIPT CONTEXT"
 .PP
 qtscript provides several objects/functions, available in executed
-scripts. All this variables are members of the global \fBqtscript\fP
-object.
+scripts.
 
 .TP
 \fB\fBqtscript.system.os\fP\fP
@@ -69,6 +68,20 @@ currently executed script file name
 \fB\fBqtscript.script.cwd\fP\fP
 current working directory or directory
 where currently executed/evaluated script is located
+.TP
+\fB\fBmodule\fP\fP
+current file module object, resembling e.g. node.js
+module object
+.TP
+\fB\fBrequire\fP\fP
+synonym for qtscript.include, compatible with other
+module systems, returns symbols exported by module
+.TP
+\fB\fBexports\fP\fP
+object to be used to hold exported symbols, it is just
+reference to the current module.exports. QtScript
+engine resolves it only in file scope but does not do
+it inside internal scopes (functions etc.)
 .SH "AUTHOR"
 .PP
 Denis Zalevskiy <denis.zalevskiy@jollamobile.com>
