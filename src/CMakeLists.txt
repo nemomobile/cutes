@@ -29,6 +29,6 @@ target_link_libraries(${PLUGIN_NAME}
 )
 
 install(TARGETS ${NAME} DESTINATION bin)
-install(TARGETS ${LIBNAME} DESTINATION lib)
-install(TARGETS ${PLUGIN_NAME} DESTINATION lib/qt4/imports/${QMLPKG})
-install(FILES qmldir DESTINATION lib/qt4/imports/${QMLPKG})
+install(TARGETS ${LIBNAME} DESTINATION lib${LIB_SUFFIX})
+install(TARGETS ${PLUGIN_NAME} DESTINATION lib${LIB_SUFFIX}/qt4/imports/${QMLPKG})
+install(FILES qmldir DESTINATION lib${LIB_SUFFIX}/qt4/imports/${QMLPKG})
