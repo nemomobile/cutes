@@ -52,8 +52,8 @@ class Plugin : public QDeclarativeExtensionPlugin
 public:
     void initializeEngine(QDeclarativeEngine *engine, const char *)
     {
-        QScriptEngine *pengine = getDeclarativeScriptEngine(*engine->rootContext());
-        loadEnv(*QCoreApplication::instance(), *pengine);
+        QScriptEngine *script_engine = getDeclarativeScriptEngine(*engine->rootContext());
+        loadEnv(*QCoreApplication::instance(), *script_engine);
     }
 
     void registerTypes(char const *uri)

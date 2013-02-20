@@ -169,13 +169,13 @@ private:
 class Actor : public QObject
 {
     Q_OBJECT;
-    Q_PROPERTY(QString source READ source WRITE setSource);
+    Q_PROPERTY(QUrl source READ source WRITE setSource);
 public:
     Actor(QScriptEngine *engine = nullptr);
     virtual ~Actor();
 
-    QString source() const;
-    void setSource(QString);
+    QUrl source() const;
+    void setSource(QUrl const&);
 
     Q_INVOKABLE void send(QScriptValue, QScriptValue cb = QScriptValue());
     Q_INVOKABLE void request
@@ -189,7 +189,7 @@ signals:
     void released();
 
 protected:
-    QString src_;
+    QUrl src_;
     void reply(Message*);
 
 private:

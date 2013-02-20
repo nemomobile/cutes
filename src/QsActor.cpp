@@ -45,12 +45,12 @@ Actor::~Actor()
 {
 }
 
-QString Actor::source() const
+QUrl Actor::source() const
 {
     return src_;
 }
 
-void Actor::setSource(QString src)
+void Actor::setSource(QUrl const& src)
 {
     if (src == src_)
         return;
@@ -71,7 +71,7 @@ void Actor::setSource(QString src)
         (findProperty
          (engine_->globalObject(), {"qtscript", "module"}).toQObject());
 
-    worker_.reset(new WorkerThread(this, src, script->fileName()));
+    worker_.reset(new WorkerThread(this, src.path(), script->fileName()));
 
     src_ = src;
 }
