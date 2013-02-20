@@ -1,3 +1,4 @@
+#include "util.hpp"
 #include "QsEnv.hpp"
 #include <QMap>
 #include <QDir>
@@ -7,8 +8,8 @@
 typedef QsExecute::Env QsExecuteEnv;
 Q_DECLARE_METATYPE(QsExecuteEnv*);
 
-typedef QsExecute::Script QsExecuteScript;
-Q_DECLARE_METATYPE(QsExecuteScript*);
+typedef QsExecute::Module QsExecuteModule;
+Q_DECLARE_METATYPE(QsExecuteModule*);
 
 Q_DECLARE_METATYPE(QDir);
 
@@ -70,9 +71,10 @@ static QMap<QString, QVariant> mkEnv()
     return res;
 }
 
-Env *loadEnv(QCoreApplication &app, QScriptEngine &engine, QScriptValue global)
+Env *loadEnv(QCoreApplication &app, QScriptEngine &engine, QScriptValue old_global)
 {
-    return new Env(app, engine, global);
+    auto global = new Global(app, engine, old_global);
+    return global->env();
 }
 
 Env *loadEnv(QCoreApplication &app, QScriptEngine &engine)
@@ -94,9 +96,59 @@ static QScriptValue jsPrintStdout(QScriptContext *context, QScriptEngine *engine
     return engine->undefinedValue();
 }
 
+static QScriptValue jsRequire(QScriptContext *context, QScriptEngine *engine)
+{
+    auto qtscript = findProperty(engine->globalObject(), {"qtscript"});
+    auto include = findProperty(qtscript, {"include"});
+    auto len = context->argumentCount();
+    if (!len)
+        return engine->undefinedValue();
+    auto params = engine->newArray(1);
+    auto name = context->argument(0).toString();
+    params.setProperty(0, QScriptValue(name));
+    return include.call(qtscript, params);
+}
 
-Env::Env(QCoreApplication &app, QScriptEngine &engine, QScriptValue & global)
+Global::Global(QCoreApplication &app, QScriptEngine &engine, QScriptValue & global)
     : QObject(&engine)
+    , env_(new Env(this, app, engine))
+{
+    auto self = engine.newQObject(this);
+    self.setPrototype(global);
+    engine.setGlobalObject(self);
+    self.setProperty("print", engine.newFunction(jsPrintStdout));
+    self.setProperty("require", engine.newFunction(jsRequire));
+}
+
+Env *Global::env() const
+{
+    return env_;
+}
+
+QScriptValue Global::exports() const
+{
+    auto module = static_cast<Module*>(env_->module());
+    return module->exports();
+}
+
+void Global::setExports(QScriptValue v)
+{
+    auto module = static_cast<Module*>(env_->module());
+    module->setExports(v);
+}
+
+QObject * Global::qtscript() const
+{
+    return env_;
+}
+
+QObject * Global::module() const
+{
+    return env_->module();
+}
+
+Env::Env(Global *parent, QCoreApplication &app, QScriptEngine &engine)
+    : QObject(parent)
     , engine_(engine)
     , actor_count_(0)
     , is_waiting_exit_(false)
@@ -120,13 +172,9 @@ Env::Env(QCoreApplication &app, QScriptEngine &engine, QScriptValue & global)
     for (auto &path : paths)
         lib_path_.push_back(QDir(path));
     app.setLibraryPaths(paths);
-
-    auto self = engine.newQObject(this);
-    global.setProperty("qtscript", self);
-    global.setProperty("print", engine.newFunction(jsPrintStdout));
 }
 
-QObject * Env::script() const
+QObject * Env::module() const
 {
     return !scripts_.empty() ? scripts_.top() : new QObject();
 }
@@ -180,7 +228,7 @@ void Env::addSearchPath(QString const &path, Position pos)
 
 void Env::pushParentScriptPath(QString const &file_name)
 {
-    scripts_.push(new Script(this, file_name));
+    scripts_.push(new Module(this, file_name));
 }
 
 QString Env::findFile(QString const &file_name)
@@ -192,7 +240,9 @@ QString Env::findFile(QString const &file_name)
 
     auto mkRelative = [&res, &file_name](QDir const& dir) {
         res = dir.filePath(file_name);
-        return (QFileInfo(res).exists());
+        if (!QFileInfo(res).exists())
+            res = dir.filePath(file_name + ".js");
+        return QFileInfo(res).exists();
     };
 
     if (!scripts_.empty()) {
@@ -238,43 +288,23 @@ QScriptValue Env::load(QString const &script_name, bool is_reload)
     if (file_name.isEmpty())
         throw Error(QString("Can't find file %1").arg(script_name));
 
-    Script *script = new Script(this, file_name);
+    Module *script = new Module(this, file_name);
 
     file_name = script->fileName();
     auto p = modules_.find(file_name);
-    if (p != modules_.end() && !is_reload)
-        return *p;
-
-    QFile file(file_name);
-    if (!file.open(QFile::ReadOnly))
-        throw Error(QString("Can't open %1").arg(file_name));
-
-    QString contents;
-    contents.reserve(file.size());
-
-    int line_nr = 2;
-
-    QTextStream dst(&contents);
-    QTextStream input(&file);
-    QString first = input.readLine();
-    if (!first.startsWith("#!")) {
-        dst << first << "\n";
-        line_nr = 1;
+    if (p != modules_.end() && !is_reload) {
+        script->deleteLater();
+        return p.value()->exports();
     }
 
-    while (!input.atEnd())
-        dst << input.readLine() << "\n";
-
-    scripts_.push(script);
-
-    auto res = engine_.evaluate(contents, file_name, line_nr);
-    scripts_.top()->deleteLater();
-    scripts_.pop();
-
-    if (engine_.hasUncaughtException())
-        throw JsError(engine_, file_name);
-
-    modules_[file_name] = res;
+    auto scope = mk_scope
+        ([this, script](){ scripts_.push(script); }
+        , [this]() { scripts_.pop(); });
+    auto res = script->load(engine_);
+    if (p != modules_.end()) {
+        p.value()->deleteLater();
+    }
+    modules_[file_name] = script;
     return res;
 }
 
@@ -299,28 +329,85 @@ QScriptValue Env::args() const
     return qScriptValueFromSequence(&engine_, args_);
 }
 
+QScriptEngine &Env::engine()
+{
+    return engine_;
+}
 
-Script::Script(Env *parent, QString const& fname)
+Module::Module(Env *parent, QString const& fname)
     : QObject(parent)
     , info_(fname)
+    , exports_(parent->engine().newObject())
+    , is_loaded_(false)
 {
     setObjectName("script");
 }
 
-QScriptValue Script::args() const
+QScriptValue Module::require(QString const& name, bool is_reload)
+{
+    return env()->include(name, is_reload);
+}
+
+bool Module::loaded() const
+{
+    return is_loaded_;
+}
+
+QScriptValue Module::args() const
 {
     return env()->args();
 }
 
-QString Script::cwd() const
+QScriptValue Module::exports() const
+{
+    return exports_;
+}
+
+void Module::setExports(QScriptValue v)
+{
+    exports_ = v;
+}
+
+
+QString Module::cwd() const
 {
     return info_.canonicalPath();
 }
 
-QString Script::fileName() const
+QString Module::fileName() const
 {
     return info_.canonicalFilePath();
 }
 
+QScriptValue Module::load(QScriptEngine &engine)
+{
+    auto file_name = fileName();
+    QFile file(file_name);
+    if (!file.open(QFile::ReadOnly))
+        throw Error(QString("Can't open %1").arg(file_name));
+
+    QString contents;
+    contents.reserve(file.size());
+
+    int line_nr = 2;
+
+    QTextStream dst(&contents);
+    QTextStream input(&file);
+    QString first = input.readLine();
+    if (!first.startsWith("#!")) {
+        dst << first << "\n";
+        line_nr = 1;
+    }
+
+    while (!input.atEnd())
+        dst << input.readLine() << "\n";
+
+    auto res = engine.evaluate(contents, file_name, line_nr);
+
+    if (engine.hasUncaughtException())
+        throw JsError(engine, file_name);
+    is_loaded_ = true;
+    return exports();
+}
 
 }

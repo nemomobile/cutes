@@ -35,13 +35,39 @@ public:
 QScriptValue findProperty(QScriptValue const&, QStringList const &);
 
 
-class Script;
+class Module;
+class Env;
+
+class Global : public QObject
+{
+    Q_OBJECT;
+
+    Q_PROPERTY(QObject * module READ module);
+    Q_PROPERTY(QObject * qtscript READ qtscript);
+    Q_PROPERTY(QScriptValue exports READ exports WRITE setExports);
+
+public:
+
+    Global(QCoreApplication &, QScriptEngine &, QScriptValue &);
+    virtual ~Global() {}
+
+    QScriptValue exports() const;
+    void setExports(QScriptValue);
+
+    QObject * qtscript() const;
+    QObject * module() const;
+
+    Env *env() const;
+private:
+    Global(Global const&);
+    Env *env_;
+};
 
 class Env : public QObject
 {
     Q_OBJECT;
 
-    Q_PROPERTY(QObject * script READ script);
+    Q_PROPERTY(QObject * module READ module);
     Q_PROPERTY(QString os READ os);
     Q_PROPERTY(QScriptValue env READ env);
     Q_PROPERTY(QScriptValue path READ path);
@@ -53,7 +79,7 @@ public:
         Back
     };
 
-    Env(QCoreApplication &, QScriptEngine &, QScriptValue &);
+    Env(Global *parent, QCoreApplication &, QScriptEngine &);
     virtual ~Env() {}
 
     Q_INVOKABLE QScriptValue include(QString const&, bool is_reload = false);
@@ -61,7 +87,7 @@ public:
     Q_INVOKABLE QScriptValue actor();
     Q_INVOKABLE void exit(int);
 
-    QObject * script() const;
+    QObject * module() const;
     QString os() const;
     QScriptValue env() const;
     QScriptValue path() const;
@@ -71,18 +97,19 @@ public:
     QScriptValue load(QString const &, bool is_reload = false);
     void addSearchPath(QString const &, Position);
     void pushParentScriptPath(QString const&);
-    
+
+    QScriptEngine &engine();
 private:
     Env(Env const&);
     QString findFile(QString const &);
 
     QScriptEngine &engine_;
     QList<QDir> lib_path_;
-    QMap<QString, QScriptValue> modules_;
+    QMap<QString, Module*> modules_;
 
     QScriptValue env_;
     QStringList path_;
-    QStack<Script*> scripts_;
+    QStack<Module*> scripts_;
     QStringList args_;
     int actor_count_;
     bool is_waiting_exit_;
@@ -92,26 +119,39 @@ private slots:
     void actorReleased();
 };
 
-class Script : public QObject
+class Module : public QObject
 {
     Q_OBJECT;
 
-    Q_PROPERTY(QString fileName READ fileName);
+    Q_PROPERTY(QString id READ fileName);
+    Q_PROPERTY(QString filename READ fileName);
+    Q_PROPERTY(bool loaded READ loaded);
     Q_PROPERTY(QString cwd READ cwd);
     Q_PROPERTY(QScriptValue args READ args);
+    Q_PROPERTY(QScriptValue exports READ exports WRITE setExports);
 
 public:
-    Script(Env *parent, QString const&);
-    virtual ~Script() {}
+    Module(Env *parent, QString const&);
+    virtual ~Module() {}
+
+    Q_INVOKABLE QScriptValue require(QString const&, bool is_reload = false);
 
     QString fileName() const;
+    bool loaded() const;
     QString cwd() const;
     QScriptValue args() const;
+    QScriptValue exports() const;
+    void setExports(QScriptValue);
 
+    QScriptValue load(QScriptEngine &);
+
+    QScriptValue result_;
 private:
     Env* env() { return static_cast<Env*>(parent()); }
     Env const* env() const { return static_cast<Env const*>(parent()); }
     QFileInfo info_;
+    QScriptValue exports_;
+    bool is_loaded_;
 };
 
 Env *loadEnv(QCoreApplication &app, QScriptEngine &engine, QScriptValue global);
