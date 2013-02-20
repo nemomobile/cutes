@@ -7,6 +7,7 @@
 #include <QDeclarativeEngine>
 #include <QDeclarativeExpression>
 #include <QtDeclarative>
+#include <QtDeclarative/QDeclarativeExtensionPlugin>
 
 namespace QsExecute {
 
@@ -40,16 +41,27 @@ void setupDeclarative
 (QCoreApplication &app, QDeclarativeView &view, QString const &qml_path)
 {
     QScriptEngine *pengine = getDeclarativeScriptEngine(*view.rootContext());
-
-    auto old = pengine->globalObject();
-    auto global = pengine->newObject();
-    global.setPrototype(old);
-
-    auto script_env = loadEnv(app, *pengine, global);
-    pengine->setGlobalObject(global);
+    auto script_env = loadEnv(app, *pengine);
     script_env->pushParentScriptPath(qml_path);
 
     qmlRegisterType<QsExecute::Actor>("Mer.QtScript", 1, 1, "QtScriptActor");
 }
 
+class Plugin : public QDeclarativeExtensionPlugin
+{
+public:
+    void initializeEngine(QDeclarativeEngine *engine, const char *)
+    {
+        QScriptEngine *pengine = getDeclarativeScriptEngine(*engine->rootContext());
+        loadEnv(*QCoreApplication::instance(), *pengine);
+    }
+
+    void registerTypes(char const *uri)
+    {
+        qmlRegisterType<QsExecute::Actor>(uri, 1, 1, "QtScriptActor");
+    }
+};
+
 }
+
+Q_EXPORT_PLUGIN2(Mer.QtScript, QsExecute::Plugin);
