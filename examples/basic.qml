@@ -1,10 +1,11 @@
 import QtQuick 1.1
-import Mer.QtScript 1.0
+import Mer.QtScript 1.1
 
-Item
+Rectangle
 {
     width : 256
     height: 256
+    color: "white"
     Column {
         Text {
             text: "Expect:"
@@ -27,11 +28,11 @@ Item
     }
     Component.onCompleted : {
         qtscript.script.args
-        qtscript.use("qt.core")
+        qtscript.extend("qt.core")
         var name = "./basic.qml"
         var d = new QFileInfo(name)
         console.log("is ", name, "absolute?", d.isAbsolute())
-        got.text = qtscript.load("basic.js")("from qml ")
+        got.text = require("basic.js")("from qml ")
         if (got.text === expected.text)
             result.text = "passed"
     }

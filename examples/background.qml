@@ -41,9 +41,13 @@ Rectangle
     ListView {
         anchors { fill: parent }
         model : data
-        delegate : TestItem {
+        delegate : Text {
             id: txt
             text: model.name + " " + model.value
+            MouseArea {
+                anchors.fill: parent
+                onClicked : { txt.text = "CLICKED"; }
+            }
         }
     }
 
