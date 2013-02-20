@@ -22,7 +22,6 @@ public:
 
     void registerTypes(char const *uri)
     {
-        qDebug() << "REG";
         qmlRegisterType<Actor>(uri, 1, 1, "QtScriptActor");
         qmlRegisterType<QtScriptAdapter>(uri, 1, 1, "QtScriptAdapter");
     }
