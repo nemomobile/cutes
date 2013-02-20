@@ -114,6 +114,14 @@ Global::Global(QCoreApplication &app, QScriptEngine &engine, QScriptValue & glob
     , env_(new Env(this, app, engine))
 {
     auto self = engine.newQObject(this);
+    qScriptRegisterMetaType
+        (&engine
+         , anyToScriptValue<QsExecuteModule>
+         , anyFromScriptValue<QsExecuteModule>);
+    qScriptRegisterMetaType
+        (&engine
+         , anyToScriptValue<QsExecuteEnv>
+         , anyFromScriptValue<QsExecuteEnv>);
     self.setPrototype(global);
     engine.setGlobalObject(self);
     self.setProperty("print", engine.newFunction(jsPrintStdout));
@@ -142,7 +150,7 @@ QObject * Global::qtscript() const
     return env_;
 }
 
-QObject * Global::module() const
+Module * Global::module() const
 {
     return env_->module();
 }
@@ -157,6 +165,7 @@ Env::Env(Global *parent, QCoreApplication &app, QScriptEngine &engine)
     args_ = app.arguments();
     args_.pop_front(); // remove interpreter name
 
+    scripts_.push(new Module(this, ""));
     auto env = std::move(mkEnv());
 
     auto paths = std::move(env["QTSCRIPT_LIBRARY_PATH"].toString().split(":"));
@@ -174,9 +183,9 @@ Env::Env(Global *parent, QCoreApplication &app, QScriptEngine &engine)
     app.setLibraryPaths(paths);
 }
 
-QObject * Env::module() const
+Module * Env::module() const
 {
-    return !scripts_.empty() ? scripts_.top() : new QObject();
+    return scripts_.top();
 }
 
 QScriptValue Env::actor()

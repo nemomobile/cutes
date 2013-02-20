@@ -55,7 +55,7 @@ public:
     void setExports(QScriptValue);
 
     QObject * qtscript() const;
-    QObject * module() const;
+    Module * module() const;
 
     Env *env() const;
 private:
@@ -67,7 +67,7 @@ class Env : public QObject
 {
     Q_OBJECT;
 
-    Q_PROPERTY(QObject * module READ module);
+    Q_PROPERTY(Module * module READ module);
     Q_PROPERTY(QString os READ os);
     Q_PROPERTY(QScriptValue env READ env);
     Q_PROPERTY(QScriptValue path READ path);
@@ -87,7 +87,7 @@ public:
     Q_INVOKABLE QScriptValue actor();
     Q_INVOKABLE void exit(int);
 
-    QObject * module() const;
+    Module *module() const;
     QString os() const;
     QScriptValue env() const;
     QScriptValue path() const;
@@ -159,5 +159,16 @@ Env *loadEnv(QCoreApplication &app, QScriptEngine &engine);
 
 }
 
+template <typename T>
+QScriptValue anyToScriptValue(QScriptEngine *engine, T* const &in)
+{
+    return engine->newQObject(in);
+}
+
+template <typename T>
+void anyFromScriptValue(const QScriptValue &object, T* &out)
+{
+    out = qobject_cast<T*>(object.toQObject());
+}
 
 #endif // _QSEXECUTE_QSENV_HPP_
