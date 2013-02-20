@@ -17,17 +17,14 @@ public:
     void initializeEngine(QDeclarativeEngine *engine, const char *)
     {
         QScriptEngine *script_engine = getDeclarativeScriptEngine(*engine->rootContext());
-        qDebug() << engine->rootContext()->resolvedUrl(QUrl("."));
-        for (auto v : engine->importPathList()) {
-        qDebug() << "PATH:" << v;
-        }
-        qDebug() << "BASE:" << engine->baseUrl();
         loadEnv(*QCoreApplication::instance(), *script_engine);
     }
 
     void registerTypes(char const *uri)
     {
-        qmlRegisterType<QsExecute::Actor>(uri, 1, 1, "QtScriptActor");
+        qDebug() << "REG";
+        qmlRegisterType<Actor>(uri, 1, 1, "QtScriptActor");
+        qmlRegisterType<QtScriptAdapter>(uri, 1, 1, "QtScriptAdapter");
     }
 };
 

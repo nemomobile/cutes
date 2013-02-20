@@ -342,4 +342,20 @@ void Engine::error(QVariant const &data, QScriptValue const &cb)
 }
 
 
+QUrl QtScriptAdapter::qml() const
+{
+    return qml_;
+}
+
+void QtScriptAdapter::setQml(QUrl const& url)
+{
+    qml_ = url;
+    auto engine = getDeclarativeScriptEngine(qmlEngine(this));
+
+    auto env = static_cast<Env*>
+        (findProperty(engine->globalObject(), {"qtscript"}).toQObject());
+    env->pushParentScriptPath(url.path());
+}
+
+
 }

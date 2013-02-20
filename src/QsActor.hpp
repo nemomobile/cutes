@@ -198,6 +198,21 @@ private:
     QScopedPointer<WorkerThread> worker_;
 };
 
+class QtScriptAdapter : public QObject
+{
+    Q_OBJECT;
+    Q_PROPERTY(QUrl qml READ qml WRITE setQml);
+public:
+    QtScriptAdapter() {}
+    virtual ~QtScriptAdapter() {}
+
+    QUrl qml() const;
+    void setQml(QUrl const&);
+
+private:
+    QUrl qml_;
+};
+
 }
 
 #endif // _QS_ACTOR_HPP_

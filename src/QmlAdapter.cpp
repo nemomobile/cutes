@@ -44,24 +44,8 @@ void setupDeclarative
     auto script_env = loadEnv(app, *pengine);
     script_env->pushParentScriptPath(qml_path);
 
-    qmlRegisterType<QsExecute::Actor>("Mer.QtScript", 1, 1, "QtScriptActor");
+    qmlRegisterType<Actor>("Mer.QtScript", 1, 1, "QtScriptActor");
+    qmlRegisterType<QtScriptAdapter>("Mer.QtScript", 1, 1, "QtScriptAdapter");
 }
 
-class Plugin : public QDeclarativeExtensionPlugin
-{
-public:
-    void initializeEngine(QDeclarativeEngine *engine, const char *)
-    {
-        QScriptEngine *script_engine = getDeclarativeScriptEngine(*engine->rootContext());
-        loadEnv(*QCoreApplication::instance(), *script_engine);
-    }
-
-    void registerTypes(char const *uri)
-    {
-        qmlRegisterType<QsExecute::Actor>(uri, 1, 1, "QtScriptActor");
-    }
-};
-
 }
-
-Q_EXPORT_PLUGIN2(Mer.QtScript, QsExecute::Plugin);

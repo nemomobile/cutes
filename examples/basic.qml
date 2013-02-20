@@ -26,6 +26,9 @@ Rectangle
             text: "failed"
         }
     }
+
+    QtScriptAdapter { qml : "basic.qml" }
+
     Component.onCompleted : {
         qtscript.script.args
         qtscript.extend("qt.core")
