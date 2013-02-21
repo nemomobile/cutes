@@ -168,6 +168,7 @@ Env::Env(Global *parent, QCoreApplication &app, QScriptEngine &engine)
     auto env = std::move(mkEnv());
 
     auto paths = std::move(env["QTSCRIPT_LIBRARY_PATH"].toString().split(":"));
+    // some hard-coded predefined paths, TODO avoid hard-coding :)
     for (auto path
              : { "/usr/share/cutes"
                  , "/usr/lib/qt4/plugins"
@@ -177,8 +178,9 @@ Env::Env(Global *parent, QCoreApplication &app, QScriptEngine &engine)
             paths.push_back(path);
 
     env_ = engine.toScriptValue(env);
-    for (auto &path : paths)
-        lib_path_.push_back(QDir(path));
+    for (auto &path : paths) {
+        lib_path_.push_back(QDir(path).canonicalPath());
+    }
     app.setLibraryPaths(paths);
 }
 
