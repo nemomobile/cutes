@@ -38,19 +38,19 @@ UI with QtScript support.
   qtscript provides several objects/functions, available in executed
   scripts.
 
-- *qtscript.system.os* :: OS "name": can be any of ["linux", "macos",
-     "win32", "unknown"]
-- *qtscript.system.env* :: environment variables
-- *qtscript.system.path* :: Application library paths
+- *qtscript.os* :: OS "name": can be any of ["linux", "macos",
+                   "win32", "unknown"]
+- *qtscript.env* :: environment variables
+- *qtscript.path* :: Application library paths
 - *qtscript.include* :: function to execute javascript file by file
      name. File name can be absolute or relative to the directory
      where running script resides or to any directory in the library
      path. Result of execution is returned
 - *qtscript.extend* :: instructs engine to import QtScript extension
-- *qtscript.script.args* :: list of command line arguments
-- *qtscript.script.filename* :: currently executed script file name
+- *qtscript.module.args* :: list of command line arguments
+- *qtscript.module.filename* :: currently executed script file name
      (e.g. in *qtscript.include* it will be included script path name)
-- *qtscript.script.cwd* :: current working directory or directory
+- *qtscript.module.cwd* :: current working directory or directory
      where currently executed/evaluated script is located
 - *module* :: current file module object, resembling e.g. node.js
               module object

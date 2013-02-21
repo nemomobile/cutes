@@ -39,14 +39,14 @@ qtscript provides several objects/functions, available in executed
 scripts.
 
 .TP
-\fB\fBqtscript.system.os\fP\fP
+\fB\fBqtscript.os\fP\fP
 OS "name": can be any of ["linux", "macos",
 "win32", "unknown"]
 .TP
-\fB\fBqtscript.system.env\fP\fP
+\fB\fBqtscript.env\fP\fP
 environment variables
 .TP
-\fB\fBqtscript.system.path\fP\fP
+\fB\fBqtscript.path\fP\fP
 Application library paths
 .TP
 \fB\fBqtscript.include\fP\fP
@@ -58,14 +58,14 @@ path. Result of execution is returned
 \fB\fBqtscript.extend\fP\fP
 instructs engine to import QtScript extension
 .TP
-\fB\fBqtscript.script.args\fP\fP
+\fB\fBqtscript.module.args\fP\fP
 list of command line arguments
 .TP
-\fB\fBqtscript.script.filename\fP\fP
+\fB\fBqtscript.module.filename\fP\fP
 currently executed script file name
 (e.g. in \fBqtscript.include\fP it will be included script path name)
 .TP
-\fB\fBqtscript.script.cwd\fP\fP
+\fB\fBqtscript.module.cwd\fP\fP
 current working directory or directory
 where currently executed/evaluated script is located
 .TP
