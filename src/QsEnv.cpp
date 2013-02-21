@@ -123,6 +123,8 @@ Global::Global(QCoreApplication &app, QScriptEngine &engine, QScriptValue & glob
     engine.setGlobalObject(self);
     self.setProperty("print", engine.newFunction(jsPrintStdout));
     self.setProperty("require", engine.newFunction(jsRequire));
+    // process - used by node.js etc. modules
+    self.setProperty("process", engine.newObject());
 }
 
 Env *Global::env() const
