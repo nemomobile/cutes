@@ -24,6 +24,10 @@ Group: Applications/Libraries
 %description coffee-script
 CoffeeScript compiler for cutes
 
+%if %{?_qt4_importdir:1}%{!?_qt4_importdir:0}
+%define _qt_importdir %{_qt4_importdir}
+%endif
+
 %prep
 %setup -q -n %{name}-%{version}
 
@@ -36,10 +40,11 @@ popd
 
 %install
 rm -rf %{buildroot}
+make install DESTDIR=%{buildroot}
 
-install -D -p -m755 src/%{name} %{buildroot}%{_bindir}/%{name}
-install -d -D -m755 %{buildroot}%{_mandir}/1/
-install -m444 doc/%{name}.1.gz %{buildroot}%{_mandir}/1/
+# install -D -p -m755 src/%{name} %{buildroot}%{_bindir}/%{name}
+# install -d -D -m755 %{buildroot}%{_mandir}/1/
+# install -m444 doc/%{name}.1.gz %{buildroot}%{_mandir}/1/
 #install -d -D -m755 %{buildroot}%{_datadir}/cutes/
 %define cuteslibdir %{_datadir}/cutes/
 install -d -D -m755 %{buildroot}%{cuteslibdir}/coffee/
@@ -53,7 +58,10 @@ rm -rf %{buildroot}
 %files
 %defattr(-,root,root,-)
 %{_bindir}/%{name}
-%{_mandir}/1/%{name}.1.gz
+%{_libdir}/libcutescript.so
+%{_qt_importdir}/Mer/QtScript/libqtscript.so
+%{_qt_importdir}/Mer/QtScript/qmldir
+%{_mandir}/man1/%{name}.1.gz
 
 %files coffee-script
 %defattr(-,root,root,-)
