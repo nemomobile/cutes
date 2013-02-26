@@ -6,7 +6,7 @@ set(LIBSRC QmlAdapter.cpp QsActor.cpp QsEnv.cpp)
 set(PLUGIN_SRC QmlPlugin.cpp)
 set(QMLPKG Mer/QtScript)
 
-set(HDRS EngineAccess.hpp QmlAdapter.hpp QsActor.hpp QsEnv.hpp)
+set(HDRS EngineAccess.hpp QsActor.hpp QsEnv.hpp)
 
 qt4_wrap_cpp(MOC_SRC ${HDRS})
 
