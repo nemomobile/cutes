@@ -5,8 +5,8 @@ var main = function() {
     // creating actors, executing in separate threads, replies are
     // processed by anon fn
     var names = ['name', 'plus1']
-    var util = qtscript.include('util.js')
-    util.foreach(names, function(name) {
+    var util = require('util.js')
+    util.forEach(names, function(name) {
         a.request(name, [1, 2, 3, 4], function(d) {
             print(name, "reply", d)
             if (d === 'done')
