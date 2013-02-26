@@ -36,8 +36,8 @@
 namespace QsExecute {
 
 Actor::Actor(QScriptEngine *engine)
-        : engine_(engine)
-        , unreplied_count_(0)
+    : engine_(engine)
+    , unreplied_count_(0)
 {
 }
 
@@ -45,22 +45,16 @@ Actor::~Actor()
 {
 }
 
-QUrl Actor::source() const
+QString Actor::source() const
 {
     return src_;
 }
 
-void Actor::setSource(QUrl const& src)
+void Actor::setSource(QString const& src)
 {
     if (src == src_)
         return;
 
-    // if Actor is created by QtScript environment it should have
-    // engine_ set while declarative view does not provide direct
-    // access to the engine and it will be initialized on first call
-    // to this method
-    if (!engine_)
-        engine_ = getDeclarativeScriptEngine(qmlEngine(this));
     if (!engine_) {
         qDebug() << "Can't get script engine."
                  << " Not qml engine and missing initialization?";
@@ -71,9 +65,50 @@ void Actor::setSource(QUrl const& src)
         (findProperty
          (engine_->globalObject(), {"qtscript", "module"}).toQObject());
 
-    worker_.reset(new WorkerThread(this, src.path(), script->fileName()));
+    worker_.reset(new WorkerThread(this, src, script->fileName()));
 
     src_ = src;
+}
+
+DeclarativeActor::DeclarativeActor(QScriptEngine *engine)
+    : Actor(engine)
+{}
+
+QUrl DeclarativeActor::source() const
+{
+    return Actor::source();
+}
+
+void DeclarativeActor::setSource(QUrl const& src)
+{
+    // if Actor is created by QtScript environment it should have
+    // engine_ set while declarative view does not provide direct
+    // access to the engine and it will be initialized on first call
+    // to this method
+    if (!engine_)
+        engine_ = getDeclarativeScriptEngine(qmlEngine(this));
+    Actor::setSource(src.path());
+}
+
+QtScriptActor::QtScriptActor(QScriptEngine *engine)
+    : Actor(engine)
+{}
+
+// QUrl QtScriptActor::source() const
+// {
+//     return Actor::source();
+// }
+
+// void QtScriptActor::setSource(QUrl const& src)
+// {
+//     Actor::setSource(src.path());
+// }
+
+WorkerThread *Actor::worker()
+{
+    if (!worker_)
+        throw Error("Non-initialized worker");
+    return worker_.data();
 }
 
 void WorkerThread::send(Message *msg)
@@ -83,11 +118,17 @@ void WorkerThread::send(Message *msg)
 
 void Actor::send(QScriptValue m, QScriptValue cb)
 {
-    if (!unreplied_count_)
-        emit acquired();
+    try {
+        if (!unreplied_count_)
+            emit acquired();
 
-    ++unreplied_count_;
-    worker_->send(new Message(m.toVariant(), cb, Event::Message));
+        ++unreplied_count_;
+        worker()->send(new Message(m.toVariant(), cb, Event::Message));
+    } catch (Error const &e) {
+        m.engine()->currentContext()->throwError(e.msg);
+    } catch (...) {
+        m.engine()->currentContext()->throwError("Unhandled error");
+    }
 }
 
 void Actor::request
@@ -222,8 +263,9 @@ void Engine::processMessage(Message *msg)
                            (new MessageContext(this, cb)));
         ret = handler_.call(handler_, params);
     } else if (handler_.isValid()) {
+        auto cls = handler_.scriptClass();
         qDebug() << "Handler is not a function but "
-                 << handler_.scriptClass()->name();
+                 << (cls ? cls->name() : "unknown value");
     } else {
         qDebug() << "No handler";
     }

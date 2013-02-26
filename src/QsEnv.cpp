@@ -191,7 +191,7 @@ Module * Env::module() const
 
 QScriptValue Env::actor()
 {
-    auto actor = new Actor(&engine_);
+    auto actor = new QtScriptActor(&engine_);
     connect(actor, SIGNAL(acquired()),
             this, SLOT(actorAcquired()));
     connect(actor, SIGNAL(released()),

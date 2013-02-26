@@ -44,8 +44,7 @@ void setupDeclarative
     auto script_env = loadEnv(app, *pengine);
     script_env->pushParentScriptPath(qml_path);
 
-    qmlRegisterType<Actor>("Mer.QtScript", 1, 1, "QtScriptActor");
-    qmlRegisterType<QtScriptAdapter>("Mer.QtScript", 1, 1, "QtScriptAdapter");
+    registerDeclarativeTypes("Mer.QtScript");
 }
 
 }

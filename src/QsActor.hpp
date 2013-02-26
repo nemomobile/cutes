@@ -148,7 +148,7 @@ private:
     QMutex mutex_;
 };
 
-class WorkerThread : public QThread
+class WorkerThread : protected QThread
 {
     Q_OBJECT;
 public:
@@ -169,13 +169,13 @@ private:
 class Actor : public QObject
 {
     Q_OBJECT;
-    Q_PROPERTY(QUrl source READ source WRITE setSource);
 public:
     Actor(QScriptEngine *engine = nullptr);
     virtual ~Actor();
 
-    QUrl source() const;
-    void setSource(QUrl const&);
+protected:
+    QString source() const;
+    void setSource(QString const&);
 
     Q_INVOKABLE void send(QScriptValue, QScriptValue cb = QScriptValue());
     Q_INVOKABLE void request
@@ -189,13 +189,37 @@ signals:
     void released();
 
 protected:
-    QUrl src_;
+    QString src_;
     void reply(Message*);
+    WorkerThread *worker();
 
+    mutable QScriptEngine *engine_;
 private:
-    QScriptEngine *engine_;
     int unreplied_count_;
     QScopedPointer<WorkerThread> worker_;
+};
+
+class DeclarativeActor : public Actor
+{
+    Q_OBJECT;
+    // uses QUrl to allow declarative engine to resolve full path
+    Q_PROPERTY(QUrl source READ source WRITE setSource);
+public:
+    DeclarativeActor(QScriptEngine *engine = nullptr);
+    virtual ~DeclarativeActor() {}
+
+    QUrl source() const;
+    void setSource(QUrl const&);
+};
+
+class QtScriptActor : public Actor
+{
+    Q_OBJECT;
+    // in QtScript using simple string as a source name
+    Q_PROPERTY(QString source READ source WRITE setSource);
+public:
+    QtScriptActor(QScriptEngine *engine = nullptr);
+    virtual ~QtScriptActor() {}
 };
 
 class QtScriptAdapter : public QObject

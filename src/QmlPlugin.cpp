@@ -1,7 +1,7 @@
 #include "EngineAccess.hpp"
-#include "QmlAdapter.hpp"
 #include "QsActor.hpp"
 #include "QsEnv.hpp"
+#include "QmlAdapter.hpp"
 
 #include <QDeclarativeContext>
 #include <QDeclarativeEngine>
@@ -22,11 +22,10 @@ public:
 
     void registerTypes(char const *uri)
     {
-        qmlRegisterType<Actor>(uri, 1, 1, "QtScriptActor");
-        qmlRegisterType<QtScriptAdapter>(uri, 1, 1, "QtScriptAdapter");
+        registerDeclarativeTypes(uri);
     }
 };
 
 }
 
-Q_EXPORT_PLUGIN2(Mer.QtScript, QsExecute::Plugin);
+Q_EXPORT_PLUGIN2(QML_NAMESPACE, QsExecute::Plugin);
