@@ -139,6 +139,7 @@ private:
     void load(Load *);
     void processMessage(Message *);
     void processRequest(Request *);
+    void processResult(QScriptValue &, QScriptValue &);
     void toActor(Event*);
 
     Actor *actor_;

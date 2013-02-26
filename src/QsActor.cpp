@@ -251,6 +251,17 @@ void WorkerThread::run()
     exec();
 }
 
+void Engine::processResult(QScriptValue &ret, QScriptValue &cb)
+{
+    if (engine_->hasUncaughtException()) {
+        error(engine_->uncaughtException().toVariant(), cb);
+    } else if (!ret.isError()) {
+        reply(ret.toVariant(), cb, Event::Return);
+    } else {
+        error(ret.toVariant(), cb);
+    }
+}
+
 void Engine::processMessage(Message *msg)
 {
     auto &cb = msg->cb_;
@@ -269,10 +280,7 @@ void Engine::processMessage(Message *msg)
     } else {
         qDebug() << "No handler";
     }
-    if (!ret.isError())
-        reply(ret.toVariant(), cb, Event::Return);
-    else
-        error(ret.toVariant(), cb);
+    processResult(ret, cb);
 }
 
 void Engine::processRequest(Request *req)
@@ -298,10 +306,7 @@ void Engine::processRequest(Request *req)
     } else {
         qDebug() << "Handler is not an object";
     }
-    if (!ret.isError())
-        reply(ret.toVariant(), cb, Event::Return);
-    else
-        error(ret.toVariant(), cb);
+    processResult(ret, cb);
 }
 
 bool Engine::event(QEvent *e)
