@@ -23,6 +23,7 @@
  */
 
 #include "QsActor.hpp"
+#include "QsActorEvents.hpp"
 #include "QsEnv.hpp"
 #include "QmlAdapter.hpp"
 
@@ -34,6 +35,19 @@
 #include <QDeclarativeContext>
 
 namespace QsExecute {
+
+Endpoint::Endpoint(QScriptValue const& on_reply
+                   , QScriptValue const& on_error)
+    : on_reply_(on_reply)
+    , on_error_(on_error)
+{
+}
+
+static inline endpoint_ptr endpoint
+(QScriptValue const& on_reply, QScriptValue const& on_error)
+{
+    return endpoint_ptr(new Endpoint(on_reply, on_error));
+}
 
 Actor::Actor(QScriptEngine *engine)
     : engine_(engine)
@@ -116,37 +130,58 @@ void WorkerThread::send(Message *msg)
     QCoreApplication::postEvent(engine_.data(), msg);
 }
 
-void Actor::send(QScriptValue m, QScriptValue cb)
+void Actor::send
+(QScriptValue const &msg, QScriptValue const& on_reply
+ , QScriptValue const& on_error)
 {
     try {
         if (!unreplied_count_)
             emit acquired();
 
         ++unreplied_count_;
-        worker()->send(new Message(m.toVariant(), cb, Event::Message));
+        worker()->send(new Message
+                       (msg.toVariant(), endpoint(on_reply, on_error)
+                        , Event::Message));
     } catch (Error const &e) {
-        m.engine()->currentContext()->throwError(e.msg);
+        msg.engine()->currentContext()->throwError(e.msg);
     } catch (...) {
-        m.engine()->currentContext()->throwError("Unhandled error");
+        msg.engine()->currentContext()->throwError("Unhandled error");
     }
 }
 
 void Actor::request
-(QString const &method_name, QScriptValue m, QScriptValue cb)
+(QString const &method_name, QScriptValue const &msg
+ , QScriptValue const& on_reply, QScriptValue const& on_error)
 {
     if (!unreplied_count_)
         emit acquired();
 
     ++unreplied_count_;
-    worker_->send(new Request(method_name, m.toVariant()
-                              , cb, Event::Request));
+    worker_->send(new Request
+                  (method_name, msg.toVariant()
+                   , endpoint(on_reply, on_error)
+                   , Event::Request));
 }
 
 void Actor::reply(Message *reply)
 {
-    auto &cb = reply->cb_;
+    auto &cb = reply->endpoint_->on_reply_;
     if (!cb.isValid())
         return;
+    auto params = cb.engine()->newArray(1);
+    auto data = cb.engine()->toScriptValue(reply->data_);
+    params.setProperty(0, data);
+    if (cb.isFunction())
+        cb.call(QScriptValue(), params);
+}
+
+void Actor::error(Message *reply)
+{
+    auto &cb = reply->endpoint_->on_error_;
+    if (!cb.isValid()) {
+        emit error(reply->data_);
+        return;
+    }
     auto params = cb.engine()->newArray(1);
     auto data = cb.engine()->toScriptValue(reply->data_);
     params.setProperty(0, data);
@@ -192,22 +227,18 @@ EngineException::EngineException(QScriptEngine const& engine)
     : Event(Event::LoadException)
     , exception_(engine.uncaughtException().toVariant())
     , backtrace_(engine.uncaughtExceptionBacktrace())
-{
-}
+{}
 
-Message::Message(QVariant const& data, QScriptValue const& cb,
-                 Event::Type type)
-    : Event(type), data_(data), cb_(cb)
-{
-}
+Message::Message(QVariant const& data, endpoint_ptr ep
+                 , Event::Type type)
+    : Event(type), data_(data), endpoint_(ep)
+{}
 
-Request::Request
-(QString const &method_name, QVariant const& data,
- QScriptValue const& cb, Event::Type type)
-    : Message(data, cb, type)
+Request::Request(QString const &method_name, QVariant const& data
+                 , endpoint_ptr ep, Event::Type type)
+    : Message(data, ep, type)
     , method_name_(method_name)
-{
-}
+{}
 
 void Engine::load(Load *msg)
 {
@@ -219,7 +250,8 @@ void Engine::load(Load *msg)
         if (!handler_.isFunction()) {
             qDebug() << "Not a function";
             if (handler_.isError())
-                error(handler_.toVariant());
+                error(handler_.toVariant()
+                      , endpoint(QScriptValue(), QScriptValue()));
         }
     } catch (Error const &e) {
         qDebug() << "Failed to eval:" << msg->src_;
@@ -251,27 +283,26 @@ void WorkerThread::run()
     exec();
 }
 
-void Engine::processResult(QScriptValue &ret, QScriptValue &cb)
+void Engine::processResult(QScriptValue &ret, endpoint_ptr ep)
 {
     if (engine_->hasUncaughtException()) {
-        error(engine_->uncaughtException().toVariant(), cb);
+        error(engine_->uncaughtException().toVariant(), ep);
     } else if (!ret.isError()) {
-        reply(ret.toVariant(), cb, Event::Return);
+        reply(ret.toVariant(), ep, Event::Return);
     } else {
-        error(ret.toVariant(), cb);
+        error(ret.toVariant(), ep);
     }
 }
 
 void Engine::processMessage(Message *msg)
 {
-    auto &cb = msg->cb_;
     QScriptValue ret;
 
     if (handler_.isFunction()) {
         auto params = engine_->newArray(2);
         params.setProperty(0, engine_->toScriptValue(msg->data_));
         params.setProperty(1, engine_->newQObject
-                           (new MessageContext(this, cb)));
+                           (new MessageContext(this, msg->endpoint_)));
         ret = handler_.call(handler_, params);
     } else if (handler_.isValid()) {
         auto cls = handler_.scriptClass();
@@ -280,12 +311,11 @@ void Engine::processMessage(Message *msg)
     } else {
         qDebug() << "No handler";
     }
-    processResult(ret, cb);
+    processResult(ret, msg->endpoint_);
 }
 
 void Engine::processRequest(Request *req)
 {
-    auto &cb = req->cb_;
     QScriptValue ret;
 
     if (handler_.isObject()) {
@@ -294,7 +324,7 @@ void Engine::processRequest(Request *req)
             auto params = engine_->newArray(2);
             params.setProperty(0, engine_->toScriptValue(req->data_));
             params.setProperty(1, engine_->newQObject
-                               (new MessageContext(this, cb)));
+                               (new MessageContext(this, req->endpoint_)));
             ret = method.call(handler_, params);
         } else if (method.isUndefined()) {
             qDebug() << "Actor does not have method" << req->method_name_;
@@ -306,7 +336,7 @@ void Engine::processRequest(Request *req)
     } else {
         qDebug() << "Handler is not an object";
     }
-    processResult(ret, cb);
+    processResult(ret, req->endpoint_);
 }
 
 bool Engine::event(QEvent *e)
@@ -333,7 +363,6 @@ bool Engine::event(QEvent *e)
 bool Actor::event(QEvent *e)
 {
     EngineException *ex;
-    Message *m;
     bool res;
     switch (static_cast<Event::Type>(e->type())) {
     case (Event::Reply):
@@ -352,8 +381,7 @@ bool Actor::event(QEvent *e)
         break;
     case (Event::Error):
         --unreplied_count_;
-        m = static_cast<Message*>(e);
-        emit error(m->data_);
+        error(static_cast<Message*>(e));
         res = true;
         break;
     default:
@@ -366,26 +394,28 @@ bool Actor::event(QEvent *e)
 }
 
 
-MessageContext::MessageContext(Engine *engine, QScriptValue cb)
-    : QObject(engine), engine_(engine), cb_(cb)
+MessageContext::MessageContext(Engine *engine, endpoint_ptr ep)
+    : QObject(engine)
+    , engine_(engine)
+    , endpoint_(ep)
 {}
 
 MessageContext::~MessageContext() {}
 
 void MessageContext::reply(QScriptValue data)
 {
-    engine_->reply(data.toVariant(), cb_, Event::Reply);
+    engine_->reply(data.toVariant(), endpoint_, Event::Reply);
 }
 
 void Engine::reply
-(QVariant const &data, QScriptValue const &cb, Event::Type type)
+(QVariant const &data, endpoint_ptr ep, Event::Type type)
 {
-    toActor(new Message(data, cb, type));
+    toActor(new Message(data, ep, type));
 }
 
-void Engine::error(QVariant const &data, QScriptValue const &cb)
+void Engine::error(QVariant const &data, endpoint_ptr ep)
 {
-    toActor(new Message(data, cb, Event::Error));
+    toActor(new Message(data, ep, Event::Error));
 }
 
 

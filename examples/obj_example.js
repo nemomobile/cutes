@@ -17,11 +17,21 @@ var main = function() {
                 print(name, "actor function is returned")
         })
     })
-    a.request('cause_error', function(d) {
+
+    a.request('cause_error', 1, function(d) {
         print("Why you are here? There must be a error");
     });
-    a.request('call_undefined', function(d) {
+
+    a.request('call_undefined', 2, function(d) {
         print("Why you are here? There must be a error");
+    });
+
+    a.request('cause_error', 1, function(d) {
+        print("Why you are here? There must be a error");
+    }, function(err) {
+        print("Error processed in function:", err)
+        for (var v in err)
+            print("\t", v, "=", err[v])
     });
 }
 main()

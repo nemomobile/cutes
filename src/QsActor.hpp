@@ -34,7 +34,7 @@
 #include <QMutex>
 #include <QStringList>
 #include <QDeclarativeEngine>
-
+#include <QSharedPointer>
 
 namespace QsExecute
 {
@@ -61,62 +61,15 @@ protected:
 
 };
 
-class Load : public Event
-{
-public:
-    Load(QString const&, QString const&);
-    virtual ~Load() {}
-
-    QString src_;
-    QString top_script_;
-};
-
-class Message : public Event
-{
-public:
-    Message(QVariant const&, QScriptValue const&,
-            Event::Type type);
-    virtual ~Message() {}
-
-    QVariant data_;
-    QScriptValue cb_;
-};
-
-class Request : public Message
-{
-public:
-    Request(QString const&, QVariant const&,
-            QScriptValue const&, Event::Type type);
-    virtual ~Request() {}
-
-    QString method_name_;
-};
-
-class EngineException : public Event
-{
-public:
-    EngineException(QScriptEngine const&);
-    virtual ~EngineException() {}
-
-    QVariant exception_;
-    QStringList backtrace_;
-};
-
 class Actor;
 
 class Engine;
-class MessageContext : public QObject
-{
-    Q_OBJECT;
-public:
-    MessageContext(Engine *, QScriptValue);
-    virtual ~MessageContext();
+class Load;
+class Message;
+class Request;
 
-    Q_INVOKABLE void reply(QScriptValue);
-private:
-    Engine *engine_;
-    QScriptValue cb_;
-};
+class Endpoint;
+typedef QSharedPointer<Endpoint> endpoint_ptr;
 
 class Actor;
 class Engine : public QObject
@@ -129,8 +82,8 @@ public:
     void run();
     virtual bool event(QEvent *);
 
-    void reply(QVariant const &, QScriptValue const &, Event::Type);
-    void error(QVariant const &, QScriptValue const & = QScriptValue());
+    void reply(QVariant const&, endpoint_ptr, Event::Type);
+    void error(QVariant const&, endpoint_ptr);
 
 signals:
     void onQuit();
@@ -139,7 +92,7 @@ private:
     void load(Load *);
     void processMessage(Message *);
     void processRequest(Request *);
-    void processResult(QScriptValue &, QScriptValue &);
+    void processResult(QScriptValue &, endpoint_ptr);
     void toActor(Event*);
 
     Actor *actor_;
@@ -178,9 +131,16 @@ protected:
     QString source() const;
     void setSource(QString const&);
 
-    Q_INVOKABLE void send(QScriptValue, QScriptValue cb = QScriptValue());
+    Q_INVOKABLE void send
+    (QScriptValue const&
+     , QScriptValue const& on_reply = QScriptValue()
+     , QScriptValue const& on_error = QScriptValue());
+
     Q_INVOKABLE void request
-    (QString const&, QScriptValue, QScriptValue cb = QScriptValue());
+    (QString const&
+     , QScriptValue const&
+     , QScriptValue const& on_reply = QScriptValue()
+     , QScriptValue const& on_error = QScriptValue());
 
     virtual bool event(QEvent *);
 
@@ -192,6 +152,7 @@ signals:
 protected:
     QString src_;
     void reply(Message*);
+    void error(Message*);
     WorkerThread *worker();
 
     mutable QScriptEngine *engine_;
