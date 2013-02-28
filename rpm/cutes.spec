@@ -34,9 +34,6 @@ CoffeeScript compiler for cutes
 %build
 %cmake
 make %{?jobs:-j%jobs}
-pushd doc
-gzip -c %{name}.man > %{name}.1.gz
-popd
 
 %install
 rm -rf %{buildroot}
