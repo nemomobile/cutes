@@ -257,11 +257,16 @@ void Engine::load(Load *msg)
         auto script_env = loadEnv(*QCoreApplication::instance(), *engine_);
         script_env->pushParentScriptPath(msg->top_script_);
         handler_ = script_env->load(msg->src_);
-        if (!handler_.isFunction()) {
-            qDebug() << "Not a function";
-            if (handler_.isError())
+        if (!(handler_.isFunction() || handler_.isObject())) {
+            qDebug() << "Not a function or object";
+            if (handler_.isError()) {
                 error(handler_.toVariant()
                       , endpoint(QScriptValue(), QScriptValue()));
+            } else {
+                auto cls = handler_.scriptClass();
+                qDebug() << "Handler is "
+                         << (cls ? cls->name() : "unknown value");
+            }
         }
     } catch (Error const &e) {
         qDebug() << "Failed to eval:" << msg->src_;
