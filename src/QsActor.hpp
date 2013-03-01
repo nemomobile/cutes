@@ -143,6 +143,8 @@ protected:
      , QScriptValue const& on_error = QScriptValue()
      , QScriptValue const& on_progress = QScriptValue());
 
+    Q_INVOKABLE void wait();
+
     virtual bool event(QEvent *);
 
 signals:

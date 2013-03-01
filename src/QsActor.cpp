@@ -440,6 +440,16 @@ MessageContext::MessageContext(Engine *engine, endpoint_ptr ep)
 
 MessageContext::~MessageContext() {}
 
+void Actor::wait()
+{
+    if (!unreplied_count_)
+        return;
+
+    QEventLoop loop;
+    QObject::connect(this, SIGNAL(released()), &loop, SLOT(quit()));
+    loop.exec();
+}
+
 void MessageContext::reply(QScriptValue data)
 {
     engine_->reply(data.toVariant(), endpoint_, Event::Progress);
