@@ -39,10 +39,11 @@ class Endpoint : public QObject
 {
     Q_OBJECT;
 public:
-    Endpoint(QScriptValue const&, QScriptValue const&);
+    Endpoint(QScriptValue const&, QScriptValue const&, QScriptValue const&);
 
     QScriptValue on_reply_;
     QScriptValue on_error_;
+    QScriptValue on_progress_;
 };
 
 class Load : public Event

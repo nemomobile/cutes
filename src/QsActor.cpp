@@ -37,16 +37,20 @@
 namespace QsExecute {
 
 Endpoint::Endpoint(QScriptValue const& on_reply
-                   , QScriptValue const& on_error)
+                   , QScriptValue const& on_error
+                   , QScriptValue const& on_progress)
     : on_reply_(on_reply)
     , on_error_(on_error)
+    , on_progress_(on_progress)
 {
 }
 
 static inline endpoint_ptr endpoint
-(QScriptValue const& on_reply, QScriptValue const& on_error)
+(QScriptValue const& on_reply
+ , QScriptValue const& on_error
+ , QScriptValue const& on_progress)
 {
-    return endpoint_ptr(new Endpoint(on_reply, on_error));
+    return endpoint_ptr(new Endpoint(on_reply, on_error, on_progress));
 }
 
 Actor::Actor(QScriptEngine *engine)
@@ -145,13 +149,16 @@ void Actor::release()
 }
 
 void Actor::send
-(QScriptValue const &msg, QScriptValue const& on_reply
- , QScriptValue const& on_error)
+(QScriptValue const &msg
+ , QScriptValue const& on_reply
+ , QScriptValue const& on_error
+ , QScriptValue const& on_progress)
 {
     try {
         acquire();
         worker()->send(new Message
-                       (msg.toVariant(), endpoint(on_reply, on_error)
+                       (msg.toVariant()
+                        , endpoint(on_reply, on_error, on_progress)
                         , Event::Message));
     } catch (Error const &e) {
         msg.engine()->currentContext()->throwError(e.msg);
@@ -162,24 +169,38 @@ void Actor::send
 
 void Actor::request
 (QString const &method_name, QScriptValue const &msg
- , QScriptValue const& on_reply, QScriptValue const& on_error)
+ , QScriptValue const& on_reply
+ , QScriptValue const& on_error
+ , QScriptValue const& on_progress)
 {
     try {
         acquire();
-
-    worker_->send(new Request
-                  (method_name, msg.toVariant()
-                   , endpoint(on_reply, on_error)
-                   , Event::Request));
+        worker_->send(new Request
+                      (method_name, msg.toVariant()
+                       , endpoint(on_reply, on_error, on_progress)
+                       , Event::Request));
+    } catch (Error const &e) {
+        msg.engine()->currentContext()->throwError(e.msg);
+    } catch (...) {
+        msg.engine()->currentContext()->throwError("Unhandled error");
+    }
 }
 
-void Actor::reply(Message *reply)
+void Actor::reply(Message *msg)
 {
-    auto &cb = reply->endpoint_->on_reply_;
+    callback(msg, msg->endpoint_->on_reply_);
+}
+void Actor::progress(Message *msg)
+{
+    callback(msg, msg->endpoint_->on_progress_);
+}
+
+void Actor::callback(Message *msg, QScriptValue& cb)
+{
     if (!cb.isValid())
         return;
     auto params = cb.engine()->newArray(1);
-    auto data = cb.engine()->toScriptValue(reply->data_);
+    auto data = cb.engine()->toScriptValue(msg->data_);
     params.setProperty(0, data);
     if (cb.isFunction())
         cb.call(QScriptValue(), params);
@@ -261,7 +282,9 @@ void Engine::load(Load *msg)
             qDebug() << "Not a function or object";
             if (handler_.isError()) {
                 error(handler_.toVariant()
-                      , endpoint(QScriptValue(), QScriptValue()));
+                      , endpoint(QScriptValue()
+                                 , QScriptValue()
+                                 , QScriptValue()));
             } else {
                 auto cls = handler_.scriptClass();
                 qDebug() << "Handler is "
@@ -380,8 +403,8 @@ bool Actor::event(QEvent *e)
     EngineException *ex;
     bool res, is_release = false;
     switch (static_cast<Event::Type>(e->type())) {
-    case (Event::Reply):
-        reply(static_cast<Message*>(e));
+    case (Event::Progress):
+        progress(static_cast<Message*>(e));
         res = true;
         break;
     case (Event::Return):
@@ -419,7 +442,7 @@ MessageContext::~MessageContext() {}
 
 void MessageContext::reply(QScriptValue data)
 {
-    engine_->reply(data.toVariant(), endpoint_, Event::Reply);
+    engine_->reply(data.toVariant(), endpoint_, Event::Progress);
 }
 
 void Engine::reply

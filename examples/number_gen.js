@@ -5,11 +5,15 @@ var main = function(i) {
     a.error.connect(function(err) { print("ERR:", err) })
     // creating actors, executing in separate threads, replies are
     // processed by anon fn
-    a.send(i, function(d) {
-        print("reply", d)
-        if (d === 'done')
-            print("actor returned")
-    })
+    a.send(i
+          , function(d) {
+                if (d === 'done')
+                    print("actor returned what was expected");
+                else
+                    print("actor returned unexpected " + d);
+            }
+          , function(e) { print("Some error ", e); }
+          , function(d) { print("reply", d); });
 }
 var count = 100
 // 'count' actors are performing work

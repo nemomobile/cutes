@@ -19,10 +19,12 @@ Rectangle
     Component.onCompleted : {
         data.append({ name: "before", value : "first item"})
         data.append({ name: "click items while", value : "loading" })
-        actor.send({ from_qml : "qml data"}, function (reply) {
+        var add_item = function (reply) {
             for (var n in reply)
-                data.append({ name: n, value : reply[n] })
-        })
+                data.append({ name: n, value : reply[n] });
+        };
+        actor.send({ from_qml : "qml data"}, add_item
+                   , null, add_item);
         data.append({ name: "after message", value : "more items to follow" })
     }
 

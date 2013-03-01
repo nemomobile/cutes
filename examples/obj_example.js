@@ -10,13 +10,22 @@ var main = function() {
     // processed by anon fn
     var names = ['name', 'plus1']
     var util = require('util.js')
-    util.forEach(names, function(name) {
-        a.request(name, [1, 2, 3, 4], function(d) {
-            print(name, "reply", d)
-            if (d === 'done')
-                print(name, "actor function is returned")
-        })
-    })
+    util.forEach(
+        names
+      , function(name) {
+            a.request(
+                name, [1, 2, 3, 4]
+              , function(name) {
+                    if (name === 'done')
+                        print(name, "actor function is returned");
+                    else
+                        print(name, "actor returned smth. wrong");
+                }
+              , null
+              , function(d) {
+                    print(name, "reply", d)
+                })
+        });
 
     a.request('cause_error', 1, function(d) {
         print("Why you are here? There must be a error");

@@ -46,7 +46,7 @@ public:
         LoadScript = QEvent::User,
         Message, /// plain message, actor invoked as function
         Request, /// actor method invokation
-        Reply,
+        Progress,
         Return,
         QuitThread,
         LoadException,
@@ -134,13 +134,14 @@ protected:
     Q_INVOKABLE void send
     (QScriptValue const&
      , QScriptValue const& on_reply = QScriptValue()
-     , QScriptValue const& on_error = QScriptValue());
+     , QScriptValue const& on_error = QScriptValue()
+     , QScriptValue const& on_progress = QScriptValue());
 
     Q_INVOKABLE void request
-    (QString const&
-     , QScriptValue const&
+    (QString const&, QScriptValue const&
      , QScriptValue const& on_reply = QScriptValue()
-     , QScriptValue const& on_error = QScriptValue());
+     , QScriptValue const& on_error = QScriptValue()
+     , QScriptValue const& on_progress = QScriptValue());
 
     virtual bool event(QEvent *);
 
@@ -151,6 +152,7 @@ signals:
 
 protected:
     QString src_;
+    void progress(Message*);
     void reply(Message*);
     void error(Message*);
     WorkerThread *worker();
@@ -160,6 +162,8 @@ private:
 
     void acquire();
     void release();
+    void callback(Message*, QScriptValue&);
+
     int unreplied_count_;
     QScopedPointer<WorkerThread> worker_;
 };
