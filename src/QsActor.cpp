@@ -130,15 +130,26 @@ void WorkerThread::send(Message *msg)
     QCoreApplication::postEvent(engine_.data(), msg);
 }
 
+void Actor::acquire()
+{
+    if (!unreplied_count_)
+        emit acquired();
+
+    ++unreplied_count_;
+}
+
+void Actor::release()
+{
+    if (--unreplied_count_ == 0)
+        emit released();
+}
+
 void Actor::send
 (QScriptValue const &msg, QScriptValue const& on_reply
  , QScriptValue const& on_error)
 {
     try {
-        if (!unreplied_count_)
-            emit acquired();
-
-        ++unreplied_count_;
+        acquire();
         worker()->send(new Message
                        (msg.toVariant(), endpoint(on_reply, on_error)
                         , Event::Message));
@@ -153,10 +164,9 @@ void Actor::request
 (QString const &method_name, QScriptValue const &msg
  , QScriptValue const& on_reply, QScriptValue const& on_error)
 {
-    if (!unreplied_count_)
-        emit acquired();
+    try {
+        acquire();
 
-    ++unreplied_count_;
     worker_->send(new Request
                   (method_name, msg.toVariant()
                    , endpoint(on_reply, on_error)
@@ -363,14 +373,14 @@ bool Engine::event(QEvent *e)
 bool Actor::event(QEvent *e)
 {
     EngineException *ex;
-    bool res;
+    bool res, is_release = false;
     switch (static_cast<Event::Type>(e->type())) {
     case (Event::Reply):
         reply(static_cast<Message*>(e));
         res = true;
         break;
     case (Event::Return):
-        --unreplied_count_;
+        is_release = true;
         reply(static_cast<Message*>(e));
         res = true;
         break;
@@ -380,7 +390,7 @@ bool Actor::event(QEvent *e)
         res = true;
         break;
     case (Event::Error):
-        --unreplied_count_;
+        is_release = true;
         error(static_cast<Message*>(e));
         res = true;
         break;
@@ -388,8 +398,8 @@ bool Actor::event(QEvent *e)
         res = QObject::event(e);
         break;
     }
-    if (!unreplied_count_)
-        emit released();
+    if (is_release)
+        release();
     return res;
 }
 

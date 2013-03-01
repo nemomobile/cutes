@@ -157,6 +157,9 @@ protected:
 
     mutable QScriptEngine *engine_;
 private:
+
+    void acquire();
+    void release();
     int unreplied_count_;
     QScopedPointer<WorkerThread> worker_;
 };
