@@ -68,24 +68,48 @@ QString Actor::source() const
     return src_;
 }
 
+void Actor::execute(std::function<void ()> fn)
+{
+    try{
+        fn();
+    } catch (Error const &e) {
+        if (engine_)
+            engine_->currentContext()->throwError(e.msg);
+        else
+            qDebug() << "Error " << e.msg;
+    } catch (...) {
+        if (engine_)
+            engine_->currentContext()->throwError("Unhandled error");
+        else
+            qDebug() << "Error " << "Unhandled error";
+    }
+}
+
+void Actor::reload()
+{
+    auto fn = [this]() {
+        if (!engine_) {
+            qDebug() << "Can't get script engine."
+            << " Not qml engine and missing initialization?";
+            return;
+        }
+        // cwd should be set to the same directory as for main engine
+        auto script = static_cast<Module*>
+        (findProperty
+         (engine_->globalObject(), {"qtscript", "module"}).toQObject());
+
+        worker_.reset(new WorkerThread(this, src_, script->fileName()));
+    };
+    execute(fn);
+}
+
 void Actor::setSource(QString const& src)
 {
     if (src == src_)
         return;
 
-    if (!engine_) {
-        qDebug() << "Can't get script engine."
-                 << " Not qml engine and missing initialization?";
-        return;
-    }
-    // cwd should be set to the same directory as for main engine
-    auto script = static_cast<Module*>
-        (findProperty
-         (engine_->globalObject(), {"qtscript", "module"}).toQObject());
-
-    worker_.reset(new WorkerThread(this, src, script->fileName()));
-
     src_ = src;
+    reload();
 }
 
 DeclarativeActor::DeclarativeActor(QScriptEngine *engine)
@@ -154,36 +178,29 @@ void Actor::send
  , QScriptValue const& on_error
  , QScriptValue const& on_progress)
 {
-    try {
+    auto fn = [&]() {
         acquire();
         worker()->send(new Message
                        (msg.toVariant()
                         , endpoint(on_reply, on_error, on_progress)
                         , Event::Message));
-    } catch (Error const &e) {
-        msg.engine()->currentContext()->throwError(e.msg);
-    } catch (...) {
-        msg.engine()->currentContext()->throwError("Unhandled error");
-    }
+    };
+    execute(fn);
 }
-
 void Actor::request
 (QString const &method_name, QScriptValue const &msg
  , QScriptValue const& on_reply
  , QScriptValue const& on_error
  , QScriptValue const& on_progress)
 {
-    try {
+    auto fn = [&]() {
         acquire();
         worker_->send(new Request
                       (method_name, msg.toVariant()
                        , endpoint(on_reply, on_error, on_progress)
                        , Event::Request));
-    } catch (Error const &e) {
-        msg.engine()->currentContext()->throwError(e.msg);
-    } catch (...) {
-        msg.engine()->currentContext()->throwError("Unhandled error");
-    }
+    };
+    execute(fn);
 }
 
 void Actor::reply(Message *msg)

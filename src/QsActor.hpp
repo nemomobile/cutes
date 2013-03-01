@@ -144,6 +144,7 @@ protected:
      , QScriptValue const& on_progress = QScriptValue());
 
     Q_INVOKABLE void wait();
+    Q_INVOKABLE void reload();
 
     virtual bool event(QEvent *);
 
@@ -165,6 +166,7 @@ private:
     void acquire();
     void release();
     void callback(Message*, QScriptValue&);
+    void execute(std::function<void()>);
 
     int unreplied_count_;
     QScopedPointer<WorkerThread> worker_;
