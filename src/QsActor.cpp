@@ -384,9 +384,10 @@ void Engine::processRequest(Request *req)
         } else if (method.isUndefined()) {
             qDebug() << "Actor does not have method" << req->method_name_;
         } else {
+            auto cls = handler_.scriptClass();
             qDebug() << "Actor property " << req->method_name_
                      << " is not a method but "
-                     << method.scriptClass()->name();
+                     << (cls ? cls->name() : "unknown value");
         }
     } else {
         qDebug() << "Handler is not an object";
