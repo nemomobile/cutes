@@ -24,26 +24,50 @@ const char *os_name = "unix";
 const char *os_name = "unknown";
 #endif
 
+Agent::Agent(Env *env)
+    : QScriptEngineAgent(&env->engine())
+    , env_(env)
+{}
+
+void Agent::exceptionThrow
+(qint64 scriptId, const QScriptValue &exception, bool hasHandler)
+{
+    auto eng = engine();
+    if (eng) {
+        auto ctx = engine()->currentContext();
+        if (ctx)
+            env_->setBacktrace(ctx->backtrace());
+    }
+
+    QScriptEngineAgent::exceptionThrow(scriptId, exception, hasHandler);
+}
+
 Error::Error(QString const &s)
     : std::runtime_error(s.toStdString()),
       msg(s)
 { }
 
-JsError::JsError(QScriptEngine &engine, QString const &file)
-    : Error(errorMessage(engine, file))
+JsError::JsError(Env *env, QString const &file)
+    : Error(errorMessage(env, file))
 {}
 
-QString JsError::errorMessage(QScriptEngine &engine, QString const &file)
+QString JsError::errorMessage(Env *env, QString const &file)
 {
+    if (!env)
+        return "";
+
+    auto &engine = env->engine();
     QString res;
     QTextStream stream(&res);
-    stream << "Exception: "
-           << engine.uncaughtException().toString() << "\n"
-           << file << ":" << engine.uncaughtExceptionLineNumber()
-           << engine.uncaughtExceptionBacktrace().join("\n")
-           << "\n";
+    stream << file << ":" << engine.uncaughtExceptionLineNumber()
+           << ": exception" << engine.uncaughtException().toString()
+           << "\nBacktrace:\n";
+    if (env->getDebug())
+        stream << env->getBacktrace().join("\n") << "\n";
+    else
+        stream << engine.uncaughtExceptionBacktrace().join("\n") << "\n";
+    stream.flush();
     return res;
-
 }
 
 QScriptValue findProperty(QScriptValue const& root, QStringList const &path)
@@ -157,6 +181,7 @@ Module * Global::module() const
 Env::Env(Global *parent, QCoreApplication &app, QScriptEngine &engine)
     : QObject(parent)
     , engine_(engine)
+    , agent_(nullptr)
     , actor_count_(0)
     , is_waiting_exit_(false)
 {
@@ -187,6 +212,33 @@ Env::Env(Global *parent, QCoreApplication &app, QScriptEngine &engine)
 Module * Env::module() const
 {
     return scripts_.top();
+}
+
+bool Env::getDebug() const
+{
+    return agent_ != nullptr;
+}
+
+void Env::setDebug(bool isEnabled)
+{
+    if (isEnabled) {
+        if (!agent_) {
+            agent_ = new Agent(this);
+            engine_.setAgent(agent_);
+        }
+    } else if (agent_) {
+        engine_.setAgent(nullptr);
+    }
+}
+
+QStringList const& Env::getBacktrace() const
+{
+    return backtrace_;
+}
+
+void Env::setBacktrace(QStringList const& src)
+{
+    backtrace_ = src;
 }
 
 QScriptValue Env::actor()
@@ -414,7 +466,7 @@ QScriptValue Module::load(QScriptEngine &engine)
     auto res = engine.evaluate(contents, file_name, line_nr);
 
     if (engine.hasUncaughtException())
-        throw JsError(engine, file_name);
+        throw JsError(env(), file_name);
     is_loaded_ = true;
     return exports();
 }

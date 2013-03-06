@@ -42,6 +42,8 @@ UI with QtScript support.
                    "win32", "unknown"]
 - *qtscript.env* :: environment variables
 - *qtscript.path* :: Application library paths
+- *qtscript.debug* :: boolean, set to enable backtrace
+- *qtscript.backtrace* :: javascript backtrace
 - *qtscript.include* :: function to execute javascript file by file
      name. File name can be absolute or relative to the directory
      where running script resides or to any directory in the library

@@ -49,6 +49,12 @@ environment variables
 \fB\fBqtscript.path\fP\fP
 Application library paths
 .TP
+\fB\fBqtscript.debug\fP\fP
+boolean, set to enable backtrace
+.TP
+\fB\fBqtscript.backtrace\fP\fP
+javascript backtrace
+.TP
 \fB\fBqtscript.include\fP\fP
 function to execute javascript file by file
 name. File name can be absolute or relative to the directory
