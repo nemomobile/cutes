@@ -35,8 +35,7 @@ void Agent::exceptionThrow
     auto eng = engine();
     if (eng) {
         auto ctx = engine()->currentContext();
-        if (ctx)
-            env_->setBacktrace(ctx->backtrace());
+        env_->saveBacktrace(ctx);
     }
 
     QScriptEngineAgent::exceptionThrow(scriptId, exception, hasHandler);
@@ -236,9 +235,19 @@ QStringList const& Env::getBacktrace() const
     return backtrace_;
 }
 
-void Env::setBacktrace(QStringList const& src)
+
+void Env::saveBacktrace(QScriptContext *ctx)
 {
-    backtrace_ = src;
+    backtrace_.clear();
+    while(ctx) {
+        QScriptContextInfo info(ctx);
+        QStringList parts({ info.fileName()
+                    , QString::number(info.lineNumber())});
+        if (!info.functionName().isEmpty())
+            parts.append(info.functionName());
+        backtrace_.append(parts.join(":"));
+        ctx = ctx->parentContext();
+    }
 }
 
 QScriptValue Env::actor()

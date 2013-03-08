@@ -113,7 +113,7 @@ public:
     QScriptValue env() const;
     QScriptValue path() const;
     QStringList const& getBacktrace() const;
-    void setBacktrace(QStringList const&);
+    void saveBacktrace(QScriptContext *);
 
     bool getDebug() const;
     void setDebug(bool);
