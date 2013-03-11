@@ -239,15 +239,7 @@ QStringList const& Env::getBacktrace() const
 void Env::saveBacktrace(QScriptContext *ctx)
 {
     backtrace_.clear();
-    while(ctx) {
-        QScriptContextInfo info(ctx);
-        QStringList parts({ info.fileName()
-                    , QString::number(info.lineNumber())});
-        if (!info.functionName().isEmpty())
-            parts.append(info.functionName());
-        backtrace_.append(parts.join(":"));
-        ctx = ctx->parentContext();
-    }
+    backtrace_ = ctx->backtrace();
 }
 
 QScriptValue Env::actor()
