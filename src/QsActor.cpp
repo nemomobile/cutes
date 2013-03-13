@@ -376,11 +376,13 @@ void Engine::processRequest(Request *req)
     if (handler_.isObject()) {
         auto method = handler_.property(req->method_name_);
         if (method.isFunction()) {
+            MessageContext *ctx = new MessageContext(this, req->endpoint_);
             auto params = engine_->newArray(2);
             params.setProperty(0, engine_->toScriptValue(req->data_));
-            params.setProperty(1, engine_->newQObject
-                               (new MessageContext(this, req->endpoint_)));
+            params.setProperty(1, engine_->newQObject(ctx));
             ret = method.call(handler_, params);
+            ctx->disable();
+            ctx->deleteLater();
         } else if (method.isUndefined()) {
             qDebug() << "Actor does not have method" << req->method_name_;
         } else {
@@ -456,6 +458,11 @@ MessageContext::MessageContext(Engine *engine, endpoint_ptr ep)
     , endpoint_(ep)
 {}
 
+void MessageContext::disable()
+{
+    endpoint_.clear();
+}
+
 MessageContext::~MessageContext() {}
 
 void Actor::wait()
@@ -470,7 +477,11 @@ void Actor::wait()
 
 void MessageContext::reply(QScriptValue data)
 {
-    engine_->reply(data.toVariant(), endpoint_, Event::Progress);
+    if (engine_)
+        engine_->reply(data.toVariant(), endpoint_, Event::Progress);
+    else
+        qDebug() << "MessageContext is disabled, " <<
+            "are you using it outside processing function?";
 }
 
 void Engine::reply

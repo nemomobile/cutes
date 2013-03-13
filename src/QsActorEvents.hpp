@@ -83,6 +83,8 @@ public:
     virtual ~MessageContext();
 
     Q_INVOKABLE void reply(QScriptValue);
+
+    void disable();
 private:
     Engine *engine_;
     endpoint_ptr endpoint_;
