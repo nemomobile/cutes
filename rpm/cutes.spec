@@ -1,7 +1,7 @@
 
 Name:    cutes
 Summary: QtScript environment and "interpreter"
-Version: 0.7.2
+Version: 0.7.3
 Release: 1
 
 License: LGPLv2
