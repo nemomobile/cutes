@@ -1,2 +1,0 @@
-#!/bin/sh
-cutes coffee/coffee-compile.js $1
