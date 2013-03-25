@@ -226,15 +226,14 @@ void Actor::callback(Message *msg, QScriptValue& cb)
 void Actor::error(Message *reply)
 {
     auto &cb = reply->endpoint_->on_error_;
-    if (!cb.isValid()) {
+    if (!(cb.isValid() && cb.isFunction())) {
         emit error(reply->data_);
         return;
     }
     auto params = cb.engine()->newArray(1);
     auto data = cb.engine()->toScriptValue(reply->data_);
     params.setProperty(0, data);
-    if (cb.isFunction())
-        cb.call(QScriptValue(), params);
+    cb.call(QScriptValue(), params);
 }
 
 Event::Event()
@@ -340,13 +339,18 @@ void WorkerThread::run()
 
 void Engine::processResult(QScriptValue &ret, endpoint_ptr ep)
 {
+    QVariant err;
     if (engine_->hasUncaughtException()) {
-        error(engine_->uncaughtException().toVariant(), ep);
-    } else if (!ret.isError()) {
-        reply(ret.toVariant(), ep, Event::Return);
+        qDebug() << "Uncaught exception in actor";
+        err = engine_->uncaughtException().toVariant();
+    } else if (ret.isError()) {
+        err = ret.toVariant();
     } else {
-        error(ret.toVariant(), ep);
+        reply(ret.toVariant(), ep, Event::Return);
+        return;
     }
+    qDebug() << "Actor error: " << err << ", sending to source";
+    error(err, ep);
 }
 
 void Engine::processMessage(Message *msg)
