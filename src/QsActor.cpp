@@ -220,7 +220,7 @@ void Actor::callback(Message *msg, QScriptValue& cb)
     auto data = cb.engine()->toScriptValue(msg->data_);
     params.setProperty(0, data);
     if (cb.isFunction())
-        cb.call(QScriptValue(), params);
+        cb.call(cb, params);
 }
 
 void Actor::error(Message *reply)
@@ -233,7 +233,7 @@ void Actor::error(Message *reply)
     auto params = cb.engine()->newArray(1);
     auto data = cb.engine()->toScriptValue(reply->data_);
     params.setProperty(0, data);
-    cb.call(QScriptValue(), params);
+    cb.call(cb, params);
 }
 
 Event::Event()
