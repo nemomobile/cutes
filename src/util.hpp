@@ -32,4 +32,14 @@ Scope<Enter, Exit> mk_scope(Enter enter_fn, Exit exit_fn)
     return Scope<Enter, Exit>(enter_fn, exit_fn);
 }
 
+template <typename ContainerT, typename FnT>
+ContainerT filter(ContainerT const& src, FnT fn) {
+    ContainerT res;
+    for (auto &v: src) {
+        if (fn(v))
+            res.append(v);
+    }
+    return res;
+}
+
 #endif // _CUTES_UTIL_HPP_
