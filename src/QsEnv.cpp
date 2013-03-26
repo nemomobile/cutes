@@ -361,9 +361,9 @@ QString Env::findFile(QString const &file_name)
             return res;
     }
 
-    // then - relative to file_name dir
-    if (mkRelative(QDir(QFileInfo(file_name).path())))
-        return res;
+    // // then - relative to file_name dir
+    // if (mkRelative(QDir(QFileInfo(file_name).path())))
+    //     return res;
 
     // search in path
     for (auto &d : lib_path_)
