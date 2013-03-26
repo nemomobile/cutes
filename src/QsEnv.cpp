@@ -230,10 +230,19 @@ Env::Env(Global *parent, QCoreApplication &app, QScriptEngine &engine)
     args_ = app.arguments();
     args_.pop_front(); // remove interpreter name
 
+    // to allow safe access to top w/o checking
     scripts_.push(new Module(this, ""));
+
     auto env = std::move(mkEnv());
 
-    auto paths = std::move(env["QTSCRIPT_LIBRARY_PATH"].toString().split(":"));
+    auto env_paths = env["QTSCRIPT_LIBRARY_PATH"].toString();
+    // remove empty paths
+    auto paths = std::move
+        (filter
+         (env_paths.split(":"), [](QString const &v) {
+             return v.size() > 0;
+         }));
+
     // some hard-coded predefined paths, TODO avoid hard-coding :)
     for (auto path
              : { "/usr/share/cutes"
