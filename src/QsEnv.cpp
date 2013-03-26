@@ -350,16 +350,16 @@ QString Env::findFile(QString const &file_name)
 
     auto mkRelative = [&res, &file_name](QDir const& dir) {
         res = dir.filePath(file_name);
-        if (!QFileInfo(res).exists())
-            res = dir.filePath(file_name + ".js");
         return QFileInfo(res).exists();
     };
 
-    auto script = scripts_.top();
+    if (scripts_.size() > 1) {
+        auto script = scripts_.top();
 
-    // first - relative to cwd
-    if (mkRelative(QDir(script->cwd())))
-        return res;
+        // first - relative to cwd
+        if (mkRelative(QDir(script->cwd())))
+            return res;
+    }
 
     // then - relative to file_name dir
     if (mkRelative(QDir(QFileInfo(file_name).path())))
@@ -392,7 +392,8 @@ QScriptValue Env::include(QString const &file_name, bool is_reload)
 
 QScriptValue Env::load(QString const &script_name, bool is_reload)
 {
-    QString file_name = findFile(script_name);
+    QString file_name = findFile(QFileInfo(script_name).suffix() != "js"
+                                  ? script_name + ".js" : script_name);
 
     if (file_name.isEmpty())
         throw Error(QString("Can't find file %1").arg(script_name));
