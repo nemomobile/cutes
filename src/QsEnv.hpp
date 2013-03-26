@@ -163,6 +163,7 @@ class Module : public QObject
 
 public:
     Module(Env *parent, QString const&);
+    Module(Env *parent, QString const&, QString const&);
     virtual ~Module() {}
 
     Q_INVOKABLE QScriptValue require(QString const&, bool is_reload = false);
@@ -183,6 +184,7 @@ private:
     QFileInfo info_;
     QScriptValue exports_;
     bool is_loaded_;
+    QString cwd_;
 };
 
 Env *loadEnv(QCoreApplication &app, QScriptEngine &engine, QScriptValue global);

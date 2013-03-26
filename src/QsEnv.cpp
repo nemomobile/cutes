@@ -231,7 +231,7 @@ Env::Env(Global *parent, QCoreApplication &app, QScriptEngine &engine)
     args_.pop_front(); // remove interpreter name
 
     // to allow safe access to top w/o checking
-    scripts_.push(new Module(this, ""));
+    scripts_.push(new Module(this, "", QDir::currentPath()));
 
     auto env = std::move(mkEnv());
 
@@ -362,17 +362,10 @@ QString Env::findFile(QString const &file_name)
         return QFileInfo(res).exists();
     };
 
-    if (scripts_.size() > 1) {
-        auto script = scripts_.top();
-
-        // first - relative to cwd
-        if (mkRelative(QDir(script->cwd())))
-            return res;
-    }
-
-    // // then - relative to file_name dir
-    // if (mkRelative(QDir(QFileInfo(file_name).path())))
-    //     return res;
+    auto script = scripts_.top();
+    // first - relative to cwd
+    if (mkRelative(QDir(script->cwd())))
+        return res;
 
     // search in path
     for (auto &d : lib_path_)
@@ -458,6 +451,17 @@ Module::Module(Env *parent, QString const& fname)
     , info_(fname)
     , exports_(parent->engine().newObject())
     , is_loaded_(false)
+    , cwd_(info_.canonicalPath())
+{
+    setObjectName("script");
+}
+
+Module::Module(Env *parent, QString const& fname, QString const& cwd)
+    : QObject(parent)
+    , info_(fname)
+    , exports_(parent->engine().newObject())
+    , is_loaded_(false)
+    , cwd_(cwd)
 {
     setObjectName("script");
 }
@@ -490,7 +494,7 @@ void Module::setExports(QScriptValue v)
 
 QString Module::cwd() const
 {
-    return info_.canonicalPath();
+    return cwd_;
 }
 
 QString Module::fileName() const
