@@ -55,6 +55,11 @@ boolean, set to enable backtrace
 \fB\fBqtscript.backtrace\fP\fP
 javascript backtrace
 .TP
+\fB\fBqtscript.fprint\fP\fP
+fprint(dst, ...) prints whitespace separated
+arguments to dst, where dst is QIODevice or 1 (stdout) or 2
+(stderr)
+.TP
 \fB\fBqtscript.include\fP\fP
 function to execute javascript file by file
 name. File name can be absolute or relative to the directory
@@ -66,6 +71,9 @@ instructs engine to import QtScript extension
 .TP
 \fB\fBqtscript.module.args\fP\fP
 list of command line arguments
+.TP
+\fB\fBqtscript.module.exports\fP\fP
+see \fIexports\fP below
 .TP
 \fB\fBqtscript.module.filename\fP\fP
 currently executed script file name
@@ -88,6 +96,10 @@ object to be used to hold exported symbols, it is just
 reference to the current module.exports. QtScript
 engine resolves it only in file scope but does not do
 it inside internal scopes (functions etc.)
+.TP
+\fB\fBprint\fP\fP
+prints whitespace separated arguments to stdout
+
 .SH "AUTHOR"
 .PP
 Denis Zalevskiy <denis.zalevskiy@jollamobile.com>

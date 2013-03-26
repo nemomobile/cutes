@@ -1,9 +1,12 @@
 #include "util.hpp"
+
 #include "QsEnv.hpp"
 #include <QMap>
 #include <QDir>
 #include <QFileInfo>
 #include <QFile>
+
+#include <unistd.h>
 
 Q_DECLARE_METATYPE(QsExecuteEnv*);
 Q_DECLARE_METATYPE(QsExecuteModule*);
@@ -102,18 +105,56 @@ Env *loadEnv(QCoreApplication &app, QScriptEngine &engine)
     return loadEnv(app, engine, engine.globalObject());
 }
 
-static QScriptValue jsPrintStdout(QScriptContext *context, QScriptEngine *engine)
+static QScriptValue jsPrintImpl
+(QTextStream &out, int begin, QScriptContext *context, QScriptEngine *engine)
 {
-    QTextStream out(stdout);
     auto len = context->argumentCount();
-    if (len) {
+    if (len >= begin) {
         --len;
-        for (int i = 0; i < len; ++i)
+        for (int i = begin; i < len; ++i)
             out << context->argument(i).toString() << " ";
 
         out << context->argument(len).toString() << endl;
     }
     return engine->undefinedValue();
+}
+
+static QScriptValue jsPrintStdout(QScriptContext *context, QScriptEngine *engine)
+{
+    QTextStream out(stdout);
+    return jsPrintImpl(out, 0, context, engine);
+}
+
+static QScriptValue jsFPrint(QScriptContext *context, QScriptEngine *engine)
+{
+    QTextStream out(stdout);
+    auto res = engine->undefinedValue();
+    auto len = context->argumentCount();
+    if (!len)
+        return res;
+    auto dst = context->argument(0);
+    if (dst.isNumber()) {
+        auto i = dst.toInt32();
+        FILE *f = (i == STDOUT_FILENO
+                   ? stdout : (i == STDERR_FILENO
+                               ? stderr : nullptr));
+        if (!f)
+            return res;
+
+        QTextStream out(f);
+        return jsPrintImpl(out, 1, context, engine);
+    } else if (dst.isQObject()){
+        QIODevice *dev = dynamic_cast<QIODevice*>(dst.toQObject());
+        if (dev) {
+            QTextStream out(dev);
+            return jsPrintImpl(out, 1, context, engine);
+        }
+
+        qDebug() << dst.toString() << " is not QIODevice";
+    } else {
+        qDebug() << dst.toString() << " is not file nr or QIODevice";
+    }
+    return res;
 }
 
 static QScriptValue jsRequire(QScriptContext *context, QScriptEngine *engine)
@@ -182,6 +223,7 @@ Env::Env(Global *parent, QCoreApplication &app, QScriptEngine &engine)
     , engine_(engine)
     , agent_(nullptr)
     , actor_count_(0)
+    , fprint_(engine.newFunction(jsFPrint))
     , is_waiting_exit_(false)
 {
     setObjectName("qtscript");
@@ -228,6 +270,11 @@ void Env::setDebug(bool isEnabled)
     } else if (agent_) {
         engine_.setAgent(nullptr);
     }
+}
+
+QScriptValue Env::getFPrint() const
+{
+    return fprint_;
 }
 
 QStringList const& Env::getBacktrace() const

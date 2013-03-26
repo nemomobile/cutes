@@ -44,12 +44,16 @@ UI with QtScript support.
 - *qtscript.path* :: Application library paths
 - *qtscript.debug* :: boolean, set to enable backtrace
 - *qtscript.backtrace* :: javascript backtrace
+- *qtscript.fprint* :: fprint(dst, ...) prints whitespace separated
+     arguments to dst, where dst is QIODevice or 1 (stdout) or 2
+     (stderr)
 - *qtscript.include* :: function to execute javascript file by file
      name. File name can be absolute or relative to the directory
      where running script resides or to any directory in the library
      path. Result of execution is returned
 - *qtscript.extend* :: instructs engine to import QtScript extension
 - *qtscript.module.args* :: list of command line arguments
+- *qtscript.module.exports* :: see _exports_ below
 - *qtscript.module.filename* :: currently executed script file name
      (e.g. in *qtscript.include* it will be included script path name)
 - *qtscript.module.cwd* :: current working directory or directory
@@ -62,7 +66,7 @@ UI with QtScript support.
                reference to the current module.exports. QtScript
                engine resolves it only in file scope but does not do
                it inside internal scopes (functions etc.)
-
+- *print* :: prints whitespace separated arguments to stdout
 * AUTHOR
   Denis Zalevskiy <denis.zalevskiy@jollamobile.com>
 

@@ -92,6 +92,7 @@ class Env : public QObject
     Q_PROPERTY(QScriptValue path READ path);
     Q_PROPERTY(bool debug READ getDebug WRITE setDebug);
     Q_PROPERTY(QStringList backtrace READ getBacktrace);
+    Q_PROPERTY(QScriptValue fprint READ getFPrint);
 
 public:
 
@@ -114,9 +115,9 @@ public:
     QScriptValue path() const;
     QStringList const& getBacktrace() const;
     void saveBacktrace(QScriptContext *);
-
     bool getDebug() const;
     void setDebug(bool);
+    QScriptValue getFPrint() const;
 
 
     bool shouldWait();
@@ -141,8 +142,9 @@ private:
     QStack<Module*> scripts_;
     QStringList args_;
     int actor_count_;
+    QScriptValue fprint_;
     bool is_waiting_exit_;
-                         
+
 private slots:
     void actorAcquired();
     void actorReleased();
