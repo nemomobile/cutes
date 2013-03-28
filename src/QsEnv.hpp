@@ -190,7 +190,6 @@ private:
 Env *loadEnv(QCoreApplication &app, QScriptEngine &engine, QScriptValue global);
 Env *loadEnv(QCoreApplication &app, QScriptEngine &engine);
 
-} // namespace
 
 template <typename T>
 QScriptValue anyToScriptValue(QScriptEngine *engine, T* const &in)
@@ -203,5 +202,14 @@ void anyFromScriptValue(const QScriptValue &object, T* &out)
 {
     out = qobject_cast<T*>(object.toQObject());
 }
+
+template <typename T>
+void anyMetaTypeRegister(QScriptEngine *engine)
+{
+    qScriptRegisterMetaType
+        (engine, anyToScriptValue<T>, anyFromScriptValue<T>);
+}
+
+} // namespace
 
 #endif // _QSEXECUTE_QSENV_HPP_

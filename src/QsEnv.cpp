@@ -175,14 +175,10 @@ Global::Global(QCoreApplication &app, QScriptEngine &engine, QScriptValue & glob
     , env_(new Env(this, app, engine))
 {
     auto self = engine.newQObject(this);
-    qScriptRegisterMetaType
-        (&engine
-         , anyToScriptValue<QsExecuteModule>
-         , anyFromScriptValue<QsExecuteModule>);
-    qScriptRegisterMetaType
-        (&engine
-         , anyToScriptValue<QsExecuteEnv>
-         , anyFromScriptValue<QsExecuteEnv>);
+
+    anyMetaTypeRegister<QsExecuteModule>(&engine);
+    anyMetaTypeRegister<QsExecuteEnv>(&engine);
+
     self.setPrototype(global);
     engine.setGlobalObject(self);
     self.setProperty("print", engine.newFunction(jsPrintStdout));
