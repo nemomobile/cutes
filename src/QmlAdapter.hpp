@@ -4,9 +4,7 @@
 #include "QsEnv.hpp"
 
 #include <QCoreApplication>
-#include <QtDeclarative>
-#include <QDeclarativeView>
-#include <QDeclarativeEngine>
+#include "qt_quick_types.hpp"
 
 namespace QsExecute {
 

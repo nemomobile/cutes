@@ -1,6 +1,6 @@
 #include "QsEnv.hpp"
 #include <iostream>
-#include <QtGui/QApplication>
+#include <QApplication>
 #include "QmlAdapter.hpp"
 
 using namespace QsExecute;
@@ -51,10 +51,12 @@ int executeDeclarative(int argc, char *argv[])
     setupDeclarative(app, view, QFileInfo(script_file).absoluteFilePath());
     view.setSource(QUrl::fromLocalFile(script_file));
 
+#if QT_VERSION < 0x050000
     view.setAttribute(Qt::WA_OpaquePaintEvent);
     view.setAttribute(Qt::WA_NoSystemBackground);
     view.viewport()->setAttribute(Qt::WA_OpaquePaintEvent);
     view.viewport()->setAttribute(Qt::WA_NoSystemBackground);
+#endif
 
     view.showFullScreen();
     return app.exec();

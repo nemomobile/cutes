@@ -27,12 +27,9 @@
 #include "QsEnv.hpp"
 #include "QmlAdapter.hpp"
 
-#include <QtDeclarative/qdeclarative.h>
-#include <QtDeclarative/QDeclarativeExtensionPlugin>
-#include <QScriptEngine>
+#include "qt_quick_types.hpp"
 #include <QDebug>
 #include <QCoreApplication>
-#include <QDeclarativeContext>
 
 namespace QsExecute {
 
@@ -263,6 +260,7 @@ WorkerThread::WorkerThread
     cond_.wait(&mutex_);
     QCoreApplication::postEvent(engine_.data(), new Load(src, top_script));
     connect(engine_.data(), SIGNAL(onQuit()), this, SLOT(quit()));
+    mutex_.unlock();
 }
 
 void Engine::toActor(Event *ev)
@@ -322,9 +320,7 @@ Engine::~Engine() {}
 
 WorkerThread::~WorkerThread()
 {
-    if (engine_)
-        QCoreApplication::instance()->notify(engine_.data(), new Event());
-
+    quit();
     wait();
 }
 
@@ -335,6 +331,7 @@ void WorkerThread::run()
     cond_.wakeAll();
     mutex_.unlock();
     exec();
+    engine_.reset(nullptr);
 }
 
 void Engine::processResult(QScriptValue &ret, endpoint_ptr ep)

@@ -33,7 +33,11 @@
 #include <QWaitCondition>
 #include <QMutex>
 #include <QStringList>
+#if QT_VERSION < 0x050000
 #include <QDeclarativeEngine>
+#else
+#include <QQmlEngine>
+#endif
 #include <QSharedPointer>
 
 namespace QsExecute

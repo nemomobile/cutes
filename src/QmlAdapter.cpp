@@ -3,11 +3,7 @@
 #include "QsActor.hpp"
 #include "QsEnv.hpp"
 
-#include <QDeclarativeContext>
-#include <QDeclarativeEngine>
-#include <QDeclarativeExpression>
-#include <QtDeclarative>
-#include <QtDeclarative/QDeclarativeExtensionPlugin>
+#include "qt_quick_types.hpp"
 
 namespace QsExecute {
 

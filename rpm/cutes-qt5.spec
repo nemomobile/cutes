@@ -1,4 +1,4 @@
-Name:    cutes
+Name:    cutes-qt5
 Summary: QtScript environment and "interpreter"
 Version: 0.0.0
 Release: 1
@@ -8,24 +8,24 @@ Group:	 System/Shells
 URL:     http://github.com/deztructor/cutes
 Source0: %{name}-%{version}.tar.bz2
 
-BuildRequires: pkgconfig(QtCore)
-BuildRequires: pkgconfig(QtGui)
-BuildRequires: pkgconfig(QtDeclarative)
-BuildRequires: pkgconfig(QtScript)
-BuildRequires: cmake
+BuildRequires: pkgconfig(Qt5Core)
+BuildRequires: pkgconfig(Qt5Gui)
+BuildRequires: pkgconfig(Qt5Widgets)
+BuildRequires: pkgconfig(Qt5Qml)
+BuildRequires: pkgconfig(Qt5Quick)
+BuildRequires: pkgconfig(Qt5Script)
+BuildRequires: cmake >= 2.8
 
 %description
 QtScript environment and "interpreter"
 
-%if %{?_qt4_importdir:1}%{!?_qt4_importdir:0}
-%define _qt_importdir %{_qt4_importdir}
-%endif
+%define qt_importdir %{_libdir}/qt5/qml
 
 %prep
 %setup -q -n %{name}-%{version}
 
 %build
-%cmake -DUSEQT=4
+%cmake -DUSEQT=5
 make %{?jobs:-j%jobs}
 
 %install
@@ -38,7 +38,7 @@ rm -rf %{buildroot}
 %files
 %defattr(-,root,root,-)
 %{_bindir}/%{name}
-%{_libdir}/libcutescript.so
-%{_qt_importdir}/Mer/QtScript/libqtscript.so
-%{_qt_importdir}/Mer/QtScript/qmldir
+%{_libdir}/libcutescript-qt5.so
+%{qt_importdir}/Mer/QtScript/libqtscript.so
+%{qt_importdir}/Mer/QtScript/qmldir
 %{_mandir}/man1/%{name}.1.gz
