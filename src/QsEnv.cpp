@@ -27,21 +27,8 @@ const char *os_name = "unix";
 const char *os_name = "unknown";
 #endif
 
-#if QT_VERSION < 0x050000
-std::vector<char const*> plugin_path = {
-    "/usr/share/cutes"
-        , "/usr/lib/qt4/plugins"
-        , "/usr/lib32/qt4/plugins"
-        , "/usr/lib64/qt4/plugins"
-        };
-#else
-std::vector<char const*> plugin_path = {
-    "/usr/share/cutes-qt5"
-        , "/usr/lib/qt5/plugins"
-        , "/usr/lib32/qt5/plugins"
-        , "/usr/lib64/qt5/plugins"
-        };
-#endif
+#define STRINGIFY(x) #x
+#define DQUOTESTR(x) STRINGIFY(x)
 
 Agent::Agent(Env *env)
     : QScriptEngineAgent(&env->engine())
@@ -255,8 +242,8 @@ Env::Env(Global *parent, QCoreApplication &app, QScriptEngine &engine)
              return v.size() > 0;
          }));
 
-    // some hard-coded predefined paths, TODO avoid hard-coding :)
-    for (auto path : plugin_path)
+    auto plugin_path = QString(DQUOTESTR(CUTES_LIB_PATH));
+    for (auto path : plugin_path.split(":", QString::SkipEmptyParts))
         if (QDir(path).exists())
             paths.push_back(path);
 

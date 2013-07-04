@@ -9,7 +9,18 @@ ELSE(CMAKE_SIZEOF_VOID_P EQUAL 4)
   SET(LIB_SUFFIX 64)
 ENDIF(CMAKE_SIZEOF_VOID_P EQUAL 4)
 
+set(prefix ${CMAKE_INSTALL_PREFIX})
+set(DST_LIB lib${LIB_SUFFIX})
+
+set(CUTES_LIB_PATH "${prefix}/share/cutes")
+
 if(${USEQT} STREQUAL "4")
+
+if(${prefix} STREQUAL "/usr")
+  set(CUTES_LIB_PATH "${CUTES_LIB_PATH}:/usr/${DST_LIB}/qt4/plugins")
+else(${prefix} STREQUAL "/usr")
+  set(CUTES_LIB_PATH "${CUTES_LIB_PATH}:${prefix}/${DST_LIB}/qt4/plugins:/usr/${DST_LIB}/qt4/plugins")
+endif(${prefix} STREQUAL "/usr")
 
 find_package(Qt4 4.7.0 REQUIRED)
 
@@ -27,6 +38,12 @@ link_directories(
 )
 
 elseif(${USEQT} STREQUAL "5")
+
+if(${prefix} STREQUAL "/usr")
+  set(CUTES_LIB_PATH "${CUTES_LIB_PATH}:/usr/${DST_LIB}/qt5/plugins")
+else(${prefix} STREQUAL "/usr")
+  set(CUTES_LIB_PATH "${CUTES_LIB_PATH}:${prefix}/${DST_LIB}/qt5/plugins:/usr/${DST_LIB}/qt5/plugins")
+endif(${prefix} STREQUAL "/usr")
 
 find_package(Qt5Core REQUIRED)
 find_package(Qt5Gui REQUIRED)
@@ -55,10 +72,13 @@ add_definitions(
 
 endif(${USEQT} STREQUAL "4")
 
+set(CMAKE_CXX_FLAGS
+  "${CMAKE_CXX_FLAGS} -DCUTES_LIB_PATH=\"${CUTES_LIB_PATH}\" -fPIC -W -Wall -Wextra -Werror -g -O2 -std=c++0x")
+
 #-Wno-psabi is to remove next g++ warning/note:
 #the mangling of 'va_list' has changed in GCC 4.4
 set(CMAKE_CXX_FLAGS
-  "${CMAKE_CXX_FLAGS} -fPIC -W -Wall -Wextra -Werror -Wno-psabi -g -O2 -std=c++0x")
+  "${CMAKE_CXX_FLAGS} -Wno-psabi")
 
 add_subdirectory("src")
 add_subdirectory("doc")
