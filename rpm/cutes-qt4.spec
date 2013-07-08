@@ -14,6 +14,7 @@ BuildRequires: pkgconfig(QtDeclarative)
 BuildRequires: pkgconfig(QtScript)
 BuildRequires: cmake >= 2.8
 Provides: cutes = %{version}
+Requires: cutes-common = %{version}
 
 %description
 QtScript environment and "interpreter"
@@ -21,6 +22,8 @@ QtScript environment and "interpreter"
 %if %{?_qt4_importdir:1}%{!?_qt4_importdir:0}
 %define _qt_importdir %{_qt4_importdir}
 %endif
+
+%define qt4_bindir %{_libdir}/qt4/bin
 
 %prep
 %setup -q -n %{name}-%{version}
@@ -32,24 +35,15 @@ make %{?jobs:-j%jobs}
 %install
 rm -rf %{buildroot}
 make install DESTDIR=%{buildroot}
+# used in cutes-common, see qt5 spec
+rm %{buildroot}/%{_mandir}/man1/cutes.1.gz
 
 %clean
 rm -rf %{buildroot}
 
 %files
 %defattr(-,root,root,-)
-%{_bindir}/%{name}
+%{qt4_bindir}/cutes
 %{_libdir}/libcutescript-qt4.so
 %{_qt_importdir}/Mer/QtScript/libqtscript.so
 %{_qt_importdir}/Mer/QtScript/qmldir
-%{_mandir}/man1/%{name}.1.gz
-
-%post
-if [ ! -e %{_bindir}/cutes ]; then
-   ln -s %{_bindir}/%{name} %{_bindir}/cutes | :
-fi
-
-%postun
-if [ "`readlink %{_bindir}/cutes`" == "%{_bindir}/%{name}" ]; then
-   unlink %{_bindir}/cutes | :
-fi
