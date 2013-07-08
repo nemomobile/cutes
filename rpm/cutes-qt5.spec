@@ -5,7 +5,7 @@ Release: 1
 
 License: LGPLv2
 Group:	 System/Shells
-URL:     http://github.com/deztructor/cutes
+URL:     http://github.com/nemomobile/cutes
 Source0: %{name}-%{version}.tar.bz2
 
 BuildRequires: pkgconfig(Qt5Core)
@@ -15,6 +15,7 @@ BuildRequires: pkgconfig(Qt5Qml)
 BuildRequires: pkgconfig(Qt5Quick)
 BuildRequires: pkgconfig(Qt5Script)
 BuildRequires: cmake >= 2.8
+Provides: cutes = %{version}
 
 %description
 QtScript environment and "interpreter"
@@ -42,3 +43,15 @@ rm -rf %{buildroot}
 %{qt_importdir}/Mer/QtScript/libqtscript.so
 %{qt_importdir}/Mer/QtScript/qmldir
 %{_mandir}/man1/%{name}.1.gz
+
+%post
+if [ -e %{_bindir}/cutes ]; then
+   unlink %{_bindir}/cutes
+fi
+ln -s %{_bindir}/%{name} %{_bindir}/cutes | :
+
+%postun
+unlink %{_bindir}/cutes | :
+if [ -x %{_bindir}/cutes-qt4 ]; then
+   ln -s %{_bindir}/cutes-qt4 %{_bindir}/cutes | :
+fi

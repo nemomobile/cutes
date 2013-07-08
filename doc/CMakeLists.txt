@@ -1,7 +1,7 @@
 if(${USEQT} STREQUAL "4")
 
-ADD_CUSTOM_TARGET(cutes.1.gz ALL DEPENDS cutes.man COMMAND gzip -c cutes.man > cutes.1.gz)
-install(FILES cutes.1.gz DESTINATION share/man/man1)
+ADD_CUSTOM_TARGET(cutes-qt4.1.gz ALL DEPENDS cutes.man COMMAND gzip -c cutes.man > cutes-qt4.1.gz)
+install(FILES cutes-qt4.1.gz DESTINATION share/man/man1)
 
 elseif(${USEQT} STREQUAL "5")
 

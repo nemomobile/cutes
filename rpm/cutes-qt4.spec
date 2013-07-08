@@ -1,18 +1,19 @@
-Name:    cutes
+Name:    cutes-qt4
 Summary: QtScript environment and "interpreter"
 Version: 0.0.0
 Release: 1
 
 License: LGPLv2
 Group:	 System/Shells
-URL:     http://github.com/deztructor/cutes
+URL:     http://github.com/nemomobile/cutes
 Source0: %{name}-%{version}.tar.bz2
 
 BuildRequires: pkgconfig(QtCore)
 BuildRequires: pkgconfig(QtGui)
 BuildRequires: pkgconfig(QtDeclarative)
 BuildRequires: pkgconfig(QtScript)
-BuildRequires: cmake
+BuildRequires: cmake >= 2.8
+Provides: cutes = %{version}
 
 %description
 QtScript environment and "interpreter"
@@ -38,7 +39,17 @@ rm -rf %{buildroot}
 %files
 %defattr(-,root,root,-)
 %{_bindir}/%{name}
-%{_libdir}/libcutescript.so
+%{_libdir}/libcutescript-qt4.so
 %{_qt_importdir}/Mer/QtScript/libqtscript.so
 %{_qt_importdir}/Mer/QtScript/qmldir
 %{_mandir}/man1/%{name}.1.gz
+
+%post
+if [ ! -e %{_bindir}/cutes ]; then
+   ln -s %{_bindir}/%{name} %{_bindir}/cutes | :
+fi
+
+%postun
+if [ "`readlink %{_bindir}/cutes`" == "%{_bindir}/%{name}" ]; then
+   unlink %{_bindir}/cutes | :
+fi

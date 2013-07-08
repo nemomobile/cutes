@@ -10,8 +10,8 @@ add_definitions(-DQT_SHARED)
 if(${USEQT} STREQUAL "4")
 
 set(PLUGIN_SRC QmlPlugin.cpp)
-set(NAME cutes)
-set(LIBNAME cutescript)
+set(NAME cutes-qt4)
+set(LIBNAME cutescript-qt4)
 
 qt4_wrap_cpp(MOC_SRC ${HDRS})
 
