@@ -14,7 +14,7 @@ BuildRequires: pkgconfig(QtDeclarative)
 BuildRequires: pkgconfig(QtScript)
 BuildRequires: cmake >= 2.8
 Provides: cutes = %{version}
-Requires: cutes-common = %{version}
+Obsoletes: cutes < 0.7.10
 
 %description
 QtScript environment and "interpreter"
@@ -35,15 +35,13 @@ make %{?jobs:-j%jobs}
 %install
 rm -rf %{buildroot}
 make install DESTDIR=%{buildroot}
-# used in cutes-common, see qt5 spec
-rm %{buildroot}/%{_mandir}/man1/cutes.1.gz
 
 %clean
 rm -rf %{buildroot}
 
 %files
 %defattr(-,root,root,-)
-%{qt4_bindir}/cutes
+%{_bindir}/cutes
 %{_libdir}/libcutescript-qt4.so
 %{_qt_importdir}/Mer/QtScript/libqtscript.so
 %{_qt_importdir}/Mer/QtScript/qmldir

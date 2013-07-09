@@ -16,17 +16,10 @@ BuildRequires: pkgconfig(Qt5Quick)
 BuildRequires: pkgconfig(Qt5Script)
 BuildRequires: cmake >= 2.8
 Provides: cutes = %{version}
-Requires: cutes-common = %{version}
+Obsoletes: cutes < 0.7.10
 
 %description
 QtScript environment and "interpreter"
-
-%package -n cutes-common
-Requires: qtchooser
-Summary: Files common for all cutes versions  
-Group: System Environment/Libraries
-%description -n cutes-common
-%{summary}
 
 %define qt_importdir %{_libdir}/qt5/qml
 
@@ -40,20 +33,14 @@ make %{?jobs:-j%jobs}
 %install
 rm -rf %{buildroot}
 make install DESTDIR=%{buildroot}
-install -d -D -p -m755 %{buildroot}%{_bindir}
-ln -sf %{_bindir}/qtchooser %{buildroot}/%{_bindir}/cutes
 
 %clean
 rm -rf %{buildroot}
 
 %files
 %defattr(-,root,root,-)
-%{_qt5_bindir}/cutes
+%{_bindir}/cutes
 %{_libdir}/libcutescript-qt5.so
 %{qt_importdir}/Mer/QtScript/libqtscript.so
 %{qt_importdir}/Mer/QtScript/qmldir
-
-%files -n cutes-common
-%defattr(-,root,root,-)
 %{_mandir}/man1/cutes.1.gz
-%{_bindir}/cutes

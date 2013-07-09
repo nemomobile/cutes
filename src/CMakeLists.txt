@@ -12,7 +12,6 @@ if(${USEQT} STREQUAL "4")
 set(PLUGIN_SRC QmlPlugin.cpp)
 set(NAME cutes)
 set(LIBNAME cutescript-qt4)
-set(QT_BINDIR lib/qt4/bin)
 
 qt4_wrap_cpp(MOC_SRC ${HDRS})
 
@@ -21,7 +20,6 @@ elseif(${USEQT} STREQUAL "5")
 set(PLUGIN_SRC )
 set(NAME cutes)
 set(LIBNAME cutescript-qt5)
-set(QT_BINDIR lib/qt5/bin)
 
 qt5_wrap_cpp(MOC_SRC ${HDRS} plugin-qt5.hpp)
 
@@ -64,5 +62,5 @@ install(FILES qmldir DESTINATION lib${LIB_SUFFIX}/qt5/qml/${QMLPKG})
 
 endif(${USEQT} STREQUAL "4")
 
-install(TARGETS ${NAME} DESTINATION ${QT_BINDIR})
+install(TARGETS ${NAME} DESTINATION bin)
 install(TARGETS ${LIBNAME} DESTINATION lib${LIB_SUFFIX})
