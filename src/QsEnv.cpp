@@ -5,6 +5,8 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QFile>
+#include <QTextStream>
+#include <QProcess>
 
 #include <unistd.h>
 
@@ -30,22 +32,22 @@ const char *os_name = "unknown";
 #define STRINGIFY(x) #x
 #define DQUOTESTR(x) STRINGIFY(x)
 
-Agent::Agent(Env *env)
-    : QScriptEngineAgent(&env->engine())
-    , env_(env)
-{}
+// Agent::Agent(Env *env)
+//     : QJSEngineAgent(&env->engine())
+//     , env_(env)
+// {}
 
-void Agent::exceptionThrow
-(qint64 scriptId, const QScriptValue &exception, bool hasHandler)
-{
-    auto eng = engine();
-    if (eng) {
-        auto ctx = engine()->currentContext();
-        env_->saveBacktrace(ctx);
-    }
+// void Agent::exceptionThrow
+// (qint64 scriptId, const QJSValue &exception, bool hasHandler)
+// {
+//     auto eng = engine();
+//     if (eng) {
+//         //auto ctx = engine()->currentContext();
+//         //env_->saveBacktrace(ctx);
+//     }
 
-    QScriptEngineAgent::exceptionThrow(scriptId, exception, hasHandler);
-}
+//     QJSEngineAgent::exceptionThrow(scriptId, exception, hasHandler);
+// }
 
 Error::Error(QString const &s)
     : std::runtime_error(s.toStdString()),
@@ -56,28 +58,30 @@ JsError::JsError(Env *env, QString const &file)
     : Error(errorMessage(env, file))
 {}
 
-QString JsError::errorMessage(Env *env, QString const &file)
+QString JsError::errorMessage(Env *env, QString const &// file
+                              )
 {
     if (!env)
         return "";
 
-    auto &engine = env->engine();
-    QString res;
-    QTextStream stream(&res);
-    stream << file << ":" << engine.uncaughtExceptionLineNumber()
-           << ": exception" << engine.uncaughtException().toString()
-           << "\nBacktrace:\n";
-    if (env->getDebug())
-        stream << env->getBacktrace().join("\n") << "\n";
-    else
-        stream << engine.uncaughtExceptionBacktrace().join("\n") << "\n";
-    stream.flush();
+    // auto &engine = env->engine();
+    // // TODO
+    QString res("");
+    // QTextStream stream(&res);
+    // stream << file << ":" << engine.uncaughtExceptionLineNumber()
+    //        << ": exception" << engine.uncaughtException().toString()
+    //        << "\nBacktrace:\n";
+    // if (env->getDebug())
+    //     stream << env->getBacktrace().join("\n") << "\n";
+    // else
+    //     stream << engine.uncaughtExceptionBacktrace().join("\n") << "\n";
+    // stream.flush();
     return res;
 }
 
-QScriptValue findProperty(QScriptValue const& root, QStringList const &path)
+QJSValue findProperty(QJSValue const& root, QStringList const &path)
 {
-    QScriptValue res(root);
+    QJSValue res(root);
     for (auto &name : path)
         res = res.property(name);
 
@@ -97,83 +101,83 @@ static QMap<QString, QVariant> mkEnv()
     return res;
 }
 
-Env *loadEnv(QCoreApplication &app, QScriptEngine &engine, QScriptValue old_global)
+Env *loadEnv(QCoreApplication &app, QJSEngine &engine, QJSValue old_global)
 {
     auto global = new Global(app, engine, old_global);
     return global->env();
 }
 
-Env *loadEnv(QCoreApplication &app, QScriptEngine &engine)
+Env *loadEnv(QCoreApplication &app, QJSEngine &engine)
 {
     return loadEnv(app, engine, engine.globalObject());
 }
 
-static QScriptValue jsPrintImpl
-(QTextStream &out, int begin, QScriptContext *context, QScriptEngine *engine)
-{
-    auto len = context->argumentCount();
-    if (len >= begin) {
-        --len;
-        for (int i = begin; i < len; ++i)
-            out << context->argument(i).toString() << " ";
+// static QJSValue jsPrintImpl
+// (QTextStream &out, int begin, QJSContext *context, QJSEngine *engine)
+// {
+//     auto len = context->argumentCount();
+//     if (len >= begin) {
+//         --len;
+//         for (int i = begin; i < len; ++i)
+//             out << context->argument(i).toString() << " ";
 
-        out << context->argument(len).toString() << endl;
-    }
-    return engine->undefinedValue();
-}
+//         out << context->argument(len).toString() << endl;
+//     }
+//     return engine->undefinedValue();
+// }
 
-static QScriptValue jsPrintStdout(QScriptContext *context, QScriptEngine *engine)
-{
-    QTextStream out(stdout);
-    return jsPrintImpl(out, 0, context, engine);
-}
+// static QJSValue jsPrintStdout(QJSContext *context, QJSEngine *engine)
+// {
+//     QTextStream out(stdout);
+//     return jsPrintImpl(out, 0, context, engine);
+// }
 
-static QScriptValue jsFPrint(QScriptContext *context, QScriptEngine *engine)
-{
-    QTextStream out(stdout);
-    auto res = engine->undefinedValue();
-    auto len = context->argumentCount();
-    if (!len)
-        return res;
-    auto dst = context->argument(0);
-    if (dst.isNumber()) {
-        auto i = dst.toInt32();
-        FILE *f = (i == STDOUT_FILENO
-                   ? stdout : (i == STDERR_FILENO
-                               ? stderr : nullptr));
-        if (!f)
-            return res;
+// static QJSValue jsFPrint(QJSContext *context, QJSEngine *engine)
+// {
+//     QTextStream out(stdout);
+//     auto res = engine->undefinedValue();
+//     auto len = context->argumentCount();
+//     if (!len)
+//         return res;
+//     auto dst = context->argument(0);
+//     if (dst.isNumber()) {
+//         auto i = dst.toInt32();
+//         FILE *f = (i == STDOUT_FILENO
+//                    ? stdout : (i == STDERR_FILENO
+//                                ? stderr : nullptr));
+//         if (!f)
+//             return res;
 
-        QTextStream out(f);
-        return jsPrintImpl(out, 1, context, engine);
-    } else if (dst.isQObject()){
-        QIODevice *dev = dynamic_cast<QIODevice*>(dst.toQObject());
-        if (dev) {
-            QTextStream out(dev);
-            return jsPrintImpl(out, 1, context, engine);
-        }
+//         QTextStream out(f);
+//         return jsPrintImpl(out, 1, context, engine);
+//     } else if (dst.isQObject()){
+//         QIODevice *dev = dynamic_cast<QIODevice*>(dst.toQObject());
+//         if (dev) {
+//             QTextStream out(dev);
+//             return jsPrintImpl(out, 1, context, engine);
+//         }
 
-        qDebug() << dst.toString() << " is not QIODevice";
-    } else {
-        qDebug() << dst.toString() << " is not file nr or QIODevice";
-    }
-    return res;
-}
+//         qDebug() << dst.toString() << " is not QIODevice";
+//     } else {
+//         qDebug() << dst.toString() << " is not file nr or QIODevice";
+//     }
+//     return res;
+// }
 
-static QScriptValue jsRequire(QScriptContext *context, QScriptEngine *engine)
-{
-    auto qtscript = findProperty(engine->globalObject(), {"qtscript"});
-    auto include = findProperty(qtscript, {"include"});
-    auto len = context->argumentCount();
-    if (!len)
-        return engine->undefinedValue();
-    auto params = engine->newArray(1);
-    auto name = context->argument(0).toString();
-    params.setProperty(0, QScriptValue(name));
-    return include.call(qtscript, params);
-}
+// static QJSValue jsRequire(QJSContext *context, QJSEngine *engine)
+// {
+//     auto qtscript = findProperty(engine->globalObject(), {"qtscript"});
+//     auto include = findProperty(qtscript, {"include"});
+//     auto len = context->argumentCount();
+//     if (!len)
+//         return engine->undefinedValue();
+//     auto params = engine->newArray(1);
+//     auto name = context->argument(0).toString();
+//     params.setProperty(0, QJSValue(name));
+//     return include.call(qtscript, params);
+// }
 
-Global::Global(QCoreApplication &app, QScriptEngine &engine, QScriptValue & global)
+Global::Global(QCoreApplication &app, QJSEngine &engine, QJSValue & global)
     : QObject(&engine)
     , env_(new Env(this, app, engine))
 {
@@ -183,9 +187,9 @@ Global::Global(QCoreApplication &app, QScriptEngine &engine, QScriptValue & glob
     anyMetaTypeRegister<QsExecuteEnv>(&engine);
 
     self.setPrototype(global);
-    engine.setGlobalObject(self);
-    self.setProperty("print", engine.newFunction(jsPrintStdout));
-    self.setProperty("require", engine.newFunction(jsRequire));
+    // engine.setGlobalObject(self);
+    // self.setProperty("print", engine.newFunction(jsPrintStdout));
+    // self.setProperty("require", engine.newFunction(jsRequire));
     // process - used by node.js etc. modules
     self.setProperty("process", engine.newObject());
 }
@@ -195,13 +199,13 @@ Env *Global::env() const
     return env_;
 }
 
-QScriptValue Global::exports() const
+QJSValue Global::exports() const
 {
     auto module = static_cast<Module*>(env_->module());
     return module->exports();
 }
 
-void Global::setExports(QScriptValue v)
+void Global::setExports(QJSValue v)
 {
     auto module = static_cast<Module*>(env_->module());
     module->setExports(v);
@@ -217,12 +221,12 @@ Module * Global::module() const
     return env_->module();
 }
 
-Env::Env(Global *parent, QCoreApplication &app, QScriptEngine &engine)
+Env::Env(Global *parent, QCoreApplication &app, QJSEngine &engine)
     : QObject(parent)
     , engine_(engine)
-    , agent_(nullptr)
+    // , agent_(nullptr)
     , actor_count_(0)
-    , fprint_(engine.newFunction(jsFPrint))
+    // , fprint_(engine.newFunction(jsFPrint))
     , is_waiting_exit_(false)
 {
     setObjectName("qtscript");
@@ -261,22 +265,23 @@ Module * Env::module() const
 
 bool Env::getDebug() const
 {
-    return agent_ != nullptr;
+    return false;//agent_ != nullptr;
 }
 
-void Env::setDebug(bool isEnabled)
+void Env::setDebug(bool // isEnabled
+                   )
 {
-    if (isEnabled) {
-        if (!agent_) {
-            agent_ = new Agent(this);
-            engine_.setAgent(agent_);
-        }
-    } else if (agent_) {
-        engine_.setAgent(nullptr);
-    }
+    // if (isEnabled) {
+    //     // if (!agent_) {
+    //     //     agent_ = new QJSEngineAgent(&this->engine_);
+    //     //     engine_.setAgent(agent_);
+    //     // }
+    // } else if (agent_) {
+    //     engine_.setAgent(nullptr);
+    // }
 }
 
-QScriptValue Env::getFPrint() const
+QJSValue Env::getFPrint() const
 {
     return fprint_;
 }
@@ -287,20 +292,20 @@ QStringList const& Env::getBacktrace() const
 }
 
 
-void Env::saveBacktrace(QScriptContext *ctx)
-{
-    backtrace_.clear();
-    backtrace_ = ctx->backtrace();
-}
+// void Env::saveBacktrace(QJSContext *ctx)
+// {
+//     backtrace_.clear();
+//     backtrace_ = ctx->backtrace();
+// }
 
-QScriptValue Env::actor()
+QJSValue Env::actor()
 {
     auto actor = new QtScriptActor(&engine_);
     connect(actor, SIGNAL(acquired()),
             this, SLOT(actorAcquired()));
     connect(actor, SIGNAL(released()),
             this, SLOT(actorReleased()));
-    return engine_.newQObject(actor, QScriptEngine::ScriptOwnership);
+    return engine_.newQObject(actor);//, QJSEngine::ScriptOwnership);
 }
 
 void Env::actorAcquired()
@@ -316,6 +321,7 @@ void Env::actorReleased()
 
 bool Env::shouldWait()
 {
+    idle();
     if (actor_count_) {
         is_waiting_exit_ = true;
     }
@@ -327,9 +333,139 @@ void Env::exit(int rc)
     QCoreApplication::instance()->exit(rc);
 }
 
-QScriptValue Env::extend(QString const& extension)
+class EnvEvent : public QEvent
 {
-    return engine_.importExtension(extension);
+public:
+    enum Type {
+        Deferred = QEvent::User,
+    };
+
+    EnvEvent(QJSValue const& fn)
+        : QEvent(static_cast<QEvent::Type>(Deferred))
+        , fn_(fn)
+    {}
+    virtual ~EnvEvent() {}
+
+    void call() {
+        fn_.call({fn_, fn_.engine()->newArray(0)});
+    }
+
+private:
+    QJSValue fn_;
+};
+
+EventQueue::EventQueue(unsigned long max_len)
+    : serial_(0)
+    , max_len_(max_len)
+    , len_(0) // TODO c++11 should provide O(1) list::size(), check
+{
+}
+
+unsigned long EventQueue::enqueue(QJSValue const &fn)
+{
+    if (!fn.isCallable()) {
+        QString err("Can enqueue only function, got %1");
+        err.arg(fn.toString());
+        // TODO fn.engine()->currentContext()->throwError(err);
+        return 0;
+    }
+    if (len_ == max_len_) {
+        // QString err("Can enqueue, queue is full");
+        // TODO fn.engine()->currentContext()->throwError(err);
+        return 0;
+    }
+
+    events_.push_back(std::make_pair(++serial_, fn));
+    ++len_;
+    return serial_;
+}
+
+/// O(n), considered like rarely used
+bool EventQueue::remove(unsigned long id)
+{
+    auto p = std::find_if(events_.begin(), events_.end()
+                          , [&id](Deferred const &v) {
+                              return v.first == id;
+                          });
+    if (p == events_.end())
+        return false;
+
+    events_.erase(p);
+    --len_;
+    return true;
+}
+
+QJSValue EventQueue::callNext()
+{
+    if (empty())
+        return QJSValue();
+
+    auto &fn = events_.front().second;
+    auto res = fn.call({fn, fn.engine()->newArray(0)});
+    events_.pop_front();
+    --len_;
+    return res;
+}
+
+bool EventQueue::clear()
+{
+    if (empty())
+        return false;
+
+    events_.clear();
+    return true;
+}
+
+bool EventQueue::callAll()
+{
+    if (empty())
+        return false;
+    for (auto &v : events_) {
+        auto &fn = v.second;
+        fn.call({fn, fn.engine()->newArray(0)});
+    }
+    return true;
+}
+
+bool EventQueue::empty() const
+{
+    return events_.empty();
+}
+
+
+/// defer function execution until event loop processes next event,
+/// processing can be enforced by calling Env::idle()
+void Env::defer(QJSValue const& fn)
+{
+    if (!fn.isCallable()) {
+        QString err("Can defer only function, got %1");
+        err.arg(fn.toString());
+        // TODO engine_.currentContext()->throwError(err);
+        return;
+    }
+    QCoreApplication::postEvent(this, new EnvEvent(fn), Qt::HighEventPriority);
+}
+
+/// process all queued events including deferred functions
+void Env::idle()
+{
+    QCoreApplication::processEvents();
+}
+
+bool Env::event(QEvent *e)
+{
+    auto evType = static_cast<EnvEvent::Type>(e->type());
+    if (evType != EnvEvent::Deferred)
+        return QObject::event(e);
+
+    auto deferred = static_cast<EnvEvent*>(e);
+    deferred->call();
+    return true;
+}
+
+QJSValue Env::extend(QString const& extension)
+{
+    return ""; // TODO engine_.importExtension(extension);
 }
 
 void Env::addSearchPath(QString const &path, Position pos)
@@ -370,7 +506,7 @@ QString Env::findFile(QString const &file_name)
     return QString();
 }
 
-QScriptValue Env::include(QString const &file_name, bool is_reload)
+QJSValue Env::include(QString const &file_name, bool is_reload)
 {
     auto context = engine_.currentContext();
     try {
@@ -387,7 +523,7 @@ QScriptValue Env::include(QString const &file_name, bool is_reload)
     }
 }
 
-QScriptValue Env::load(QString const &script_name, bool is_reload)
+QJSValue Env::load(QString const &script_name, bool is_reload)
 {
     QString file_name = findFile(QFileInfo(script_name).suffix() != "js"
                                   ? script_name + ".js" : script_name);
@@ -405,8 +541,13 @@ QScriptValue Env::load(QString const &script_name, bool is_reload)
     }
 
     auto scope = mk_scope
-        ([this, script](){ scripts_.push(script); }
-        , [this]() { scripts_.pop(); });
+        ([this, script](){
+            scripts_.push(script);
+        }
+        , [this]() {
+            scripts_.pop();
+            idle();
+        });
     auto res = script->load(engine_);
     if (p != modules_.end()) {
         p.value()->deleteLater();
@@ -421,22 +562,22 @@ QString Env::os() const
     return QString(os_name);
 }
 
-QScriptValue Env::env() const
+QJSValue Env::env() const
 {
     return env_;
 }
 
-QScriptValue Env::path() const
+QJSValue Env::path() const
 {
     return qScriptValueFromSequence(&engine_, lib_path_);
 }
 
-QScriptValue Env::args() const
+QJSValue Env::args() const
 {
     return qScriptValueFromSequence(&engine_, args_);
 }
 
-QScriptEngine &Env::engine()
+QJSEngine &Env::engine()
 {
     return engine_;
 }
@@ -461,7 +602,7 @@ Module::Module(Env *parent, QString const& fname, QString const& cwd)
     setObjectName("script");
 }
 
-QScriptValue Module::require(QString const& name, bool is_reload)
+QJSValue Module::require(QString const& name, bool is_reload)
 {
     return env()->include(name, is_reload);
 }
@@ -471,17 +612,17 @@ bool Module::loaded() const
     return is_loaded_;
 }
 
-QScriptValue Module::args() const
+QJSValue Module::args() const
 {
     return env()->args();
 }
 
-QScriptValue Module::exports() const
+QJSValue Module::exports() const
 {
     return exports_;
 }
 
-void Module::setExports(QScriptValue v)
+void Module::setExports(QJSValue v)
 {
     exports_ = v;
 }
@@ -497,7 +638,7 @@ QString Module::fileName() const
     return info_.canonicalFilePath();
 }
 
-QScriptValue Module::load(QScriptEngine &engine)
+QJSValue Module::load(QJSEngine &engine)
 {
     auto file_name = fileName();
     QFile file(file_name);

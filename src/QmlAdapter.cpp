@@ -7,17 +7,17 @@
 
 namespace QsExecute {
 
-EngineAccess::EngineAccess(QScriptEngine **e) : engine_(e) {}
+EngineAccess::EngineAccess(QJSEngine **e) : engine_(e) {}
 EngineAccess::~EngineAccess() {}
 
-void EngineAccess::setEngine(QScriptValue val)
+void EngineAccess::setEngine(QJSValue val)
 {
     *engine_ = val.engine();
 }
 
-QScriptEngine *getDeclarativeScriptEngine(QDeclarativeContext &ctx)
+QJSEngine *getDeclarativeScriptEngine(QDeclarativeContext &ctx)
 {
-    QScriptEngine *pengine;
+    QJSEngine *pengine;
 
     ctx.setContextProperty("__engineAccess", new EngineAccess(&pengine));
     QDeclarativeExpression expr(&ctx, ctx.contextObject(),
@@ -26,7 +26,7 @@ QScriptEngine *getDeclarativeScriptEngine(QDeclarativeContext &ctx)
     return pengine;
 }
 
-QScriptEngine *getDeclarativeScriptEngine(QDeclarativeEngine *decl_eng)
+QJSEngine *getDeclarativeScriptEngine(QDeclarativeEngine *decl_eng)
 {
     return decl_eng
         ? getDeclarativeScriptEngine(*decl_eng->rootContext())
@@ -36,7 +36,7 @@ QScriptEngine *getDeclarativeScriptEngine(QDeclarativeEngine *decl_eng)
 void setupDeclarative
 (QCoreApplication &app, QDeclarativeView &view, QString const &qml_path)
 {
-    QScriptEngine *pengine = getDeclarativeScriptEngine(*view.rootContext());
+    QJSEngine *pengine = getDeclarativeScriptEngine(*view.rootContext());
     auto script_env = loadEnv(app, *pengine);
     script_env->pushParentScriptPath(qml_path);
 

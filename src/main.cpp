@@ -21,7 +21,7 @@ int executeScript(int argc, char *argv[])
 
     QString script_file(app.arguments().at(1));
 
-    QScriptEngine engine;
+    QJSEngine engine;
     auto script_env = loadEnv(app, engine);
     int rc = EXIT_SUCCESS;
 

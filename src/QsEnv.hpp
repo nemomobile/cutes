@@ -6,12 +6,12 @@
 #include <QObject>
 #include <QString>
 #include <QSet>
-#include <QScriptEngine>
-#include <QScriptValue>
+#include <QJSEngine>
+#include <QJSValue>
 #include <QStringList>
-#include <QtScript>
 #include <QCoreApplication>
-#include <QScriptEngineAgent>
+#include <QDir>
+#include <QStack>
 
 #include <stdexcept>
 
@@ -43,19 +43,19 @@ private:
     static QString errorMessage(Env *env, QString const &file);
 };
 
-QScriptValue findProperty(QScriptValue const&, QStringList const &);
+QJSValue findProperty(QJSValue const&, QStringList const &);
 
-class Agent : public QScriptEngineAgent
-{
-public:
-    Agent(Env *);
+// class Agent : public QJSEngineAgent
+// {
+// public:
+//     Agent(Env *);
 
-    virtual void exceptionThrow
-    (qint64 scriptId, const QScriptValue & exception, bool hasHandler);
+//     virtual void exceptionThrow
+//     (qint64 scriptId, const QJSValue & exception, bool hasHandler);
 
-private:
-    Env *env_;
-};
+// private:
+//     Env *env_;
+// };
 
 class Global : public QObject
 {
@@ -63,15 +63,15 @@ class Global : public QObject
 
     Q_PROPERTY(QsExecuteModule * module READ module);
     Q_PROPERTY(QObject * qtscript READ qtscript);
-    Q_PROPERTY(QScriptValue exports READ exports WRITE setExports);
+    Q_PROPERTY(QJSValue exports READ exports WRITE setExports);
 
 public:
 
-    Global(QCoreApplication &, QScriptEngine &, QScriptValue &);
+    Global(QCoreApplication &, QJSEngine &, QJSValue &);
     virtual ~Global() {}
 
-    QScriptValue exports() const;
-    void setExports(QScriptValue);
+    QJSValue exports() const;
+    void setExports(QJSValue);
 
     QObject * qtscript() const;
     Module * module() const;
@@ -82,17 +82,38 @@ private:
     Env *env_;
 };
 
+typedef std::pair<unsigned long, QJSValue> Deferred;
+
+class EventQueue : public QObject
+{
+    Q_OBJECT;
+public:
+    EventQueue(unsigned long);
+
+    unsigned long enqueue(QJSValue const &);
+    bool remove(unsigned long);
+    QJSValue callNext();
+    bool empty() const;
+    bool clear();
+    bool callAll();
+private:
+    unsigned long serial_;
+    unsigned long max_len_;
+    unsigned long len_;
+    std::list<Deferred> events_;
+};
+
 class Env : public QObject
 {
     Q_OBJECT;
 
     Q_PROPERTY(QsExecuteModule * module READ module);
     Q_PROPERTY(QString os READ os);
-    Q_PROPERTY(QScriptValue env READ env);
-    Q_PROPERTY(QScriptValue path READ path);
+    Q_PROPERTY(QJSValue env READ env);
+    Q_PROPERTY(QJSValue path READ path);
     Q_PROPERTY(bool debug READ getDebug WRITE setDebug);
     Q_PROPERTY(QStringList backtrace READ getBacktrace);
-    Q_PROPERTY(QScriptValue fprint READ getFPrint);
+    Q_PROPERTY(QJSValue fprint READ getFPrint);
 
 public:
 
@@ -101,48 +122,52 @@ public:
         Back
     };
 
-    Env(Global *parent, QCoreApplication &, QScriptEngine &);
+    Env(Global *parent, QCoreApplication &, QJSEngine &);
     virtual ~Env() {}
 
-    Q_INVOKABLE QScriptValue include(QString const&, bool is_reload = false);
-    Q_INVOKABLE QScriptValue extend(QString const&);
-    Q_INVOKABLE QScriptValue actor();
+    virtual bool event(QEvent *);
+
+    Q_INVOKABLE QJSValue include(QString const&, bool is_reload = false);
+    Q_INVOKABLE QJSValue extend(QString const&);
+    Q_INVOKABLE QJSValue actor();
     Q_INVOKABLE void exit(int);
+    Q_INVOKABLE void defer(QJSValue const&);
+    Q_INVOKABLE void idle();
 
     Module *module() const;
     QString os() const;
-    QScriptValue env() const;
-    QScriptValue path() const;
+    QJSValue env() const;
+    QJSValue path() const;
     QStringList const& getBacktrace() const;
-    void saveBacktrace(QScriptContext *);
+    // void saveBacktrace(QJSContext *);
     bool getDebug() const;
     void setDebug(bool);
-    QScriptValue getFPrint() const;
+    QJSValue getFPrint() const;
 
 
     bool shouldWait();
-    QScriptValue args() const;
-    QScriptValue load(QString const &, bool is_reload = false);
+    QJSValue args() const;
+    QJSValue load(QString const &, bool is_reload = false);
     void addSearchPath(QString const &, Position);
     void pushParentScriptPath(QString const&);
 
-    QScriptEngine &engine();
+    QJSEngine &engine();
 private:
     Env(Env const&);
     QString findFile(QString const &);
 
-    QScriptEngine &engine_;
+    QJSEngine &engine_;
     QList<QDir> lib_path_;
     QMap<QString, Module*> modules_;
-    Agent *agent_;
+    // QJSEngineAgent *agent_;
 
     QStringList backtrace_;
-    QScriptValue env_;
+    QJSValue env_;
     QStringList path_;
     QStack<Module*> scripts_;
     QStringList args_;
     int actor_count_;
-    QScriptValue fprint_;
+    QJSValue fprint_;
     bool is_waiting_exit_;
 
 private slots:
@@ -158,53 +183,53 @@ class Module : public QObject
     Q_PROPERTY(QString filename READ fileName);
     Q_PROPERTY(bool loaded READ loaded);
     Q_PROPERTY(QString cwd READ cwd);
-    Q_PROPERTY(QScriptValue args READ args);
-    Q_PROPERTY(QScriptValue exports READ exports WRITE setExports);
+    Q_PROPERTY(QJSValue args READ args);
+    Q_PROPERTY(QJSValue exports READ exports WRITE setExports);
 
 public:
     Module(Env *parent, QString const&);
     Module(Env *parent, QString const&, QString const&);
     virtual ~Module() {}
 
-    Q_INVOKABLE QScriptValue require(QString const&, bool is_reload = false);
+    Q_INVOKABLE QJSValue require(QString const&, bool is_reload = false);
 
     QString fileName() const;
     bool loaded() const;
     QString cwd() const;
-    QScriptValue args() const;
-    QScriptValue exports() const;
-    void setExports(QScriptValue);
+    QJSValue args() const;
+    QJSValue exports() const;
+    void setExports(QJSValue);
 
-    QScriptValue load(QScriptEngine &);
+    QJSValue load(QJSEngine &);
 
-    QScriptValue result_;
+    QJSValue result_;
 private:
     Env* env() { return static_cast<Env*>(parent()); }
     Env const* env() const { return static_cast<Env const*>(parent()); }
     QFileInfo info_;
-    QScriptValue exports_;
+    QJSValue exports_;
     bool is_loaded_;
     QString cwd_;
 };
 
-Env *loadEnv(QCoreApplication &app, QScriptEngine &engine, QScriptValue global);
-Env *loadEnv(QCoreApplication &app, QScriptEngine &engine);
+Env *loadEnv(QCoreApplication &app, QJSEngine &engine, QJSValue global);
+Env *loadEnv(QCoreApplication &app, QJSEngine &engine);
 
 
 template <typename T>
-QScriptValue anyToScriptValue(QScriptEngine *engine, T* const &in)
+QJSValue anyToScriptValue(QJSEngine *engine, T* const &in)
 {
     return engine->newQObject(in);
 }
 
 template <typename T>
-void anyFromScriptValue(const QScriptValue &object, T* &out)
+void anyFromScriptValue(const QJSValue &object, T* &out)
 {
     out = qobject_cast<T*>(object.toQObject());
 }
 
 template <typename T>
-void anyMetaTypeRegister(QScriptEngine *engine)
+void anyMetaTypeRegister(QJSEngine *engine)
 {
     qScriptRegisterMetaType
         (engine, anyToScriptValue<T>, anyFromScriptValue<T>);

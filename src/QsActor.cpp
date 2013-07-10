@@ -33,9 +33,9 @@
 
 namespace QsExecute {
 
-Endpoint::Endpoint(QScriptValue const& on_reply
-                   , QScriptValue const& on_error
-                   , QScriptValue const& on_progress)
+Endpoint::Endpoint(QJSValue const& on_reply
+                   , QJSValue const& on_error
+                   , QJSValue const& on_progress)
     : on_reply_(on_reply)
     , on_error_(on_error)
     , on_progress_(on_progress)
@@ -43,14 +43,14 @@ Endpoint::Endpoint(QScriptValue const& on_reply
 }
 
 static inline endpoint_ptr endpoint
-(QScriptValue const& on_reply
- , QScriptValue const& on_error
- , QScriptValue const& on_progress)
+(QJSValue const& on_reply
+ , QJSValue const& on_error
+ , QJSValue const& on_progress)
 {
     return endpoint_ptr(new Endpoint(on_reply, on_error, on_progress));
 }
 
-Actor::Actor(QScriptEngine *engine)
+Actor::Actor(QJSEngine *engine)
     : engine_(engine)
     , unreplied_count_(0)
 {
@@ -109,7 +109,7 @@ void Actor::setSource(QString const& src)
     reload();
 }
 
-DeclarativeActor::DeclarativeActor(QScriptEngine *engine)
+DeclarativeActor::DeclarativeActor(QJSEngine *engine)
     : Actor(engine)
 {}
 
@@ -129,7 +129,7 @@ void DeclarativeActor::setSource(QUrl const& src)
     Actor::setSource(src.path());
 }
 
-QtScriptActor::QtScriptActor(QScriptEngine *engine)
+QtScriptActor::QtScriptActor(QJSEngine *engine)
     : Actor(engine)
 {}
 
@@ -170,10 +170,10 @@ void Actor::release()
 }
 
 void Actor::send
-(QScriptValue const &msg
- , QScriptValue const& on_reply
- , QScriptValue const& on_error
- , QScriptValue const& on_progress)
+(QJSValue const &msg
+ , QJSValue const& on_reply
+ , QJSValue const& on_error
+ , QJSValue const& on_progress)
 {
     auto fn = [&]() {
         acquire();
@@ -185,10 +185,10 @@ void Actor::send
     execute(fn);
 }
 void Actor::request
-(QString const &method_name, QScriptValue const &msg
- , QScriptValue const& on_reply
- , QScriptValue const& on_error
- , QScriptValue const& on_progress)
+(QString const &method_name, QJSValue const &msg
+ , QJSValue const& on_reply
+ , QJSValue const& on_error
+ , QJSValue const& on_progress)
 {
     auto fn = [&]() {
         acquire();
@@ -209,7 +209,7 @@ void Actor::progress(Message *msg)
     callback(msg, msg->endpoint_->on_progress_);
 }
 
-void Actor::callback(Message *msg, QScriptValue& cb)
+void Actor::callback(Message *msg, QJSValue& cb)
 {
     if (!cb.isValid())
         return;
@@ -268,7 +268,7 @@ void Engine::toActor(Event *ev)
     QCoreApplication::postEvent(actor_, ev);
 }
 
-EngineException::EngineException(QScriptEngine const& engine)
+EngineException::EngineException(QJSEngine const& engine)
     : Event(Event::LoadException)
     , exception_(engine.uncaughtException().toVariant())
     , backtrace_(engine.uncaughtExceptionBacktrace())
@@ -287,7 +287,7 @@ Request::Request(QString const &method_name, QVariant const& data
 
 void Engine::load(Load *msg)
 {
-    engine_ = new QScriptEngine(this);
+    engine_ = new QJSEngine(this);
     try {
         auto script_env = loadEnv(*QCoreApplication::instance(), *engine_);
         script_env->pushParentScriptPath(msg->top_script_);
@@ -296,9 +296,9 @@ void Engine::load(Load *msg)
             qDebug() << "Not a function or object";
             if (handler_.isError()) {
                 error(handler_.toVariant()
-                      , endpoint(QScriptValue()
-                                 , QScriptValue()
-                                 , QScriptValue()));
+                      , endpoint(QJSValue()
+                                 , QJSValue()
+                                 , QJSValue()));
             } else {
                 auto cls = handler_.scriptClass();
                 qDebug() << "Handler is "
@@ -334,7 +334,7 @@ void WorkerThread::run()
     engine_.reset(nullptr);
 }
 
-void Engine::processResult(QScriptValue &ret, endpoint_ptr ep)
+void Engine::processResult(QJSValue &ret, endpoint_ptr ep)
 {
     QVariant err;
     if (engine_->hasUncaughtException()) {
@@ -352,7 +352,7 @@ void Engine::processResult(QScriptValue &ret, endpoint_ptr ep)
 
 void Engine::processMessage(Message *msg)
 {
-    QScriptValue ret;
+    QJSValue ret;
 
     if (handler_.isFunction()) {
         auto params = engine_->newArray(2);
@@ -372,7 +372,7 @@ void Engine::processMessage(Message *msg)
 
 void Engine::processRequest(Request *req)
 {
-    QScriptValue ret;
+    QJSValue ret;
 
     if (handler_.isObject()) {
         auto method = handler_.property(req->method_name_);
@@ -476,7 +476,7 @@ void Actor::wait()
     loop.exec();
 }
 
-void MessageContext::reply(QScriptValue data)
+void MessageContext::reply(QJSValue data)
 {
     if (engine_)
         engine_->reply(data.toVariant(), endpoint_, Event::Progress);

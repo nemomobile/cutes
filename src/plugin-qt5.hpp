@@ -19,7 +19,7 @@ class Plugin : public QQmlExtensionPlugin
 public:
     void initializeEngine(QDeclarativeEngine *engine, const char *)
     {
-        QScriptEngine *script_engine = getDeclarativeScriptEngine(*engine->rootContext());
+        QJSEngine *script_engine = getDeclarativeScriptEngine(*engine->rootContext());
         loadEnv(*QCoreApplication::instance(), *script_engine);
     }
 

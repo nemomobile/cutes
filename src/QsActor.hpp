@@ -27,7 +27,7 @@
 #include <QObject>
 #include <QVariant>
 #include <QString>
-#include <QScriptValue>
+#include <QJSValue>
 #include <QThread>
 #include <QEvent>
 #include <QWaitCondition>
@@ -96,12 +96,12 @@ private:
     void load(Load *);
     void processMessage(Message *);
     void processRequest(Request *);
-    void processResult(QScriptValue &, endpoint_ptr);
+    void processResult(QJSValue &, endpoint_ptr);
     void toActor(Event*);
 
     Actor *actor_;
-    QScriptEngine *engine_;
-    QScriptValue handler_;
+    QJSEngine *engine_;
+    QJSValue handler_;
     QWaitCondition cond_;
     QMutex mutex_;
 };
@@ -128,7 +128,7 @@ class Actor : public QObject
 {
     Q_OBJECT;
 public:
-    Actor(QScriptEngine *engine = nullptr);
+    Actor(QJSEngine *engine = nullptr);
     virtual ~Actor();
 
 protected:
@@ -136,16 +136,16 @@ protected:
     void setSource(QString const&);
 
     Q_INVOKABLE void send
-    (QScriptValue const&
-     , QScriptValue const& on_reply = QScriptValue()
-     , QScriptValue const& on_error = QScriptValue()
-     , QScriptValue const& on_progress = QScriptValue());
+    (QJSValue const&
+     , QJSValue const& on_reply = QJSValue()
+     , QJSValue const& on_error = QJSValue()
+     , QJSValue const& on_progress = QJSValue());
 
     Q_INVOKABLE void request
-    (QString const&, QScriptValue const&
-     , QScriptValue const& on_reply = QScriptValue()
-     , QScriptValue const& on_error = QScriptValue()
-     , QScriptValue const& on_progress = QScriptValue());
+    (QString const&, QJSValue const&
+     , QJSValue const& on_reply = QJSValue()
+     , QJSValue const& on_error = QJSValue()
+     , QJSValue const& on_progress = QJSValue());
 
     Q_INVOKABLE void wait();
     Q_INVOKABLE void reload();
@@ -164,12 +164,12 @@ protected:
     void error(Message*);
     WorkerThread *worker();
 
-    mutable QScriptEngine *engine_;
+    mutable QJSEngine *engine_;
 private:
 
     void acquire();
     void release();
-    void callback(Message*, QScriptValue&);
+    void callback(Message*, QJSValue&);
     void execute(std::function<void()>);
 
     int unreplied_count_;
@@ -182,7 +182,7 @@ class DeclarativeActor : public Actor
     // uses QUrl to allow declarative engine to resolve full path
     Q_PROPERTY(QUrl source READ source WRITE setSource);
 public:
-    DeclarativeActor(QScriptEngine *engine = nullptr);
+    DeclarativeActor(QJSEngine *engine = nullptr);
     virtual ~DeclarativeActor() {}
 
     QUrl source() const;
@@ -195,7 +195,7 @@ class QtScriptActor : public Actor
     // in QtScript using simple string as a source name
     Q_PROPERTY(QString source READ source WRITE setSource);
 public:
-    QtScriptActor(QScriptEngine *engine = nullptr);
+    QtScriptActor(QJSEngine *engine = nullptr);
     virtual ~QtScriptActor() {}
 };
 

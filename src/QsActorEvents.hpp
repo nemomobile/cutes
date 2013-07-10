@@ -29,7 +29,7 @@
 #include <QObject>
 #include <QVariant>
 #include <QString>
-#include <QScriptValue>
+#include <QJSValue>
 
 
 namespace QsExecute
@@ -39,11 +39,11 @@ class Endpoint : public QObject
 {
     Q_OBJECT;
 public:
-    Endpoint(QScriptValue const&, QScriptValue const&, QScriptValue const&);
+    Endpoint(QJSValue const&, QJSValue const&, QJSValue const&);
 
-    QScriptValue on_reply_;
-    QScriptValue on_error_;
-    QScriptValue on_progress_;
+    QJSValue on_reply_;
+    QJSValue on_error_;
+    QJSValue on_progress_;
 };
 
 class Load : public Event
@@ -82,7 +82,7 @@ public:
     MessageContext(Engine *, endpoint_ptr);
     virtual ~MessageContext();
 
-    Q_INVOKABLE void reply(QScriptValue);
+    Q_INVOKABLE void reply(QJSValue);
 
     void disable();
 private:
@@ -93,7 +93,7 @@ private:
 class EngineException : public Event
 {
 public:
-    EngineException(QScriptEngine const&);
+    EngineException(QJSEngine const&);
     virtual ~EngineException() {}
 
     QVariant exception_;
