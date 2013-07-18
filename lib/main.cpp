@@ -1,4 +1,5 @@
-#include <cutes/sys.hpp>
+#include <cutes/os.hpp>
+#include <QCoreApplication>
 
 static v8::Handle<v8::Value> log(const v8::Arguments& args)
 {
@@ -41,12 +42,13 @@ QString exec_(QJSEngine *jseng, int nr)
                  "var f = new File(fname);\n"
                  "IODevice.WriteOnly\n"
                  "log('opened', f.open(IODevice.WriteOnly));\n"
+                 "log('isOpened', f.isOpen());\n"
                  "f.write('%1=');\n"
-                 "f.write(13);\n"
+                 "f.write(6);\n"
                  "f.close()\n"
                  "var fi = new FileInfo(fname);"
                  "delete f;\n"
-                 "fi.exists();"
+                 "fi.fileName() + fi.exists() + fi.group();"
                  );
     auto v = jseng->evaluate(code.arg(nr));
     return v.toString();
@@ -56,8 +58,6 @@ QString exec(int nr)
 {
     QJSEngine *jseng = new QJSEngine();
     auto res = exec_(jseng, nr);
-    //v8::V8::AdjustAmountOfExternalAllocatedMemory((intptr_t)1024 * 1024 * 1024 * 2);
-    // while(!v8::V8::IdleNotification()) {};
     jseng->collectGarbage();
     return res;
 }
@@ -65,12 +65,6 @@ QString exec(int nr)
 int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
-    std::vector<std::future<QString> > f;
-    for (int i = 0; i < 1; ++i) {
-        f.push_back(std::async(exec, i));
-    }
-    for (auto &v : f) {
-        qDebug() << v.get();
-    }
+    qDebug() << exec(13);
 	return 0;
 }
