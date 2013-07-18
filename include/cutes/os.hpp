@@ -1,5 +1,5 @@
-#ifndef _CUTES_JS_SYS_HPP_
-#define _CUTES_JS_SYS_HPP_
+#ifndef _CUTES_JS_OS_HPP_
+#define _CUTES_JS_OS_HPP_
 
 #include <cutes/util.hpp>
 
@@ -13,13 +13,15 @@ class IODevice
 public:
     typedef IODevice base_type;
 
-    IODevice(v8::Arguments const& args)
+    IODevice(v8::Arguments const&)
     {
     }
 
-    static void v8Setup(QV8Engine *
+    virtual ~IODevice() {}
+
+    static void v8Setup(QV8Engine *v8e
                         , v8::Handle<v8::FunctionTemplate> cls
-                        , v8::Handle<v8::ObjectTemplate> obj)
+                        , v8::Handle<v8::ObjectTemplate>)
     {
         setupTemplate(v8e, cls)
             << Const("NotOpen", QIODevice::NotOpen)
@@ -47,7 +49,7 @@ public:
     {
     }
 
-    virtual ~File() { std::cerr << "~File"; }
+    virtual ~File() {}
 
     static v8::Handle<v8::Value> open(const v8::Arguments &args)
     {
@@ -56,14 +58,6 @@ public:
                 auto p0 = Arg<int>(args, 0);
                 auto mode = static_cast<QIODevice::OpenModeFlag>(p0);
                 return ValueToV8(self->open(mode));
-            });
-    }
-
-    static v8::Handle<v8::Value> isOpen(const v8::Arguments &args)
-    {
-        return callConvertException([&args]() {
-                auto self = QObjFromV8This<base_type>(args);
-                return ValueToV8(self->isOpen());
             });
     }
 
@@ -76,24 +70,17 @@ public:
             });
     }
 
-    static v8::Handle<v8::Value> close(const v8::Arguments &args)
-    {
-        return callConvertException([&args]() {
-                auto self = QObjFromV8This<base_type>(args);
-                self->close();
-                return v8::Undefined();
-            });
-    }
-
     static void v8Setup(QV8Engine *v8e
-                        , v8::Handle<v8::FunctionTemplate> cls
+                        , v8::Handle<v8::FunctionTemplate>
                         , v8::Handle<v8::ObjectTemplate> obj)
     {
         setupTemplate(v8e, obj)
             << Callback("open", &File::open)
-            << Callback("close", &File::close)
             << Callback("write", &File::write)
-            << Callback("isOpen", &File::isOpen);
+            << Callback("close", simpleFnVoid<QFile, void(QIODevice::*)()
+                        , &QIODevice::close>)
+            << CUTES_JS_QUERY(isOpen, QFile, QIODevice, bool)
+            ;
     }
 
 };
@@ -108,24 +95,50 @@ public:
     {
     }
 
-    static v8::Handle<v8::Value> exists(const v8::Arguments &args)
-    {
-        return callConvertException([&args]() {
-                auto self = QObjFromV8This<base_type>(args);
-                return ValueToV8(self->exists());
-            });
-    }
+    virtual ~FileInfo() {}
+
+#define BOOL_QUERY_(name) \
+    CUTES_JS_QUERY(name, QFileInfo, QFileInfo, bool)
+
+#define STR_QUERY_(name) \
+    CUTES_JS_QUERY(name, QFileInfo, QFileInfo, QString)
 
     static void v8Setup(QV8Engine *v8e
-                        , v8::Handle<v8::FunctionTemplate> cls
+                        , v8::Handle<v8::FunctionTemplate>
                         , v8::Handle<v8::ObjectTemplate> obj)
     {
         setupTemplate(v8e, obj)
-            << Callback("exists", &FileInfo::exists);
+            << BOOL_QUERY_(exists)
+            << BOOL_QUERY_(isFile)
+            << BOOL_QUERY_(isSymLink)
+            << BOOL_QUERY_(isDir)
+            << BOOL_QUERY_(isExecutable)
+            << BOOL_QUERY_(isWritable)
+            << BOOL_QUERY_(isReadable)
+            << BOOL_QUERY_(isAbsolute)
+            << BOOL_QUERY_(isRelative)
+            << BOOL_QUERY_(isRoot)
+            << BOOL_QUERY_(isHidden)
+            << STR_QUERY_(owner)
+            << STR_QUERY_(group)
+            << STR_QUERY_(path)
+            << STR_QUERY_(fileName)
+            << STR_QUERY_(filePath)
+            << STR_QUERY_(canonicalFilePath)
+            << STR_QUERY_(canonicalPath)
+            << STR_QUERY_(baseName)
+            << STR_QUERY_(completeBaseName)
+            << STR_QUERY_(completeSuffix)
+            << STR_QUERY_(absoluteFilePath)
+            << STR_QUERY_(absolutePath)
+            ;
     }
+
+#undef BOOL_QUERY_
+#undef STR_QUERY_
 
 };
 
 }}
 
-#endif // _CUTES_JS_SYS_HPP_
+#endif // _CUTES_JS_OS_HPP_

@@ -13,15 +13,16 @@
 
 namespace cutes { namespace js {
 
-static inline v8::Local<v8::Value> Get(v8::Handle<v8::Object> v, char const *name)
+static inline v8::Local<v8::Value> Get
+(v8::Handle<v8::Object> v, char const *name)
 {
     return v->Get(v8::String::New(name));
 }
 
 static inline void Set
-(v8::Handle<v8::Value> o, char const *name, v8::Handle<v8::Value> v)
+(v8::Handle<v8::Object> o, char const *name, v8::Handle<v8::Value> v)
 {
-    return o->Set(v8::String::New(name), v);
+    o->Set(v8::String::New(name), v);
 }
 
 template <typename FnT>
@@ -75,6 +76,12 @@ QByteArray ValueFromV8<QByteArray>(QV8Engine *e, v8::Handle<v8::Value> v)
     return ValueFromV8<QString>(e, v).toUtf8();
 }
 
+template <typename T>
+T Arg(v8::Arguments const& args, unsigned i)
+{
+    return ValueFromV8<T>(V8ENGINE(), args[i]);
+}
+
 inline v8::Handle<v8::String> ValueToV8(QString const& v)
 {
     return QJSConverter::toString(v);
@@ -122,11 +129,11 @@ static v8::Handle<v8::Value> v8Ctor(const v8::Arguments &args)
     } else {
         T *p = new T(args);
         external = External::New(static_cast<BaseT*>(p));
-        auto ph = Persistent<Value>::New(args.This());
+        auto ph = Persistent<Value>::New(self);
         ph.MakeWeak(p, &v8DeleteCppObj<T>);
     }
-    args.This()->SetInternalField(0, external);
-    return args.This();
+    self->SetInternalField(0, external);
+    return self;
 }
 
 template <typename T>
@@ -142,7 +149,7 @@ static void v8EngineAdd(QV8Engine *v8e, char const *name)
     Handle<ObjectTemplate> tpl = ctor->InstanceTemplate();
     tpl->SetInternalFieldCount(1);
 
-    Set(tpl, "cutesClass__", v8::String::New(name));
+    tpl->Set("cutesClass__", v8::String::New(name));
     
     T::v8Setup(v8e, ctor, tpl);
     v8e->global()->Set(v8::String::New(name), ctor->GetFunction());
@@ -221,6 +228,48 @@ TemplateInitializer const& operator << (TemplateInitializer const& dst
 {
     return dst.setConst(v.name, v.v);
 }
+
+
+template <typename ObjT, typename ClsT, typename ResT, ResT (ClsT::*fn)() const>
+static v8::Handle<v8::Value> simpleQuery(const v8::Arguments &args)
+{
+    return callConvertException([&args]() {
+            auto self = QObjFromV8This<ObjT>(args);
+            return ValueToV8((self->*fn)());
+        });
+}
+
+// template <typename ObjT, typename ClsT, void (ClsT::*fn)() const>
+// static v8::Handle<v8::Value> simpleVoidFn(const v8::Arguments &args)
+// {
+//     return callConvertException([&args]() {
+//             auto self = QObjFromV8This<ObjT>(args);
+//             return ValueToV8((self->*fn)());
+//         });
+// }
+
+template <typename ObjT, typename FnT, FnT fn>
+static v8::Handle<v8::Value> simpleFn(const v8::Arguments &args)
+{
+    return callConvertException([&args]() {
+            auto self = QObjFromV8This<ObjT>(args);
+            return ValueToV8((self->*fn)());
+        });
+}
+
+template <typename ObjT, typename FnT, FnT fn>
+static v8::Handle<v8::Value> simpleFnVoid(const v8::Arguments &args)
+{
+    return callConvertException([&args]() {
+            auto self = QObjFromV8This<ObjT>(args);
+            (self->*fn)();
+            return v8::Undefined();
+        });
+}
+
+#define CUTES_JS_QUERY(name, type, obj_type, res)      \
+    Callback(#name, simpleFn<type, res(obj_type::*)() const, &obj_type::name>)
+
 
 }}
 
