@@ -53,3 +53,4 @@ set(CMAKE_CXX_FLAGS
 
 add_subdirectory("src")
 add_subdirectory("doc")
+add_subdirectory("lib")
