@@ -27,6 +27,7 @@ find_package(Qt5Qml REQUIRED)
 find_package(Qt5Quick REQUIRED)
 
 include_directories(
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
   ${Qt5Core_INCLUDE_DIRS}
   ${Qt5Gui_INCLUDE_DIRS}
   ${Qt5Widgets_INCLUDE_DIRS}
