@@ -26,7 +26,8 @@ add_definitions(-DQT_SHARED)
 set(CMAKE_AUTOMOC TRUE)
 
 SET(SRC
-  ./main.cpp
+  main.cpp
+  os.cpp
 )
 ADD_EXECUTABLE(qttest ${SRC})
 

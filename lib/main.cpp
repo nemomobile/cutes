@@ -30,6 +30,7 @@ QString exec_(QJSEngine *jseng, int nr)
     v8EngineAdd<File>(v8e, "File");
     v8EngineAdd<FileInfo>(v8e, "FileInfo");
     v8EngineAdd<IODevice>(v8e, "IODevice");
+    v8EngineAdd<ByteArray>(v8e, "ByteArray");
 
 
     QString code(
@@ -48,7 +49,9 @@ QString exec_(QJSEngine *jseng, int nr)
                  "f.close()\n"
                  "var fi = new FileInfo(fname);"
                  "delete f;\n"
-                 "fi.fileName() + fi.exists() + fi.group();"
+                 "var f2 = new File(fname);\n"
+                 "log('opened read', f2.open(IODevice.ReadOnly));\n"
+                 "fi.fileName() + fi.exists() + fi.group() + f2.readAll();"
                  );
     auto v = jseng->evaluate(code.arg(nr));
     return v.toString();
