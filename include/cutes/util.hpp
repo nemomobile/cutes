@@ -13,6 +13,8 @@
 
 namespace cutes { namespace js {
 
+typedef v8::Handle<v8::Value> VHandle;
+
 template <typename T>
 struct ObjectTraits
 {
@@ -25,22 +27,12 @@ static inline v8::Local<v8::Value> Get
 }
 
 static inline void Set
-(v8::Handle<v8::Object> o, char const *name, v8::Handle<v8::Value> v)
+(v8::Handle<v8::Object> o, char const *name, VHandle v)
 {
     o->Set(v8::String::New(name), v);
 }
 
-template <typename FnT>
-v8::Handle<v8::Value> callConvertException(FnT fn)
-{
-    try {
-        return fn();
-    } catch (std::exception const &e) {
-        using namespace v8;
-        ThrowException(Exception::Error(String::New(e.what())));
-        return Handle<Value>();
-    }
-}
+VHandle callConvertException(const v8::Arguments &, v8::InvocationCallback);
 
 template <typename ResT>
 ResT *QObjFromV8This(const v8::Arguments &args)
@@ -50,36 +42,96 @@ ResT *QObjFromV8This(const v8::Arguments &args)
 }
 
 template <typename T>
-T ValueFromV8(QV8Engine *, v8::Handle<v8::Value>);
-
-template <>
-inline QString ValueFromV8<QString>(QV8Engine *, v8::Handle<v8::Value> v)
+static inline VHandle objToV8(T const& v)
 {
-    return QJSConverter::toString(v->ToString());
+    v8::HandleScope hscope;
+    typedef typename ObjectTraits<T>::js_type obj_type;
+    VHandle p = v8::External::New(new T(v));
+    auto ctor = obj_type::cutesCtor_->GetFunction();
+    return hscope.Close(ctor->NewInstance(1, &p));
 }
 
-template <>
-inline int ValueFromV8<int>(QV8Engine *, v8::Handle<v8::Value> v)
+template <typename T> struct Convert
 {
-    using namespace v8;
-    if (!v->IsNumber()) {
-        throw std::invalid_argument("Not a number");
-        return 0;
+    static inline VHandle toV8(T const& v)
+    {
+        return objToV8<T>(v);
     }
-    return v->ToInteger()->Value();
+};
+
+template <typename T>
+inline VHandle ValueToV8(T const& v)
+{
+    return Convert<T>::toV8(v);
+};
+
+template <typename T>
+inline T ValueFromV8(QV8Engine *e, VHandle h)
+{
+    return Convert<T>::fromV8(e, h);
 }
 
-template <>
-inline QVariant ValueFromV8<QVariant>(QV8Engine *e, v8::Handle<v8::Value> v)
-{
-    return e->variantFromJS(v);
-}
+template<> struct Convert<QString> {
+    static inline QString fromV8(QV8Engine *, VHandle v)
+    {
+        return QJSConverter::toString(v->ToString());
+    }
 
-template <>
-inline QByteArray ValueFromV8<QByteArray>(QV8Engine *e, v8::Handle<v8::Value> v)
-{
-    return ValueFromV8<QString>(e, v).toUtf8();
-}
+    static inline VHandle toV8(QString const& v)
+    {
+        return QJSConverter::toString(v);
+    }
+};
+
+template<> struct Convert<int> {
+    static inline int fromV8(QV8Engine *, VHandle v)
+    {
+        using namespace v8;
+        if (!v->IsNumber()) {
+            throw std::invalid_argument("Not a number");
+            return 0;
+        }
+        return v->ToInteger()->Value();
+    }
+
+    static inline VHandle toV8(int v)
+    {
+        return v8::Integer::New(v);
+    }
+};
+
+template<> struct Convert<long long> {
+    static inline VHandle toV8(long long v)
+    {
+        return v8::Number::New(v);
+    }
+};
+
+template<> struct Convert<bool> {
+    static inline VHandle toV8(bool v)
+    {
+        return v8::Boolean::New(v);
+    }
+};
+
+template<> struct Convert<QVariant> {
+    static inline QVariant fromV8(QV8Engine *e, VHandle v)
+    {
+        return e->variantFromJS(v);
+    }
+};
+
+template<> struct Convert<QStringList> {
+    static inline QStringList fromV8(QV8Engine *, VHandle v)
+    {
+        using namespace v8;
+        if (!v->IsArray()) {
+            throw std::invalid_argument("Not an array");
+            return QStringList();
+        }
+        return QJSConverter::toStringList(Handle<Array>::Cast(v));
+    }
+};
 
 template <typename T>
 T Arg(v8::Arguments const& args, unsigned i)
@@ -87,51 +139,6 @@ T Arg(v8::Arguments const& args, unsigned i)
     return ValueFromV8<T>(V8ENGINE(), args[i]);
 }
 
-template <typename T> struct Convert
-{
-    static inline v8::Handle<v8::Value> toV8(T const& v)
-    {
-        v8::HandleScope hscope;
-        typedef typename ObjectTraits<T>::js_type obj_type;
-        v8::Handle<v8::Value> p = v8::External::New(new T(v));
-        auto ctor = obj_type::cutesCtor_->GetFunction();
-        return hscope.Close(ctor->NewInstance(1, &p));
-    }
-};
-
-template<> struct Convert<QString> {
-    static inline v8::Handle<v8::Value> toV8(QString const& v)
-    {
-        return QJSConverter::toString(v);
-    }
-};
-
-template<> struct Convert<int> {
-    static inline v8::Handle<v8::Value> toV8(int v)
-    {
-        return v8::Integer::New(v);
-    }
-};
-
-template<> struct Convert<long long> {
-    static inline v8::Handle<v8::Value> toV8(long long v)
-    {
-        return v8::Number::New(v);
-    }
-};
-
-template<> struct Convert<bool> {
-    static inline v8::Handle<v8::Value> toV8(bool v)
-    {
-        return v8::Boolean::New(v);
-    }
-};
-
-template <typename T>
-inline v8::Handle<v8::Value> ValueToV8(T const& v)
-{
-    return Convert<T>::toV8(v);
-};
 
 template <typename T>
 void v8DeleteCppObj(v8::Persistent<v8::Value>, void* p)
@@ -140,7 +147,7 @@ void v8DeleteCppObj(v8::Persistent<v8::Value>, void* p)
 }
 
 template <typename T, typename BaseT>
-static v8::Handle<v8::Value> v8Ctor(const v8::Arguments &args)
+static VHandle v8Ctor(const v8::Arguments &args)
 {
     using namespace v8;
     Local<External> external;
@@ -258,30 +265,38 @@ TemplateInitializer const& operator << (TemplateInitializer const& dst
 }
 
 template <typename ObjT, typename FnT, FnT fn>
-static v8::Handle<v8::Value> fnWOParams(const v8::Arguments &args)
+static VHandle fnWOParams(const v8::Arguments &args)
 {
-    return callConvertException([&args]() {
+    return callConvertException(args, [](const v8::Arguments &args) -> VHandle {
             auto self = QObjFromV8This<ObjT>(args);
             return ValueToV8((self->*fn)());
         });
 }
 
 template <typename ObjT, typename FnT, FnT fn>
-static v8::Handle<v8::Value> voidRequest(const v8::Arguments &args)
+static VHandle voidRequest(const v8::Arguments &args)
 {
-    return callConvertException([&args]() {
+    return callConvertException(args, [](const v8::Arguments &args) -> VHandle {
             auto self = QObjFromV8This<ObjT>(args);
             (self->*fn)();
             return v8::Undefined();
         });
 }
 
+#define CUTES_JS_CONST(name, cls) cutes::js::Const(#name, cls::name)
+
+#define CUTES_JS_FN(name, cls) cutes::js::Callback(#name, &cls::name)
+
 #define CUTES_JS_QUERY(name, type, obj_type, res)      \
-    Callback(#name, fnWOParams<type, res(obj_type::*)() const, &obj_type::name>)
+    cutes::js::Callback(#name, fnWOParams<type, \
+                        res(obj_type::*)() const, &obj_type::name>)
 
-#define CUTES_JS_GET(name, type, obj_type, res)      \
-    Callback(#name, fnWOParams<type, res(obj_type::*)(), &obj_type::name>)
+#define CUTES_JS_FN_RES(name, type, obj_type, res)      \
+    cutes::js::Callback(#name, fnWOParams<type, res(obj_type::*)(), &obj_type::name>)
 
+#define CUTES_JS_FN_VOID(name, type, obj_type)      \
+    cutes::js::Callback(#name, voidRequest<type, \
+                                           void(obj_type::*)(), &obj_type::name>)
 
 }}
 

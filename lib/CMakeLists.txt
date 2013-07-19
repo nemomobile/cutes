@@ -27,7 +27,8 @@ set(CMAKE_AUTOMOC TRUE)
 
 SET(SRC
   main.cpp
-  os.cpp
+  core.cpp
+  util.cpp
 )
 ADD_EXECUTABLE(qttest ${SRC})
 

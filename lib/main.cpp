@@ -1,4 +1,4 @@
-#include <cutes/os.hpp>
+#include <cutes/core.hpp>
 #include <QCoreApplication>
 
 static v8::Handle<v8::Value> log(const v8::Arguments& args)
@@ -31,6 +31,8 @@ QString exec_(QJSEngine *jseng, int nr)
     v8EngineAdd<FileInfo>(v8e, "FileInfo");
     v8EngineAdd<IODevice>(v8e, "IODevice");
     v8EngineAdd<ByteArray>(v8e, "ByteArray");
+    v8EngineAdd<Dir>(v8e, "Dir");
+    v8EngineAdd<Process>(v8e, "Process");
 
 
     QString code(
@@ -51,7 +53,8 @@ QString exec_(QJSEngine *jseng, int nr)
                  "delete f;\n"
                  "var f2 = new File(fname);\n"
                  "log('opened read', f2.open(IODevice.ReadOnly));\n"
-                 "fi.fileName() + fi.exists() + fi.group() + f2.readAll();"
+                 "fi.fileName() + fi.exists() + fi.group() + f2.readAll()"
+                 "+ ' ' + Dir.homePath()"
                  );
     auto v = jseng->evaluate(code.arg(nr));
     return v.toString();
