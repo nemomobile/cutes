@@ -146,24 +146,21 @@ void v8DeleteCppObj(v8::Persistent<v8::Value>, void* p)
     delete reinterpret_cast<T*>(p);
 }
 
+std::pair<bool, VHandle> copyCtor(const v8::Arguments &args);
+
 template <typename T, typename BaseT>
 static VHandle v8Ctor(const v8::Arguments &args)
 {
-    using namespace v8;
-    Local<External> external;
-    auto self = args.This();
-    
-    if (!args.IsConstructCall())
-        V8THROW_ERROR("Call function as ctor");
+    auto res = copyCtor(args);
+    if (res.first)
+        return res.second;
 
-    if (args[0]->IsExternal()) {
-        external = Local<External>::Cast(args[0]);
-    } else {
-        T *p = new T(args);
-        external = External::New(static_cast<BaseT*>(p));
-        auto ph = Persistent<Value>::New(self);
-        ph.MakeWeak(p, &v8DeleteCppObj<T>);
-    }
+    using namespace v8;
+    auto self = args.This();
+    T *p = new T(args);
+    Local<External> external = External::New(static_cast<BaseT*>(p));
+    auto ph = Persistent<Value>::New(self);
+    ph.MakeWeak(p, &v8DeleteCppObj<T>);
     self->SetInternalField(0, external);
     return self;
 }
@@ -264,40 +261,96 @@ TemplateInitializer const& operator << (TemplateInitializer const& dst
     return dst.setConst(v.name, v.v);
 }
 
-template <typename ObjT, typename FnT, FnT fn>
+template <typename ResT, typename ObjT>
+struct FnWrapper
+{
+    template <typename FnT, FnT fn>
+    static inline VHandle param0(const v8::Arguments &args)
+    {
+        return callConvertException(args, [](const v8::Arguments &args) -> VHandle {
+                auto self = QObjFromV8This<ObjT>(args);
+                return ValueToV8((self->*fn)());
+            });
+    }
+
+    template <typename ParamT, typename FnT, FnT fn>
+    static inline VHandle param1(const v8::Arguments &args)
+    {
+        return callConvertException(args, [](const v8::Arguments &args) -> VHandle {
+                auto self = QObjFromV8This<ObjT>(args);
+                auto p0 = Arg<ParamT>(args, 0);
+                return ValueToV8((self->*fn)(p0));
+            });
+    }
+};
+
+template <typename ObjT>
+struct FnWrapper<void, ObjT>
+{
+    template <typename FnT, FnT fn>
+    static inline VHandle param0(const v8::Arguments &args)
+    {
+        return callConvertException(args, [](const v8::Arguments &args) -> VHandle {
+                auto self = QObjFromV8This<ObjT>(args);
+                (self->*fn)();
+                return v8::Undefined();
+            });
+    }
+
+    template <typename ParamT, typename FnT, FnT fn>
+    static inline VHandle param1(const v8::Arguments &args)
+    {
+        return callConvertException(args, [](const v8::Arguments &args) -> VHandle {
+                auto self = QObjFromV8This<ObjT>(args);
+                auto p0 = Arg<ParamT>(args, 0);
+                (self->*fn)(p0);
+                return v8::Undefined();
+            });
+    }
+};
+
+template <typename ResT, typename ObjT, typename ParamT, typename FnT, FnT fn>
+inline VHandle fnWithParam(const v8::Arguments &args)
+{
+    return FnWrapper<ResT, ObjT>::template param1<ParamT, FnT, fn>(args);
+}
+
+template <typename ResT, typename ObjT, typename FnT, FnT fn>
 static VHandle fnWOParams(const v8::Arguments &args)
 {
-    return callConvertException(args, [](const v8::Arguments &args) -> VHandle {
-            auto self = QObjFromV8This<ObjT>(args);
-            return ValueToV8((self->*fn)());
-        });
+    return FnWrapper<ResT, ObjT>::template param0<FnT, fn>(args);
 }
 
-template <typename ObjT, typename FnT, FnT fn>
-static VHandle voidRequest(const v8::Arguments &args)
-{
-    return callConvertException(args, [](const v8::Arguments &args) -> VHandle {
-            auto self = QObjFromV8This<ObjT>(args);
-            (self->*fn)();
-            return v8::Undefined();
-        });
-}
+#define CUTES_CONST(name, cls) cutes::js::Const(#name, cls::name)
 
-#define CUTES_JS_CONST(name, cls) cutes::js::Const(#name, cls::name)
+#define CUTES_FN(name, cls) cutes::js::Callback(#name, &cls::name)
 
-#define CUTES_JS_FN(name, cls) cutes::js::Callback(#name, &cls::name)
-
-#define CUTES_JS_QUERY(name, type, obj_type, res)      \
-    cutes::js::Callback(#name, fnWOParams<type, \
+#define CUTES_GET_CONST(name, res, type, obj_type)   \
+    cutes::js::Callback(#name, fnWOParams<res, type,                 \
                         res(obj_type::*)() const, &obj_type::name>)
 
-#define CUTES_JS_FN_RES(name, type, obj_type, res)      \
-    cutes::js::Callback(#name, fnWOParams<type, res(obj_type::*)(), &obj_type::name>)
+#define CUTES_GET(name, res, type, obj_type)  \
+    cutes::js::Callback(#name, fnWOParams                                   \
+                            <res, type, res(obj_type::*)(), &obj_type::name>)
 
-#define CUTES_JS_FN_VOID(name, type, obj_type)      \
-    cutes::js::Callback(#name, voidRequest<type, \
-                                           void(obj_type::*)(), &obj_type::name>)
+#define CUTES_VOID_FN(name, type, obj_type)                                      \
+    cutes::js::Callback(#name, fnWOParams<void, type,                               \
+                                          void(obj_type::*)(), &obj_type::name>)
+
+#define CUTES_FN_PARAM(name, res, type, obj_type, param_t, param_sig)    \
+    cutes::js::Callback(#name, fnWithParam                                  \
+                            <res, type, param_t,                            \
+                             res (obj_type::*)(param_sig),                  \
+                             &obj_type::name>)
+
+#define CUTES_FN_PARAM_CONST(name, res, type, obj_type, param_t, param_sig)    \
+    cutes::js::Callback(#name, fnWithParam                                     \
+                            <res, type, param_t,                               \
+                             res (obj_type::*)(param_sig) const,               \
+                             &obj_type::name>)
 
 }}
+
+extern "C" void registerLibrary(QV8Engine *);
 
 #endif // _CUTES_JS_UTIL_HPP_

@@ -26,13 +26,14 @@ QString exec_(QJSEngine *jseng, int nr)
 
     v8e->global()->Set(v8::String::New("log"), V8FUNCTION(log, v8e));
 
-    using namespace cutes::js;
-    v8EngineAdd<File>(v8e, "File");
-    v8EngineAdd<FileInfo>(v8e, "FileInfo");
-    v8EngineAdd<IODevice>(v8e, "IODevice");
-    v8EngineAdd<ByteArray>(v8e, "ByteArray");
-    v8EngineAdd<Dir>(v8e, "Dir");
-    v8EngineAdd<Process>(v8e, "Process");
+    registerLibrary(v8e);
+    // using namespace cutes::js;
+    // v8EngineAdd<File>(v8e, "File");
+    // v8EngineAdd<FileInfo>(v8e, "FileInfo");
+    // v8EngineAdd<IODevice>(v8e, "IODevice");
+    // v8EngineAdd<ByteArray>(v8e, "ByteArray");
+    // v8EngineAdd<Dir>(v8e, "Dir");
+    // v8EngineAdd<Process>(v8e, "Process");
 
 
     QString code(
@@ -53,6 +54,8 @@ QString exec_(QJSEngine *jseng, int nr)
                  "delete f;\n"
                  "var f2 = new File(fname);\n"
                  "log('opened read', f2.open(IODevice.ReadOnly));\n"
+                 "var d = new Dir('.');\n"
+                 "log('created sub', d.mkdir('qqq'));\n"
                  "fi.fileName() + fi.exists() + fi.group() + f2.readAll()"
                  "+ ' ' + Dir.homePath()"
                  );

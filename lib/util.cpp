@@ -15,4 +15,23 @@ v8::Handle<v8::Value> callConvertException
 }
 
 
+std::pair<bool, VHandle> copyCtor(const v8::Arguments &args)
+{
+    using namespace v8;
+    Local<External> external;
+    auto self = args.This();
+    
+    if (!args.IsConstructCall()) {
+        ThrowException(Exception::Error(String::New("Call function as ctor")));
+        return {true, VHandle()};
+    }
+
+    if (args[0]->IsExternal()) {
+        external = Local<External>::Cast(args[0]);
+        self->SetInternalField(0, external);
+        return {true, self};
+    }
+    return {false, VHandle()};
+}
+
 }}

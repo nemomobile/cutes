@@ -19,7 +19,7 @@ template<> struct Convert<QIODevice::OpenModeFlag> {
     }
 };
 
-#define IODEVICE_CONST(name) CUTES_JS_CONST(name, QIODevice)
+#define IODEVICE_CONST(name) CUTES_CONST(name, QIODevice)
 
 void IODevice::v8Setup(QV8Engine *v8e
                        , v8::Handle<v8::FunctionTemplate> cls
@@ -59,7 +59,7 @@ void ByteArray::v8Setup(QV8Engine *v8e
                         , v8::Handle<v8::ObjectTemplate> obj)
 {
     setupTemplate(v8e, obj)
-        << CUTES_JS_FN(toString, ByteArray);
+        << CUTES_FN(toString, ByteArray);
 }
 
 v8::Persistent<v8::FunctionTemplate> File::cutesCtor_;
@@ -80,26 +80,17 @@ VHandle File::open(const v8::Arguments &args)
         });
 }
 
-VHandle File::write(const v8::Arguments &args)
-{
-    return callConvertException
-        (args, [](const v8::Arguments &args) -> VHandle {
-            auto self = QObjFromV8This<impl_type>(args);
-            auto p0 = Arg<QByteArray>(args, 0);
-            return ValueToV8(self->write(p0));
-        });
-}
-
 void File::v8Setup(QV8Engine *v8e
                    , v8::Handle<v8::FunctionTemplate>
                    , v8::Handle<v8::ObjectTemplate> obj)
 {
     setupTemplate(v8e, obj)
-        << CUTES_JS_FN(open, File)
-        << CUTES_JS_FN(write, File)
-        << CUTES_JS_FN_VOID(close, QFile, QIODevice)
-        << CUTES_JS_QUERY(isOpen, QFile, QIODevice, bool)
-        << CUTES_JS_FN_RES(readAll, QFile, QIODevice, QByteArray)
+        << CUTES_FN(open, File)
+        << CUTES_FN_PARAM(write, qint64, QFile, QIODevice
+                             , QByteArray, const QByteArray&)
+        << CUTES_VOID_FN(close, QFile, QIODevice)
+        << CUTES_GET_CONST(isOpen, bool, QFile, QIODevice)
+        << CUTES_GET(readAll, QByteArray, QFile, QIODevice)
         ;
 }
 
@@ -111,10 +102,10 @@ FileInfo::FileInfo(v8::Arguments const& args)
 }
 
 #define BOOL_QUERY_(name) \
-    CUTES_JS_QUERY(name, QFileInfo, QFileInfo, bool)
+    CUTES_GET_CONST(name, bool, QFileInfo, QFileInfo)
 
 #define STR_QUERY_(name) \
-    CUTES_JS_QUERY(name, QFileInfo, QFileInfo, QString)
+    CUTES_GET_CONST(name, QString, QFileInfo, QFileInfo)
 
 void FileInfo::v8Setup(QV8Engine *v8e
                        , v8::Handle<v8::FunctionTemplate>
@@ -144,7 +135,7 @@ void FileInfo::v8Setup(QV8Engine *v8e
         << STR_QUERY_(completeSuffix)
         << STR_QUERY_(absoluteFilePath)
         << STR_QUERY_(absolutePath)
-        << CUTES_JS_QUERY(dir, QFileInfo, QFileInfo, QDir)
+        << CUTES_GET_CONST(dir, QDir, QFileInfo, QFileInfo)
         ;
 }
 
@@ -158,16 +149,6 @@ Dir::Dir(v8::Arguments const &args)
 {
 }
 
-VHandle Dir::mkdir(const v8::Arguments &args)
-{
-    return callConvertException
-        (args, [](const v8::Arguments &args) -> VHandle {
-            auto self = QObjFromV8This<impl_type>(args);
-            auto p0 = Arg<QString>(args, 0);
-            return ValueToV8(self->mkdir(p0));
-        });
-}
-
 VHandle Dir::homePath(const v8::Arguments &)
 {
     return ValueToV8(QDir::homePath());
@@ -179,25 +160,25 @@ VHandle Dir::rootPath(const v8::Arguments &)
 }
 
 #define BOOL_QUERY_(name) \
-    CUTES_JS_QUERY(name, QDir, QDir, bool)
+    CUTES_GET_CONST(name, bool, QDir, QDir)
 
 #define STR_QUERY_(name) \
-    CUTES_JS_QUERY(name, QDir, QDir, QString)
+    CUTES_GET_CONST(name, QString, QDir, QDir)
 
 void Dir::v8Setup(QV8Engine *v8e
                         , v8::Handle<v8::FunctionTemplate> cls
                         , v8::Handle<v8::ObjectTemplate> obj)
 {
     setupTemplate(v8e, cls)
-        << CUTES_JS_FN(homePath, Dir)
-        << CUTES_JS_FN(rootPath, Dir)
+        << CUTES_FN(homePath, Dir)
+        << CUTES_FN(rootPath, Dir)
         ;
     setupTemplate(v8e, obj)
-        << CUTES_JS_FN(mkdir, Dir)
+        << CUTES_FN_PARAM_CONST(mkdir, bool, QDir, QDir, QString, const QString&)
         << BOOL_QUERY_(exists)
         << STR_QUERY_(dirName)
         << STR_QUERY_(path)
-        << CUTES_JS_FN_RES(cdUp, QDir, QDir, bool)
+        << CUTES_GET(cdUp, bool, QDir, QDir)
         ;
 }
 
@@ -225,26 +206,6 @@ Process::Process(v8::Arguments const &)
 {
 }
 
-VHandle Process::waitForStarted(const v8::Arguments &args)
-{
-    return callConvertException
-        (args, [](const v8::Arguments &args) -> VHandle {
-            auto self = QObjFromV8This<impl_type>(args);
-            auto p0 = Arg<int>(args, 0);
-            return ValueToV8(self->waitForStarted(p0));
-        });
-}
-
-VHandle Process::waitForFinished(const v8::Arguments &args)
-{
-    return callConvertException
-        (args, [](const v8::Arguments &args) -> VHandle {
-            auto self = QObjFromV8This<impl_type>(args);
-            auto p0 = Arg<int>(args, 0);
-            return ValueToV8(self->waitForFinished(p0));
-        });
-}
-
 VHandle Process::start(const v8::Arguments &args)
 {
     return callConvertException
@@ -252,33 +213,39 @@ VHandle Process::start(const v8::Arguments &args)
             auto self = QObjFromV8This<impl_type>(args);
             auto p0 = Arg<QString>(args, 0);
             auto p1 = Arg<QStringList>(args, 1);
-            auto p2 = Arg<QIODevice::OpenModeFlag>(args, 2);
+            auto p2 = (args.Length() == 3)
+                ? Arg<QIODevice::OpenModeFlag>(args, 2)
+                : QIODevice::ReadWrite; 
             self->start(p0, p1, p2);
             return v8::Undefined();
         });
 }
 
 #define QUERY_(name, type)                          \
-    CUTES_JS_QUERY(name, QProcess, QProcess, type)
+    CUTES_GET_CONST(name, type, QProcess, QProcess)
 
 #define SIMPLE_(name, type)\
-    CUTES_JS_FN_RES(name, QProcess, QProcess, type)
+    CUTES_GET(name, type, QProcess, QProcess)
 
 void Process::v8Setup(QV8Engine *v8e
                         , v8::Handle<v8::FunctionTemplate> cls
                         , v8::Handle<v8::ObjectTemplate> obj)
 {
     setupTemplate(v8e, cls)
-        << CUTES_JS_CONST(NormalExit, QProcess)
-        << CUTES_JS_CONST(CrashExit, QProcess)
-        << CUTES_JS_CONST(NotRunning, QProcess)
-        << CUTES_JS_CONST(Starting, QProcess)
-        << CUTES_JS_CONST(Running, QProcess)
+        << CUTES_CONST(NormalExit, QProcess)
+        << CUTES_CONST(CrashExit, QProcess)
+        << CUTES_CONST(NotRunning, QProcess)
+        << CUTES_CONST(Starting, QProcess)
+        << CUTES_CONST(Running, QProcess)
         ;
     setupTemplate(v8e, obj)
-        << CUTES_JS_FN(waitForFinished, Process)
-        << CUTES_JS_FN(waitForStarted, Process)
-        << CUTES_JS_FN(start, Process)
+        << CUTES_FN_PARAM(waitForFinished, bool, QProcess, QProcess
+                          , int, int)
+        << CUTES_FN_PARAM(waitForStarted, bool, QProcess, QProcess
+                          , int, int)
+        << CUTES_FN_PARAM(setWorkingDirectory, void, QProcess, QProcess
+                          , QString, QString const&)
+        << CUTES_FN(start, Process)
         << SIMPLE_(readAllStandardOutput, QByteArray)
         << SIMPLE_(readAllStandardError, QByteArray)
         << QUERY_(exitCode, int)
@@ -288,5 +255,16 @@ void Process::v8Setup(QV8Engine *v8e
 
 #undef QUERY_
 #undef SIMPLE_
+
+extern "C" void registerLibrary(QV8Engine *v8e)
+{
+    using namespace cutes::js;
+    v8EngineAdd<File>(v8e, "File");
+    v8EngineAdd<FileInfo>(v8e, "FileInfo");
+    v8EngineAdd<IODevice>(v8e, "IODevice");
+    v8EngineAdd<ByteArray>(v8e, "ByteArray");
+    v8EngineAdd<Dir>(v8e, "Dir");
+    v8EngineAdd<Process>(v8e, "Process");
+}
 
 }}

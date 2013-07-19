@@ -66,7 +66,6 @@ public:
     static v8::Persistent<v8::FunctionTemplate> cutesCtor_;
 
     static VHandle open(const v8::Arguments &);
-    static VHandle write(const v8::Arguments &);
 
     static void v8Setup(QV8Engine *v8e
                         , v8::Handle<v8::FunctionTemplate>
@@ -97,7 +96,6 @@ public:
 
     static v8::Persistent<v8::FunctionTemplate> cutesCtor_;
 
-    static VHandle mkdir(const v8::Arguments &);
     static VHandle rootPath(const v8::Arguments &);
     static VHandle homePath(const v8::Arguments &);
 
@@ -120,8 +118,6 @@ public:
 
     static v8::Persistent<v8::FunctionTemplate> cutesCtor_;
 
-    static VHandle waitForStarted(const v8::Arguments &);
-    static VHandle waitForFinished(const v8::Arguments &);
     static VHandle start(const v8::Arguments &);
 
     static void v8Setup(QV8Engine *
