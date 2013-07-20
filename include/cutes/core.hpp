@@ -13,8 +13,8 @@ namespace cutes { namespace js {
 class IODevice
 {
 public:
-    typedef IODevice impl_type; // QIODevice is abstract
-    typedef QIODevice qt_type;
+    typedef IODevice base_type; // QIODevice is abstract
+    typedef QIODevice impl_type;
 
     IODevice(v8::Arguments const&);
 
@@ -25,11 +25,13 @@ public:
                         , v8::Handle<v8::ObjectTemplate>);
 };
 
+CUTES_FLAG_CONVERTIBLE_INT(QIODevice::OpenModeFlag);
+
 class ByteArray : public QByteArray
 {
 public:
+    typedef QByteArray base_type;
     typedef QByteArray impl_type;
-    typedef QByteArray qt_type;
 
     ByteArray(v8::Arguments const &args);
 
@@ -63,8 +65,8 @@ template<> struct Convert<QByteArray> {
 class File : public QFile
 {
 public:
+    typedef QFile base_type;
     typedef QFile impl_type;
-    typedef QFile qt_type;
 
     File(v8::Arguments const& args);
 
@@ -80,8 +82,8 @@ public:
 class FileInfo : public QFileInfo
 {
 public:
+    typedef QFileInfo base_type;
     typedef QFileInfo impl_type;
-    typedef QFileInfo qt_type;
 
     FileInfo(v8::Arguments const&);
 
@@ -93,13 +95,13 @@ public:
 
 };
 
-CUTES_DEFINE_CONVERT(QFileInfo, FileInfo);
+CUTES_CONVERTIBLE_COPYABLE(QFileInfo, FileInfo);
 
 class Dir : public QDir
 {
 public:
+    typedef QDir base_type;
     typedef QDir impl_type;
-    typedef QDir qt_type;
 
     Dir(v8::Arguments const&);
 
@@ -114,13 +116,15 @@ public:
                         , v8::Handle<v8::ObjectTemplate>);
 };
 
-CUTES_DEFINE_CONVERT(QDir, Dir);
+CUTES_CONVERTIBLE_COPYABLE(QDir, Dir);
+CUTES_FLAG_CONVERTIBLE_INT(QDir::Filter);
+CUTES_FLAG_CONVERTIBLE_INT(QDir::SortFlag);
 
 class Process : public QProcess
 {
 public:
+    typedef QProcess base_type;
     typedef QProcess impl_type;
-    typedef QProcess qt_type;
 
     Process(v8::Arguments const&);
 

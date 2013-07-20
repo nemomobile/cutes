@@ -69,18 +69,7 @@ T * cutesObjFromV8(QV8Engine *, VHandle v)
     return cutesObjFromV8<T>(v8::Handle<v8::Object>::Cast(v));
 }
 
-template <typename T> struct Convert
-{
-    // static inline VHandle toV8(T const& v)
-    // {
-    //     return objToV8<T>(v);
-    // }
-
-    // static inline T fromV8(QV8Engine *v8e, VHandle v)
-    // {
-    //     return *cutesObjFromV8(v8e, v);
-    // }
-};
+template <typename T> struct Convert {};
 
 template <typename T>
 inline VHandle ValueToV8(T const& v)
@@ -222,7 +211,7 @@ static void v8EngineAdd(QV8Engine *v8e, char const *name)
     HandleScope hscope;
 
     Handle<FunctionTemplate> ctor
-        = FunctionTemplate::New(v8Ctor<T, typename T::impl_type>
+        = FunctionTemplate::New(v8Ctor<T, typename T::base_type>
                                 , External::New(v8e));
 
     T::cutesCtor_ = Persistent<FunctionTemplate>::New(ctor);
@@ -400,7 +389,7 @@ static VHandle fnWOParams(const v8::Arguments &args)
                              res (obj_type::*)(param_sig) const,               \
                              &obj_type::name>)
 
-#define CUTES_CONVERT_INT_FLAG(flag_type)                   \
+#define CUTES_FLAG_CONVERTIBLE_INT(flag_type)               \
 template<> struct Convert<flag_type> {                      \
     static inline flag_type fromV8(QV8Engine *e, VHandle v) \
     {                                                       \
@@ -412,7 +401,7 @@ template<> struct Convert<flag_type> {                      \
     }                                                                   \
 };
 
-#define CUTES_DEFINE_CONVERT(obj_type, js_type_)                    \
+#define CUTES_CONVERTIBLE_COPYABLE(obj_type, js_type_)              \
     template <> struct ObjectTraits<obj_type>                       \
     {                                                               \
         typedef js_type_ js_type;                                   \

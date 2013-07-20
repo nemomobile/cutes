@@ -8,8 +8,6 @@ IODevice::IODevice(v8::Arguments const&)
 {
 }
 
-CUTES_CONVERT_INT_FLAG(QIODevice::OpenModeFlag);
-
 #define IODEVICE_CONST(name) CUTES_CONST(name, QIODevice)
 
 void IODevice::v8Setup(QV8Engine *v8e
@@ -32,7 +30,7 @@ void IODevice::v8Setup(QV8Engine *v8e
 v8::Persistent<v8::FunctionTemplate> ByteArray::cutesCtor_;
 
 ByteArray::ByteArray(v8::Arguments const &args)
-    : impl_type(Arg<QByteArray>(args, 0))
+    : base_type(Arg<QByteArray>(args, 0))
 {
 }
 
@@ -40,7 +38,7 @@ VHandle ByteArray::toString(const v8::Arguments &args)
 {
     return callConvertException
         (args, [](const v8::Arguments &args) -> VHandle {
-            auto self = cutesObjFromThis<impl_type>(args);
+            auto self = cutesObjFromThis<base_type>(args);
             return ValueToV8(QString(*self));
         });
 }
@@ -56,7 +54,7 @@ void ByteArray::v8Setup(QV8Engine *v8e
 v8::Persistent<v8::FunctionTemplate> File::cutesCtor_;
 
 File::File(v8::Arguments const& args)
-    : impl_type(Arg<QString>(args, 0))
+    : base_type(Arg<QString>(args, 0))
 {
 }
 
@@ -64,7 +62,7 @@ VHandle File::open(const v8::Arguments &args)
 {
     return callConvertException
         (args, [](const v8::Arguments &args) -> VHandle {
-            auto self = cutesObjFromThis<impl_type>(args);
+            auto self = cutesObjFromThis<base_type>(args);
             auto p0 = Arg<int>(args, 0);
             auto mode = static_cast<QIODevice::OpenModeFlag>(p0);
             return ValueToV8(self->open(mode));
@@ -88,7 +86,7 @@ void File::v8Setup(QV8Engine *v8e
 v8::Persistent<v8::FunctionTemplate> FileInfo::cutesCtor_;
 
 FileInfo::FileInfo(v8::Arguments const& args)
-    : impl_type(Arg<QString>(args, 0))
+    : base_type(Arg<QString>(args, 0))
 {
 }
 
@@ -135,11 +133,8 @@ void FileInfo::v8Setup(QV8Engine *v8e
 
 v8::Persistent<v8::FunctionTemplate> Dir::cutesCtor_;
 
-CUTES_CONVERT_INT_FLAG(QDir::Filter);
-CUTES_CONVERT_INT_FLAG(QDir::SortFlag);
-
 Dir::Dir(v8::Arguments const &args)
-    : impl_type(Arg<QString>(args, 0))
+    : base_type(Arg<QString>(args, 0))
 {
 }
 
@@ -147,7 +142,7 @@ VHandle Dir::entryInfoList(const v8::Arguments &args)
 {
     return callConvertException
         (args, [](const v8::Arguments &args) -> VHandle {
-            auto self = cutesObjFromThis<impl_type>(args);
+            auto self = cutesObjFromThis<base_type>(args);
             auto p0 = Arg<QStringList>(args, 0);
             auto p1 = args.Length() > 1
                 ? Arg<QDir::Filter>(args, 1)
@@ -255,7 +250,7 @@ VHandle Process::start(const v8::Arguments &args)
 {
     return callConvertException
         (args, [](const v8::Arguments &args) -> VHandle {
-            auto self = cutesObjFromThis<impl_type>(args);
+            auto self = cutesObjFromThis<base_type>(args);
             auto p0 = Arg<QString>(args, 0);
             auto p1 = Arg<QStringList>(args, 1);
             auto p2 = (args.Length() == 3)
