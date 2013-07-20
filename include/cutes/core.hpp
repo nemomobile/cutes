@@ -50,8 +50,10 @@ template <> struct ObjectTraits<QByteArray>
 template<> struct Convert<QByteArray> {
     static inline QByteArray fromV8(QV8Engine *e, VHandle v)
     {
-        return ValueFromV8<QString>(e, v).toUtf8();
-    } 
+        return v->IsString()
+            ? ValueFromV8<QString>(e, v).toUtf8()
+            : *cutesObjFromV8<QByteArray>(e, v);
+    }
     static inline VHandle toV8(QByteArray const& v)
     {
         return objToV8<QByteArray>(v);
@@ -91,10 +93,7 @@ public:
 
 };
 
-template <> struct ObjectTraits<QFileInfo>
-{
-    typedef FileInfo js_type;
-};
+CUTES_DEFINE_CONVERT(QFileInfo, FileInfo);
 
 class Dir : public QDir
 {
@@ -115,10 +114,7 @@ public:
                         , v8::Handle<v8::ObjectTemplate>);
 };
 
-template <> struct ObjectTraits<QDir>
-{
-    typedef Dir js_type;
-};
+CUTES_DEFINE_CONVERT(QDir, Dir);
 
 class Process : public QProcess
 {

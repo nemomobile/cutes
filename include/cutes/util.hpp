@@ -71,10 +71,10 @@ T * cutesObjFromV8(QV8Engine *, VHandle v)
 
 template <typename T> struct Convert
 {
-    static inline VHandle toV8(T const& v)
-    {
-        return objToV8<T>(v);
-    }
+    // static inline VHandle toV8(T const& v)
+    // {
+    //     return objToV8<T>(v);
+    // }
 
     // static inline T fromV8(QV8Engine *v8e, VHandle v)
     // {
@@ -411,6 +411,25 @@ template<> struct Convert<flag_type> {                      \
         return ValueToV8((int)v);                                       \
     }                                                                   \
 };
+
+#define CUTES_DEFINE_CONVERT(obj_type, js_type_)                    \
+    template <> struct ObjectTraits<obj_type>                       \
+    {                                                               \
+        typedef js_type_ js_type;                                   \
+    };                                                              \
+                                                                    \
+    template <> struct Convert<obj_type>                            \
+    {                                                               \
+        static inline VHandle toV8(obj_type const& v)               \
+        {                                                           \
+            return objToV8<obj_type>(v);                            \
+        }                                                           \
+                                                                    \
+        static inline obj_type const& fromV8(QV8Engine *v8e, VHandle v) \
+        {                                                               \
+            return *cutesObjFromV8<obj_type>(v8e, v);                   \
+        }                                                               \
+    };
 
 }}
 
