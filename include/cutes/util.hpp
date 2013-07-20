@@ -35,10 +35,19 @@ static inline void Set
 VHandle callConvertException(const v8::Arguments &, v8::InvocationCallback);
 
 template <typename ResT>
-ResT *QObjFromV8This(const v8::Arguments &args)
+ResT *cutesObjFromV8(v8::Handle<v8::Object> obj)
 {
+    auto cls = obj->Get(v8::String::New("cutesClass__"));
+    if (cls.IsEmpty())
+        throw std::invalid_argument("Not a cutes object");
     return reinterpret_cast<ResT*>
-        (v8::External::Unwrap(args.This()->GetInternalField(0)));
+        (v8::External::Unwrap(obj->GetInternalField(0)));
+}
+
+template <typename T>
+T * cutesObjFromThis(const v8::Arguments &args)
+{
+    return cutesObjFromV8<T>(args.This());
 }
 
 template <typename T>
@@ -51,12 +60,26 @@ static inline VHandle objToV8(T const& v)
     return hscope.Close(ctor->NewInstance(1, &p));
 }
 
+template <typename T>
+T * cutesObjFromV8(QV8Engine *, VHandle v)
+{
+    if (!v->IsObject())
+        throw std::invalid_argument("Not an object");
+
+    return cutesObjFromV8<T>(v8::Handle<v8::Object>::Cast(v));
+}
+
 template <typename T> struct Convert
 {
     static inline VHandle toV8(T const& v)
     {
         return objToV8<T>(v);
     }
+
+    // static inline T fromV8(QV8Engine *v8e, VHandle v)
+    // {
+    //     return *cutesObjFromV8(v8e, v);
+    // }
 };
 
 template <typename T>
@@ -133,6 +156,33 @@ template<> struct Convert<QStringList> {
     }
 };
 
+template<typename T> struct Convert<QList<T> > {
+    static QList<T> fromV8(QV8Engine *, VHandle v)
+    {
+        using namespace v8;
+        QList<T> res;
+        if (!v->IsArray()) {
+            throw std::invalid_argument("Expecting array");
+            return res;
+        }
+        auto self = Handle<Array>::Cast(v);
+        for (int i = 0; i < self->Length(); ++i)
+            res.push_back(ValueFromV8<T>(self->Get(i)));
+
+        return res;
+    }
+
+    static VHandle toV8(QList<T> const &src)
+    {
+        using namespace v8;
+        auto res = Array::New(src.length());
+        int i = 0;
+        for (auto const &v : src)
+            res->Set(i++, ValueToV8<T>(v));
+        return res;
+    }
+};
+
 template <typename T>
 T Arg(v8::Arguments const& args, unsigned i)
 {
@@ -171,7 +221,7 @@ static void v8EngineAdd(QV8Engine *v8e, char const *name)
     using namespace v8;
     HandleScope hscope;
 
-    Handle<FunctionTemplate> ctor 
+    Handle<FunctionTemplate> ctor
         = FunctionTemplate::New(v8Ctor<T, typename T::impl_type>
                                 , External::New(v8e));
 
@@ -181,7 +231,8 @@ static void v8EngineAdd(QV8Engine *v8e, char const *name)
     tpl->SetInternalFieldCount(1);
 
     tpl->Set("cutesClass__", v8::String::New(name));
-    
+    tpl->Set("cutesCtor__", ctor->GetFunction());
+
     T::v8Setup(v8e, ctor, tpl);
     v8e->global()->Set(v8::String::New(name), ctor->GetFunction());
 }
@@ -268,7 +319,7 @@ struct FnWrapper
     static inline VHandle param0(const v8::Arguments &args)
     {
         return callConvertException(args, [](const v8::Arguments &args) -> VHandle {
-                auto self = QObjFromV8This<ObjT>(args);
+                auto self = cutesObjFromThis<ObjT>(args);
                 return ValueToV8((self->*fn)());
             });
     }
@@ -277,7 +328,7 @@ struct FnWrapper
     static inline VHandle param1(const v8::Arguments &args)
     {
         return callConvertException(args, [](const v8::Arguments &args) -> VHandle {
-                auto self = QObjFromV8This<ObjT>(args);
+                auto self = cutesObjFromThis<ObjT>(args);
                 auto p0 = Arg<ParamT>(args, 0);
                 return ValueToV8((self->*fn)(p0));
             });
@@ -291,7 +342,7 @@ struct FnWrapper<void, ObjT>
     static inline VHandle param0(const v8::Arguments &args)
     {
         return callConvertException(args, [](const v8::Arguments &args) -> VHandle {
-                auto self = QObjFromV8This<ObjT>(args);
+                auto self = cutesObjFromThis<ObjT>(args);
                 (self->*fn)();
                 return v8::Undefined();
             });
@@ -301,7 +352,7 @@ struct FnWrapper<void, ObjT>
     static inline VHandle param1(const v8::Arguments &args)
     {
         return callConvertException(args, [](const v8::Arguments &args) -> VHandle {
-                auto self = QObjFromV8This<ObjT>(args);
+                auto self = cutesObjFromThis<ObjT>(args);
                 auto p0 = Arg<ParamT>(args, 0);
                 (self->*fn)(p0);
                 return v8::Undefined();
@@ -348,6 +399,18 @@ static VHandle fnWOParams(const v8::Arguments &args)
                             <res, type, param_t,                               \
                              res (obj_type::*)(param_sig) const,               \
                              &obj_type::name>)
+
+#define CUTES_CONVERT_INT_FLAG(flag_type)                   \
+template<> struct Convert<flag_type> {                      \
+    static inline flag_type fromV8(QV8Engine *e, VHandle v) \
+    {                                                       \
+        return (flag_type)ValueFromV8<int>(e, v);                       \
+    }                                                                   \
+    static inline VHandle toV8(flag_type const& v)                      \
+    {                                                                   \
+        return ValueToV8((int)v);                                       \
+    }                                                                   \
+};
 
 }}
 

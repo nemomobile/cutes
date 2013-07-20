@@ -8,16 +8,7 @@ IODevice::IODevice(v8::Arguments const&)
 {
 }
 
-template<> struct Convert<QIODevice::OpenModeFlag> {
-    static inline QIODevice::OpenModeFlag fromV8(QV8Engine *e, VHandle v)
-    {
-        return (QIODevice::OpenModeFlag)ValueFromV8<int>(e, v);
-    } 
-    static inline VHandle toV8(QIODevice::OpenModeFlag const& v)
-    {
-        return ValueToV8((int)v);
-    }
-};
+CUTES_CONVERT_INT_FLAG(QIODevice::OpenModeFlag);
 
 #define IODEVICE_CONST(name) CUTES_CONST(name, QIODevice)
 
@@ -49,7 +40,7 @@ VHandle ByteArray::toString(const v8::Arguments &args)
 {
     return callConvertException
         (args, [](const v8::Arguments &args) -> VHandle {
-            auto self = QObjFromV8This<impl_type>(args);
+            auto self = cutesObjFromThis<impl_type>(args);
             return ValueToV8(QString(*self));
         });
 }
@@ -73,7 +64,7 @@ VHandle File::open(const v8::Arguments &args)
 {
     return callConvertException
         (args, [](const v8::Arguments &args) -> VHandle {
-            auto self = QObjFromV8This<impl_type>(args);
+            auto self = cutesObjFromThis<impl_type>(args);
             auto p0 = Arg<int>(args, 0);
             auto mode = static_cast<QIODevice::OpenModeFlag>(p0);
             return ValueToV8(self->open(mode));
@@ -144,9 +135,28 @@ void FileInfo::v8Setup(QV8Engine *v8e
 
 v8::Persistent<v8::FunctionTemplate> Dir::cutesCtor_;
 
+CUTES_CONVERT_INT_FLAG(QDir::Filter);
+CUTES_CONVERT_INT_FLAG(QDir::SortFlag);
+
 Dir::Dir(v8::Arguments const &args)
     : impl_type(Arg<QString>(args, 0))
 {
+}
+
+VHandle Dir::entryInfoList(const v8::Arguments &args)
+{
+    return callConvertException
+        (args, [](const v8::Arguments &args) -> VHandle {
+            auto self = cutesObjFromThis<impl_type>(args);
+            auto p0 = Arg<QStringList>(args, 0);
+            auto p1 = args.Length() > 1
+                ? Arg<QDir::Filter>(args, 1)
+                : QDir::NoFilter;
+            auto p2 = args.Length() > 2
+                ? Arg<QDir::SortFlag>(args, 2)
+                : QDir::NoSort;
+            return ValueToV8(self->entryInfoList(p0, p1, p2));
+        });
 }
 
 VHandle Dir::homePath(const v8::Arguments &)
@@ -165,26 +175,61 @@ VHandle Dir::rootPath(const v8::Arguments &)
 #define STR_QUERY_(name) \
     CUTES_GET_CONST(name, QString, QDir, QDir)
 
+#define CONST_(name) CUTES_CONST(name, QDir)
+
 void Dir::v8Setup(QV8Engine *v8e
-                        , v8::Handle<v8::FunctionTemplate> cls
-                        , v8::Handle<v8::ObjectTemplate> obj)
+                  , v8::Handle<v8::FunctionTemplate> cls
+                  , v8::Handle<v8::ObjectTemplate> obj)
 {
     setupTemplate(v8e, cls)
+        << CONST_(Dirs)
+        << CONST_(AllDirs)
+        << CONST_(Files)
+        << CONST_(Drives)
+        << CONST_(NoSymLinks)
+        << CONST_(NoDotAndDotDot)
+        << CONST_(NoDot)
+        << CONST_(NoDotDot)
+        << CONST_(AllEntries)
+        << CONST_(Readable)
+        << CONST_(Writable)
+        << CONST_(Executable)
+        << CONST_(Modified)
+        << CONST_(Hidden)
+        << CONST_(System)
+        << CONST_(CaseSensitive)
+        << CONST_(NoFilter)
+
+        << CONST_(Name)
+        << CONST_(Time)
+        << CONST_(Size)
+        << CONST_(Unsorted)
+        << CONST_(SortByMask)
+        << CONST_(DirsFirst)
+        << CONST_(Reversed)
+        << CONST_(IgnoreCase)
+        << CONST_(DirsLast)
+        << CONST_(LocaleAware)
+        << CONST_(Type)
+        << CONST_(NoSort)
+
         << CUTES_FN(homePath, Dir)
         << CUTES_FN(rootPath, Dir)
         ;
     setupTemplate(v8e, obj)
         << CUTES_FN_PARAM_CONST(mkdir, bool, QDir, QDir, QString, const QString&)
         << BOOL_QUERY_(exists)
+        << BOOL_QUERY_(isRoot)
         << STR_QUERY_(dirName)
         << STR_QUERY_(path)
         << CUTES_GET(cdUp, bool, QDir, QDir)
+        << CUTES_FN(entryInfoList, Dir)
         ;
 }
 
 #undef BOOL_QUERY_
 #undef STR_QUERY_
-
+#undef CONST_
 
 template<> struct Convert<QProcess::ExitStatus> {
     static inline VHandle toV8(QProcess::ExitStatus v)
@@ -210,12 +255,12 @@ VHandle Process::start(const v8::Arguments &args)
 {
     return callConvertException
         (args, [](const v8::Arguments &args) -> VHandle {
-            auto self = QObjFromV8This<impl_type>(args);
+            auto self = cutesObjFromThis<impl_type>(args);
             auto p0 = Arg<QString>(args, 0);
             auto p1 = Arg<QStringList>(args, 1);
             auto p2 = (args.Length() == 3)
                 ? Arg<QIODevice::OpenModeFlag>(args, 2)
-                : QIODevice::ReadWrite; 
+                : QIODevice::ReadWrite;
             self->start(p0, p1, p2);
             return v8::Undefined();
         });

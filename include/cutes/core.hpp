@@ -14,6 +14,7 @@ class IODevice
 {
 public:
     typedef IODevice impl_type; // QIODevice is abstract
+    typedef QIODevice qt_type;
 
     IODevice(v8::Arguments const&);
 
@@ -28,6 +29,7 @@ class ByteArray : public QByteArray
 {
 public:
     typedef QByteArray impl_type;
+    typedef QByteArray qt_type;
 
     ByteArray(v8::Arguments const &args);
 
@@ -60,6 +62,7 @@ class File : public QFile
 {
 public:
     typedef QFile impl_type;
+    typedef QFile qt_type;
 
     File(v8::Arguments const& args);
 
@@ -76,6 +79,7 @@ class FileInfo : public QFileInfo
 {
 public:
     typedef QFileInfo impl_type;
+    typedef QFileInfo qt_type;
 
     FileInfo(v8::Arguments const&);
 
@@ -87,10 +91,16 @@ public:
 
 };
 
+template <> struct ObjectTraits<QFileInfo>
+{
+    typedef FileInfo js_type;
+};
+
 class Dir : public QDir
 {
 public:
     typedef QDir impl_type;
+    typedef QDir qt_type;
 
     Dir(v8::Arguments const&);
 
@@ -98,6 +108,7 @@ public:
 
     static VHandle rootPath(const v8::Arguments &);
     static VHandle homePath(const v8::Arguments &);
+    static VHandle entryInfoList(const v8::Arguments &);
 
     static void v8Setup(QV8Engine *
                         , v8::Handle<v8::FunctionTemplate>
@@ -113,6 +124,7 @@ class Process : public QProcess
 {
 public:
     typedef QProcess impl_type;
+    typedef QProcess qt_type;
 
     Process(v8::Arguments const&);
 
