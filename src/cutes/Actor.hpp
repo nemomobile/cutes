@@ -40,7 +40,7 @@
 #endif
 #include <QSharedPointer>
 
-namespace QsExecute
+namespace cutes
 {
 
 class Event : public QEvent
@@ -176,27 +176,27 @@ private:
     QScopedPointer<WorkerThread> worker_;
 };
 
-class DeclarativeActor : public Actor
+class QmlActor : public Actor
 {
     Q_OBJECT;
     // uses QUrl to allow declarative engine to resolve full path
     Q_PROPERTY(QUrl source READ source WRITE setSource);
 public:
-    DeclarativeActor(QJSEngine *engine = nullptr);
-    virtual ~DeclarativeActor() {}
+    QmlActor(QJSEngine *engine = nullptr);
+    virtual ~QmlActor() {}
 
     QUrl source() const;
     void setSource(QUrl const&);
 };
 
-class QtScriptActor : public Actor
+class StdActor : public Actor
 {
     Q_OBJECT;
     // in QtScript using simple string as a source name
     Q_PROPERTY(QString source READ source WRITE setSource);
 public:
-    QtScriptActor(QJSEngine *engine = nullptr);
-    virtual ~QtScriptActor() {}
+    StdActor(QJSEngine *engine = nullptr);
+    virtual ~StdActor() {}
 };
 
 class QtScriptAdapter : public QObject

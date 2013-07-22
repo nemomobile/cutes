@@ -1,6 +1,27 @@
 #include <cutes/util.hpp>
 
-namespace cutes { namespace js {
+namespace cutes {
+
+QJSValue toQJSValue(QVariant const& v)
+{
+    QJSValue res;
+    switch (v.type()) {
+    case QVariant::Bool:
+        return QJSValue(v.toBool());
+    case QVariant::String:
+        return QJSValue(v.toString());
+    case QVariant::Double:
+        return QJSValue(v.toDouble());
+    case QVariant::Int:
+        return QJSValue(v.toInt());
+    case QVariant::UInt:
+        return QJSValue(v.toUInt());
+    default:
+        return QJSValue();
+    }
+}
+
+namespace js {
 
 v8::Handle<v8::Value> callConvertException
 (const v8::Arguments &args, v8::InvocationCallback fn)

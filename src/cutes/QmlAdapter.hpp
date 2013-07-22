@@ -1,18 +1,17 @@
 #ifndef _QTSCRIPT_QML_ADAPTER_H_
 #define _QTSCRIPT_QML_ADAPTER_H_
 
-#include "QsEnv.hpp"
+#include "Env.hpp"
 
 #include <QCoreApplication>
 #include "qt_quick_types.hpp"
 
-namespace QsExecute {
+namespace cutes {
 
 #define QML_NAMESPACE Mer.QtScript
 static inline void registerDeclarativeTypes(char const *uri)
 {
-    qmlRegisterType<DeclarativeActor>(uri, 1, 1, "QtScriptActor");
-    qmlRegisterType<QtScriptAdapter>(uri, 1, 1, "QtScriptAdapter");
+    qmlRegisterType<QmlActor>(uri, 1, 1, "CutesActor");
 }
 
 void setupDeclarative(QCoreApplication &, QDeclarativeView &, QString const &);

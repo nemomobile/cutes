@@ -24,7 +24,7 @@
  * http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
  */
 
-#include "QsActor.hpp"
+#include "Actor.hpp"
 
 #include <QObject>
 #include <QVariant>
@@ -32,7 +32,7 @@
 #include <QJSValue>
 
 
-namespace QsExecute
+namespace cutes
 {
 
 class Endpoint : public QObject
@@ -93,11 +93,10 @@ private:
 class EngineException : public Event
 {
 public:
-    EngineException(QJSEngine const&);
+    EngineException(QJSEngine const&, QJSValue const&);
     virtual ~EngineException() {}
 
     QVariant exception_;
-    QStringList backtrace_;
 };
 
 }

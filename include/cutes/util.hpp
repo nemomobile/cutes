@@ -11,7 +11,11 @@
 #include <functional>
 #include <stdexcept>
 
-namespace cutes { namespace js {
+namespace cutes {
+
+QJSValue toQJSValue(QVariant const&);
+
+namespace js {
 
 typedef v8::Handle<v8::Value> VHandle;
 

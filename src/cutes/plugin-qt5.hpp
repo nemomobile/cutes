@@ -1,6 +1,8 @@
 #ifndef _CUTES_QML_PLUGIN_QT5_HPP_
 #define _CUTES_QML_PLUGIN_QT5_HPP_
 
+#include "util.hpp"
+
 #include "QmlAdapter.hpp"
 
 #include <QtQml/QQmlExtensionPlugin>
@@ -9,17 +11,13 @@
 namespace QsExecute
 {
 
-#define STRINGIFY(x) #x
-#define DQUOTESTR(x) STRINGIFY(x)
-
 class Plugin : public QQmlExtensionPlugin
 {
     Q_OBJECT
     Q_PLUGIN_METADATA(IID DQUOTESTR(QML_NAMESPACE))
 public:
-    void initializeEngine(QDeclarativeEngine *engine, const char *)
+    void initializeEngine(QQmlEngine *engine, const char *)
     {
-        QJSEngine *script_engine = getDeclarativeScriptEngine(*engine->rootContext());
         loadEnv(*QCoreApplication::instance(), *script_engine);
     }
 

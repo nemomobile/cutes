@@ -1,37 +1,29 @@
-SET(PLUGIN_NAME qtscript)
-set(SRC main.cpp)
-set(LIBSRC QmlAdapter.cpp QsActor.cpp QsEnv.cpp)
-set(QMLPKG Mer/QtScript)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(V8 Qt5V8 REQUIRED)
+find_package(Qt5Core REQUIRED)
+find_package(Qt5Qml REQUIRED)
 
-set(HDRS EngineAccess.hpp QsActor.hpp QsActorEvents.hpp QsEnv.hpp)
+set(V8_PRIVATE_INCLUDES
+  "/usr/include/qt5/QtV8/${Qt5Qml_VERSION_STRING}/QtV8"
+)
+
+include_directories(
+  ${PROJECT_SOURCE_DIR}/include
+  ${Qt5Core_INCLUDE_DIRS}
+  ${Qt5Qml_INCLUDE_DIRS}
+  ${V8_PRIVATE_INCLUDES}
+  ${Qt5Qml_PRIVATE_INCLUDE_DIRS}
+)
+
+add_definitions(
+  ${Qt5Core_DEFINITIONS}
+  ${Qt5Qml_DEFINITIONS}
+  ${V8_DEFINITIONS}
+)
 
 add_definitions(-DQT_SHARED)
 
-set(PLUGIN_SRC )
-set(NAME cutes)
-set(LIBNAME cutescript-qt5)
+set(CMAKE_AUTOMOC TRUE)
 
-qt5_wrap_cpp(MOC_SRC ${HDRS} plugin-qt5.hpp)
-
-add_library(${PLUGIN_NAME} MODULE ${PLUGIN_SRC} ${MOC_SRC})
-add_library(${LIBNAME} SHARED ${LIBSRC} ${MOC_SRC})
-add_executable(${NAME} ${SRC})
-
-target_link_libraries(${PLUGIN_NAME}
-  ${LIBNAME}
-)
-
-target_link_libraries(${NAME}
-  ${LIBNAME}
-  ${Qt5Core_LIBRARIES}
-  ${Qt5Gui_LIBRARIES}
-  ${Qt5Widgets_LIBRARIES}
-  ${Qt5Qml_LIBRARIES}
-  ${Qt5Quick_LIBRARIES}
-  )
-
-install(TARGETS ${PLUGIN_NAME} DESTINATION lib${LIB_SUFFIX}/qt5/qml/${QMLPKG})
-install(FILES qmldir DESTINATION lib${LIB_SUFFIX}/qt5/qml/${QMLPKG})
-
-install(TARGETS ${NAME} DESTINATION bin)
-install(TARGETS ${LIBNAME} DESTINATION lib${LIB_SUFFIX})
+add_subdirectory(lib)
+add_subdirectory(cutes)

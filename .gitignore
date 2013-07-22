@@ -9,3 +9,5 @@ cscope*
 *.a
 moc_*
 doc/cutes.1.gz
+*automoc.cpp
+install_manifest.txt
