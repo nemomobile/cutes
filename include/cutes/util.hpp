@@ -57,6 +57,12 @@ auto callAnyConvertException
     }
 }
 
+/**
+ * @defgroup value_convert Converting Values
+ *
+ *  @{
+ */
+
 template <typename ResT>
 ResT *cutesObjFromV8(v8::Handle<v8::Object> obj)
 {
@@ -215,7 +221,13 @@ T CtorArg(v8::Arguments const& args, unsigned i)
     }
 }
 
+/** @} */
 
+/**
+ * @defgroup class_add Adding Classes
+ *
+ *  @{
+ */
 
 template <typename T>
 void v8DeleteCppObj(v8::Persistent<v8::Value> v, void* p)
@@ -244,7 +256,7 @@ static VHandle v8Ctor(const v8::Arguments &args)
 }
 
 template <typename T>
-static void v8EngineAdd(QV8Engine *v8e, char const *name)
+static void v8EngineAdd_(QV8Engine *v8e, v8::Local<v8::Object> tgt, char const *name)
 {
     using namespace v8;
     HandleScope hscope;
@@ -261,83 +273,115 @@ static void v8EngineAdd(QV8Engine *v8e, char const *name)
     tpl->Set("cutesClass__", v8::String::New(name));
 
     T::v8Setup(v8e, ctor, tpl);
-    v8e->global()->Set(v8::String::New(name), ctor->GetFunction());
+    tgt->Set(v8::String::New(name), ctor->GetFunction());
 }
 
-class TemplateInitializer
+struct V8AddTag_ {};
+template <typename T> struct V8Class_ {};
+
+typedef std::tuple<V8AddTag_, QV8Engine *, v8::Local<v8::Object> > V8Add_;
+
+static inline V8Add_ v8EngineAdd(QV8Engine *v8e, v8::Local<v8::Object> tgt)
 {
-public:
-    TemplateInitializer(QV8Engine *v8e, v8::Handle<v8::Template> target)
-        : engine_(v8e), target_(target)
-    {}
-
-    template <typename FnT>
-    TemplateInitializer const& setFn(char const *name, FnT fn) const
-    {
-        target_->Set(name, V8FUNCTION(fn, engine_));
-        return *this;
-    }
-
-    template <typename T>
-    TemplateInitializer const& setConst(char const *name, T v) const
-    {
-        target_->Set(name, ValueToV8(v));
-        return *this;
-    }
-
-private:
-    QV8Engine *engine_;
-    v8::Handle<v8::Template> target_;
-};
-
-static inline TemplateInitializer
-setupTemplate(QV8Engine *engine, v8::Handle<v8::Template> target)
-{
-    TemplateInitializer self(engine, target);
-    return self;
-}
-
-template <typename FnT>
-struct FunctionInfo
-{
-    FunctionInfo(char const *name_, FnT fn_) : name(name_), fn(fn_) {}
-    char const *name;
-    FnT fn;
-};
-
-template <typename FnT>
-FunctionInfo<FnT> Callback(char const *name, FnT fn)
-{
-    return FunctionInfo<FnT>(name, fn);
+    return std::make_tuple(V8AddTag_(), v8e, tgt);
 }
 
 template <typename T>
-struct ConstInfo
+static inline std::tuple<V8Class_<T>, char const*> v8Class(char const *name)
 {
-    ConstInfo(char const *name_, T v_) : name(name_), v(v_) {}
-    char const *name;
-    T v;
-};
-
-template <typename T>
-ConstInfo<T> Const(char const *name, T v)
-{
-    return ConstInfo<T>(name, v);
-}
-
-template <typename FnT>
-TemplateInitializer const& operator << (TemplateInitializer const& dst
-                                   , FunctionInfo<FnT> const &fn)
-{
-    return dst.setFn(fn.name, fn.fn);
+    return std::tuple<V8Class_<T>, char const*>(V8Class_<T>(), name);
 }
 
 template <typename T>
-TemplateInitializer const& operator << (TemplateInitializer const& dst
-                                   , ConstInfo<T> const &v)
+V8Add_ const& operator <<
+(V8Add_ const& helper, std::tuple<V8Class_<T>, char const*> const &data)
 {
-    return dst.setConst(v.name, v.v);
+    v8EngineAdd_<T>(std::get<1>(helper), std::get<2>(helper), std::get<1>(data));
+    return helper;
 }
+
+/** @} */
+
+/**
+ * @defgroup template_setup Setup Object Template
+ *
+ *  @{
+ */
+
+struct V8TemplateTag_ {};
+typedef std::tuple<V8TemplateTag_, QV8Engine *
+                   , v8::Handle<v8::Template> > V8Template_;
+
+/**
+ * returns object used as a target to streaming operation to add
+ * members to the class/object template
+ *
+ * @param v8e v8 engine wrapper
+ * @param tgt target template
+ *
+ * @return object to be used for << operations
+ */
+static inline V8Template_ setupTemplate(QV8Engine *v8e, v8::Handle<v8::Template> tgt)
+{
+    return std::make_tuple(V8TemplateTag_(), v8e, tgt);
+}
+
+template <typename T> struct V8Fn_ {};
+template <typename T> struct V8Const_ {};
+
+/**
+ * info about v8 callback to be added
+ *
+ * @param name function name
+ * @param fn implementation
+ *
+ * @return info to be passed to setupTemplate result
+ */
+template <typename T>
+static inline std::tuple<V8Fn_<T>, char const*, T>
+Callback(char const *name, T fn)
+{
+    return std::make_tuple(V8Fn_<T>(), name, fn);
+}
+
+/**
+ *
+ *
+ * @param name function name
+ * @param v value convertible to v8 value
+ *
+ * @return info to be passed to setupTemplate result
+ */
+template <typename T>
+static inline std::tuple<V8Const_<T>, char const*, T>
+Const(char const *name, T v)
+{
+    return std::make_tuple(V8Const_<T>(), name, v);
+}
+
+template <typename T>
+V8Template_ const& operator <<
+(V8Template_ const& helper, std::tuple<V8Fn_<T>, char const*, T> const &data)
+{
+    auto engine = std::get<1>(helper);
+    auto &target = std::get<2>(helper);
+    auto name = std::get<1>(data);
+    auto &fn = std::get<2>(data);
+    target->Set(name, V8FUNCTION(fn, engine));
+    return helper;
+}
+
+template <typename T>
+V8Template_ const& operator <<
+(V8Template_ const& helper, std::tuple<V8Const_<T>, char const*, T> const &data)
+{
+    auto &target = std::get<2>(helper);
+    auto name = std::get<1>(data);
+    target->Set(name, ValueToV8(std::get<2>(data)));
+    return helper;
+}
+
+/** @} */
 
 template <typename ResT, typename ObjT>
 struct FnWrapper

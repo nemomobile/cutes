@@ -25,6 +25,7 @@ public:
                         , v8::Handle<v8::ObjectTemplate>);
 };
 
+/** @ingroup value_convert */
 CUTES_FLAG_CONVERTIBLE_INT(QIODevice::OpenModeFlag);
 
 class ByteArray : public QByteArray
@@ -95,6 +96,7 @@ public:
 
 };
 
+/** @ingroup value_convert */
 CUTES_CONVERTIBLE_COPYABLE(QFileInfo, FileInfo);
 
 class Dir : public QDir
@@ -116,9 +118,15 @@ public:
                         , v8::Handle<v8::ObjectTemplate>);
 };
 
+/** @addtogroup value_convert
+ * @{
+ */
+
 CUTES_CONVERTIBLE_COPYABLE(QDir, Dir);
 CUTES_FLAG_CONVERTIBLE_INT(QDir::Filter);
 CUTES_FLAG_CONVERTIBLE_INT(QDir::SortFlag);
+
+/** @} */
 
 class Process : public QProcess
 {

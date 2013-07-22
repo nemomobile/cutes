@@ -299,12 +299,15 @@ void Process::v8Setup(QV8Engine *v8e
 extern "C" void registerLibrary(QV8Engine *v8e)
 {
     using namespace cutes::js;
-    v8EngineAdd<File>(v8e, "File");
-    v8EngineAdd<FileInfo>(v8e, "FileInfo");
-    v8EngineAdd<IODevice>(v8e, "IODevice");
-    v8EngineAdd<ByteArray>(v8e, "ByteArray");
-    v8EngineAdd<Dir>(v8e, "Dir");
-    v8EngineAdd<Process>(v8e, "Process");
+    v8::HandleScope hscope;
+    auto global = v8e->global();
+    v8EngineAdd(v8e, global)
+            << v8Class<File>("QFile")
+            << v8Class<FileInfo>("QFileInfo")
+            << v8Class<IODevice>("QIODevice")
+            << v8Class<ByteArray>("QByteArray")
+            << v8Class<Dir>("QDir")
+            << v8Class<Process>("QProcess");
 }
 
 }}
