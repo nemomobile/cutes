@@ -218,8 +218,9 @@ T CtorArg(v8::Arguments const& args, unsigned i)
 
 
 template <typename T>
-void v8DeleteCppObj(v8::Persistent<v8::Value>, void* p)
+void v8DeleteCppObj(v8::Persistent<v8::Value> v, void* p)
 {
+    v.Dispose();
     delete reinterpret_cast<T*>(p);
 }
 
