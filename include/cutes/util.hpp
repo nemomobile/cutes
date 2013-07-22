@@ -259,7 +259,6 @@ static void v8EngineAdd(QV8Engine *v8e, char const *name)
     tpl->SetInternalFieldCount(1);
 
     tpl->Set("cutesClass__", v8::String::New(name));
-    tpl->Set("cutesCtor__", ctor->GetFunction());
 
     T::v8Setup(v8e, ctor, tpl);
     v8e->global()->Set(v8::String::New(name), ctor->GetFunction());
