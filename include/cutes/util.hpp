@@ -17,6 +17,12 @@ QJSValue toQJSValue(QVariant const&);
 
 namespace js {
 
+static inline void V8ExceptionQString(QString const &msg)
+{
+    using namespace v8;
+    ThrowException(Exception::Error(String::New(msg.toUtf8().data())));
+}
+
 typedef v8::Handle<v8::Value> VHandle;
 
 template <typename T>
@@ -37,6 +43,19 @@ static inline void Set
 }
 
 VHandle callConvertException(const v8::Arguments &, v8::InvocationCallback);
+
+template <typename T, typename ... Args>
+auto callAnyConvertException
+(T fn, Args&& ...args) -> decltype(fn(args...))
+{
+    try {
+        return fn(args...);
+    } catch (std::exception const &e) {
+        using namespace v8;
+        ThrowException(Exception::Error(String::New(e.what())));
+        return decltype(fn(args...))();
+    }
+}
 
 template <typename ResT>
 ResT *cutesObjFromV8(v8::Handle<v8::Object> obj)
@@ -181,6 +200,21 @@ T Arg(v8::Arguments const& args, unsigned i)
 {
     return ValueFromV8<T>(V8ENGINE(), args[i]);
 }
+
+template <typename T>
+T CtorArg(v8::Arguments const& args, unsigned i)
+{
+    try {
+        return Arg<T>(args, i);
+    } catch (std::exception const &e) {
+        using namespace v8;
+        auto msg = QString("Error constructing object: %1").arg(e.what());
+        qWarning() << msg;
+        V8ExceptionQString(msg);
+        return T();
+    }
+}
+
 
 
 template <typename T>
