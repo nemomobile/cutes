@@ -24,6 +24,13 @@
 
 #include <cutes/util.hpp>
 
+#include <QtQml/private/qjsvalue_p.h>
+#include <QtQml/private/qjsvalue_impl_p.h>
+
+#include <QtQml/private/qv8engine_p.h>
+#include <QtQml/private/qv8engine_impl_p.h>
+#include <QtQml/private/qjsvalueiterator_impl_p.h>
+
 namespace cutes {
 
 QJSValue toQJSValue(QVariant const& v)
@@ -44,6 +51,13 @@ QJSValue toQJSValue(QVariant const& v)
         return QJSValue();
     }
 }
+
+QJSValue toQJSValue(QJSEngine &engine, v8::Handle<v8::Value> src)
+{
+    const QJSValuePrivate priv(engine.handle(), src);
+    return QJSValuePrivate::get(&priv);
+}
+
 
 namespace js {
 
