@@ -531,7 +531,7 @@ template<> struct Convert<flag_type> {                      \
 
 static inline char const *cutesRegisterName()
 {
-    return cutesRegisterName();
+    return "cutesRegister";
 }
 
 typedef void (*cutesRegisterFnType)(QJSEngine *);
