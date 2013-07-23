@@ -1,9 +1,9 @@
-#include "QsEnv.hpp"
+#include "Env.hpp"
 #include <iostream>
 #include <QApplication>
 #include "QmlAdapter.hpp"
 
-using namespace QsExecute;
+using namespace cutes;
 
 namespace QsExecute {
 
@@ -27,8 +27,7 @@ int executeScript(int argc, char *argv[])
 
     try {
         auto res = script_env->load(script_file);
-        if (engine.hasUncaughtException()
-            && engine.uncaughtException().isValid())
+        if (res.isError())
             rc = EXIT_FAILURE;
     } catch (Error const &e) {
         qDebug() << "Failed to eval:" << script_file;
@@ -39,28 +38,28 @@ int executeScript(int argc, char *argv[])
         ? app.exec() : rc;
 }
 
-int executeDeclarative(int argc, char *argv[])
-{
-    QApplication app(argc, argv);
-    if (app.arguments().size() < 2)
-        return usage(argc, argv);
-    QString script_file(app.arguments().at(1));
+// int executeDeclarative(int argc, char *argv[])
+// {
+//     QApplication app(argc, argv);
+//     if (app.arguments().size() < 2)
+//         return usage(argc, argv);
+//     QString script_file(app.arguments().at(1));
 
-    QDeclarativeView view;
+//     QDeclarativeView view;
 
-    setupDeclarative(app, view, QFileInfo(script_file).absoluteFilePath());
-    view.setSource(QUrl::fromLocalFile(script_file));
+//     setupDeclarative(app, view, QFileInfo(script_file).absoluteFilePath());
+//     view.setSource(QUrl::fromLocalFile(script_file));
 
-#if QT_VERSION < 0x050000
-    view.setAttribute(Qt::WA_OpaquePaintEvent);
-    view.setAttribute(Qt::WA_NoSystemBackground);
-    view.viewport()->setAttribute(Qt::WA_OpaquePaintEvent);
-    view.viewport()->setAttribute(Qt::WA_NoSystemBackground);
-#endif
+// #if QT_VERSION < 0x050000
+//     view.setAttribute(Qt::WA_OpaquePaintEvent);
+//     view.setAttribute(Qt::WA_NoSystemBackground);
+//     view.viewport()->setAttribute(Qt::WA_OpaquePaintEvent);
+//     view.viewport()->setAttribute(Qt::WA_NoSystemBackground);
+// #endif
 
-    view.showFullScreen();
-    return app.exec();
-}
+//     view.showFullScreen();
+//     return app.exec();
+// }
 
 }
 
@@ -74,7 +73,7 @@ int main(int argc, char *argv[])
     QString script_file(argv[1]);
     
     if (QFileInfo(script_file).suffix() == "qml") {
-        return executeDeclarative(argc, argv);
+        // TODO return executeDeclarative(argc, argv);
     } else {
         return executeScript(argc, argv);
     }
