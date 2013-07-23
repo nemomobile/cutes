@@ -320,8 +320,13 @@ void Process::v8Setup(QV8Engine *v8e
 #undef QUERY_
 #undef SIMPLE_
 
-extern "C" void registerLibrary(QV8Engine *v8e)
+extern "C" void cutesRegister(QJSEngine *e)
 {
+    if (!e) {
+        qWarning() << "null engine is passed";
+        return;
+    }
+    QV8Engine *v8e = e->handle();
     using namespace cutes::js;
     v8::HandleScope hscope;
     auto global = v8e->global();

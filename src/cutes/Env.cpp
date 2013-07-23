@@ -8,6 +8,7 @@
 #include <QFile>
 #include <QTextStream>
 #include <QProcess>
+#include <QLibrary>
 
 #include <unistd.h>
 
@@ -63,7 +64,7 @@ QString JsError::errorMessage(Env *env, QString const &// file
     return res;
 }
 
-/** 
+/**
  * find property by path
  *
  * @param root root object
@@ -80,7 +81,7 @@ QJSValue findProperty(QJSValue const& root, QStringList const &path)
     return res;
 }
 
-/** 
+/**
  * convert system environment from "name=value" to map
  *
  * @return system env map
@@ -409,9 +410,34 @@ bool Env::event(QEvent *e)
     // return true;
 }
 
-QJSValue Env::extend(QString const& /*extension*/)
+QJSValue Env::extend(QString const& extension)
 {
-    return QJSValue(); // TODO engine_.importExtension(extension);
+    auto parts = extension.split('.');
+    auto len = parts.length();
+    if (!len) {
+        qWarning() << "Wrong extension name: '" << extension << "'";
+        return QJSValue();
+    }
+    parts.last() = QString("libcutes-%1.so").arg(parts.last());
+    auto rel_path = parts.join('/');
+    auto full_path = findFile(rel_path);
+    if (full_path.isEmpty()) {
+        qWarning() << "Can't find extension: '" << rel_path << "'";
+        return QJSValue();
+    }
+    QLibrary lib(full_path);
+    if (!lib.load()) {
+        qWarning() << "Can't load library: '" << full_path << "'";
+        return QJSValue();
+    }
+    auto fn = reinterpret_cast<cutesRegisterFnType>(lib.resolve(cutesRegisterName()));
+    if (!fn) {
+        qWarning() << "Can't resolve symbol " << cutesRegisterName()
+                   << " in '" << full_path << "'";
+        return QJSValue();
+    }
+    fn(&engine());
+    return QJSValue();
 }
 
 void Env::addSearchPath(QString const &path, Position pos)
@@ -613,6 +639,10 @@ QJSValue Module::load(QJSEngine &engine)
         dst << input.readLine() << "\n";
 
     auto res = engine.evaluate(contents, file_name, line_nr);
+    if (res.isError()) {
+        qWarning() << "Error loading " << file_name << ":" << res.toString();
+        return res;
+    }
     is_loaded_ = true;
     return exports();
 }

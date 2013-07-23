@@ -26,7 +26,7 @@ QString exec_(QJSEngine *jseng, int nr)
 
     v8e->global()->Set(v8::String::New("log"), V8FUNCTION(log, v8e));
 
-    registerLibrary(v8e);
+    cutesRegister(jseng);
     // using namespace cutes::js;
     // v8EngineAdd<File>(v8e, "File");
     // v8EngineAdd<FileInfo>(v8e, "FileInfo");

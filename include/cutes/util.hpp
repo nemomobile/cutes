@@ -527,8 +527,16 @@ template<> struct Convert<flag_type> {                      \
         }                                                               \
     };
 
-}}
+}
 
-extern "C" void registerLibrary(QV8Engine *);
+static inline char const *cutesRegisterName()
+{
+    return cutesRegisterName();
+}
+
+typedef void (*cutesRegisterFnType)(QJSEngine *);
+}
+
+extern "C" void cutesRegister(QJSEngine *);
 
 #endif // _CUTES_JS_UTIL_HPP_

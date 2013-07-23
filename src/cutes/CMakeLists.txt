@@ -8,7 +8,7 @@ set(CMAKE_AUTOMOC TRUE)
 add_definitions(-DQT_SHARED)
 
 set(SRC main.cpp)
-set(LIBSRC Env.cpp Actor.cpp)
+set(LIBSRC Env.cpp Actor.cpp ActorEvents.cpp)
 
 #add_library(${PLUGIN_NAME} MODULE ${PLUGIN_SRC} ${MOC_SRC})
 add_library(${LIBNAME} SHARED ${LIBSRC})
