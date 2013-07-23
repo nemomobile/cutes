@@ -410,6 +410,12 @@ bool Env::event(QEvent *e)
     // return true;
 }
 
+void Env::print(QString const& v)
+{
+    QTextStream stream(stdout);
+    stream << v;
+}
+
 QJSValue Env::extend(QString const& extension)
 {
     auto parts = extension.split('.');
@@ -619,7 +625,7 @@ QJSValue Module::load(QJSEngine &engine)
     if (!file.open(QFile::ReadOnly))
         throw Error(QString("Can't open %1").arg(file_name));
 
-    const QString prolog = "var module = cutes.module, exports = module.exports;\n";
+    const QString prolog = "var module = cutes.module; var exports = module.exports;\n";
     QString contents;
     contents.reserve(file.size() + prolog.size());
 
