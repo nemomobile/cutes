@@ -153,7 +153,8 @@ template<> struct Convert<int> {
     {
         using namespace v8;
         if (!v->IsNumber()) {
-            throw std::invalid_argument("Not a number");
+            v8::String::Utf8Value cs(v);
+            throw std::invalid_argument(std::string("Not a number: ") + *cs);
             return 0;
         }
         return v->ToInteger()->Value();

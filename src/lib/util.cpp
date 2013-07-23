@@ -68,6 +68,11 @@ v8::Handle<v8::Value> callConvertException
         return fn(args);
     } catch (std::exception const &e) {
         using namespace v8;
+        qWarning() << "Exception on invoking fn. Args:";
+        for (int i = 0; i < args.Length(); ++i) {
+            v8::String::Utf8Value cs(args[i]);
+            qWarning() << *cs;
+        }
         ThrowException(Exception::Error(String::New(e.what())));
         return Handle<Value>();
     }
@@ -79,7 +84,7 @@ std::pair<bool, VHandle> copyCtor(const v8::Arguments &args)
     using namespace v8;
     Local<External> external;
     auto self = args.This();
-    
+
     if (!args.IsConstructCall()) {
         ThrowException(Exception::Error(String::New("Call function as ctor")));
         return {true, VHandle()};
