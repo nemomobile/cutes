@@ -34,15 +34,6 @@
 
 namespace cutes {
 
-Endpoint::Endpoint(QJSValue const& on_reply
-                   , QJSValue const& on_error
-                   , QJSValue const& on_progress)
-    : on_reply_(on_reply)
-    , on_error_(on_error)
-    , on_progress_(on_progress)
-{
-}
-
 static inline endpoint_ptr endpoint
 (QJSValue const& on_reply
  , QJSValue const& on_error
@@ -241,12 +232,6 @@ Event::Event(Event::Type t)
     : QEvent(static_cast<QEvent::Type>(t))
 { }
 
-Load::Load(QString const &src, QString const& top_script)
-    : Event(Event::LoadScript)
-    ,  src_(src)
-    , top_script_(top_script)
-{ }
-
 Event::~Event() {}
 
 WorkerThread::WorkerThread
@@ -266,22 +251,6 @@ void Engine::toActor(Event *ev)
 {
     QCoreApplication::postEvent(actor_, ev);
 }
-
-EngineException::EngineException(QJSEngine const&, QJSValue const& err)
-    : Event(Event::LoadException)
-    , exception_(err.toVariant())
-{}
-
-Message::Message(QVariant const& data, endpoint_ptr ep
-                 , Event::Type type)
-    : Event(type), data_(data), endpoint_(ep)
-{}
-
-Request::Request(QString const &method_name, QVariant const& data
-                 , endpoint_ptr ep, Event::Type type)
-    : Message(data, ep, type)
-    , method_name_(method_name)
-{}
 
 void Engine::load(Load *msg)
 {
