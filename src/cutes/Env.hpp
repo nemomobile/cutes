@@ -112,7 +112,7 @@ class Env : public QObject
 {
     Q_OBJECT;
 
-    Q_PROPERTY(Module * module READ module);
+    Q_PROPERTY(QJSValue module READ module);
     Q_PROPERTY(QString os READ os);
     Q_PROPERTY(StringMap env READ env);
     Q_PROPERTY(QStringList path READ path);
@@ -137,7 +137,7 @@ public:
     // Q_INVOKABLE void defer(QJSValue const&);
     // Q_INVOKABLE void idle();
 
-    Module *module() const;
+    QJSValue module();
     QString os() const;
     StringMap const& env() const;
     QStringList const& path() const;

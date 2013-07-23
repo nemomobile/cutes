@@ -240,9 +240,9 @@ Env::Env(QObject *parent, QCoreApplication &app, QJSEngine &engine)
     engine.globalObject().setProperty("cutes", self);
 }
 
-Module * Env::module() const
+QJSValue Env::module()
 {
-    return scripts_.top();
+    return engine().newQObject(scripts_.top());
 }
 
 QJSValue Env::actor()
