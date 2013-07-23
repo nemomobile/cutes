@@ -1,11 +1,10 @@
 #include "Env.hpp"
 #include <iostream>
 #include <QApplication>
+#include <QDebug>
 #include "QmlAdapter.hpp"
 
-using namespace cutes;
-
-namespace QsExecute {
+namespace cutes {
 
 static int usage(int, char *argv[])
 {
@@ -66,7 +65,7 @@ int executeScript(int argc, char *argv[])
 
 int main(int argc, char *argv[])
 {
-    using namespace QsExecute;
+    using namespace cutes;
     if (argc < 2)
         return usage(argc, argv);
 
