@@ -133,9 +133,8 @@ public:
     Q_INVOKABLE QJSValue extend(QString const&);
     Q_INVOKABLE QJSValue actor();
     Q_INVOKABLE void exit(int);
-    Q_INVOKABLE void print(QString const&);
-    // Q_INVOKABLE void defer(QJSValue const&);
-    // Q_INVOKABLE void idle();
+    Q_INVOKABLE void defer(QJSValue const&);
+    Q_INVOKABLE void idle();
 
     QJSValue module();
     QString os() const;

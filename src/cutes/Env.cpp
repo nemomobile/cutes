@@ -198,6 +198,19 @@ Env *loadEnv(QCoreApplication &app, QJSEngine &engine)
 //     return env_->module();
 // }
 
+js::VHandle printImpl(v8::Arguments const &args)
+{
+    QTextStream out(stdout);
+    auto engine = js::engine(args);
+    if (engine) {
+        for (int i = 0; i < args.Length(); ++i)
+            out << toQJSValue(*engine, args[i]).toString();
+        out << '\n';
+    }
+
+    return js::VHandle();
+}
+
 Env::Env(QObject *parent, QCoreApplication &app, QJSEngine &engine)
     : QObject(parent)
     , engine_(engine)
@@ -209,6 +222,11 @@ Env::Env(QObject *parent, QCoreApplication &app, QJSEngine &engine)
     // auto global = v8e->global();
     auto self = engine.newQObject(this);
     engine.globalObject().setProperty("process", engine.newObject());
+    // if it is created by some ecmascript engine there should be print() 
+    auto v8e = engine_.handle();
+    v8::Context::Scope cscope(v8e->context());
+    if (engine.globalObject().property("print").isUndefined())
+        js::Set(engine_, engine.globalObject(), "print", printImpl);
     // cutes::js::Set(global, "process", engine.newObject());
 
     args_ = app.arguments();
@@ -262,13 +280,14 @@ void Env::actorAcquired()
 
 void Env::actorReleased()
 {
-    if (--actor_count_ == 0 && is_waiting_exit_)
-        exit(0);
+    if (--actor_count_ == 0 && is_waiting_exit_) {
+        QCoreApplication::quit();
+    }
 }
 
 bool Env::shouldWait()
 {
-    // idle();
+    idle();
     if (actor_count_) {
         is_waiting_exit_ = true;
     }
@@ -294,7 +313,7 @@ public:
     virtual ~EnvEvent() {}
 
     void call() {
-        fn_.call({fn_, fn_.engine()->newArray(0)});
+        fn_.callWithInstance(fn_);
     }
 
 private:
@@ -382,38 +401,32 @@ private:
 
 /// defer function execution until event loop processes next event,
 /// processing can be enforced by calling Env::idle()
-// void Env::defer(QJSValue const& fn)
-// {
-//     if (!fn.isCallable()) {
-//         QString err("Can defer only function, got %1");
-//         err.arg(fn.toString());
-//         // TODO engine_.currentContext()->throwError(err);
-//         return;
-//     }
-//     QCoreApplication::postEvent(this, new EnvEvent(fn), Qt::HighEventPriority);
-// }
+void Env::defer(QJSValue const& fn)
+{
+    if (!fn.isCallable()) {
+        QString err("Can defer only function, got %1");
+        err.arg(fn.toString());
+        // TODO engine_.currentContext()->throwError(err);
+        return;
+    }
+    QCoreApplication::postEvent(this, new EnvEvent(fn), Qt::HighEventPriority);
+}
 
 /// process all queued events including deferred functions
-// void Env::idle()
-// {
-//     QCoreApplication::processEvents();
-// }
+void Env::idle()
+{
+    QCoreApplication::processEvents();
+}
 
 bool Env::event(QEvent *e)
 {
-    // auto evType = static_cast<EnvEvent::Type>(e->type());
-    // if (evType != EnvEvent::Deferred)
+    auto evType = static_cast<EnvEvent::Type>(e->type());
+    if (evType != EnvEvent::Deferred)
         return QObject::event(e);
 
-    // auto deferred = static_cast<EnvEvent*>(e);
-    // deferred->call();
-    // return true;
-}
-
-void Env::print(QString const& v)
-{
-    QTextStream stream(stdout);
-    stream << v;
+    auto deferred = static_cast<EnvEvent*>(e);
+    deferred->call();
+    return true;
 }
 
 QJSValue Env::extend(QString const& extension)
@@ -526,7 +539,7 @@ QJSValue Env::load(QString const &script_name, bool is_reload)
         }
         , [this]() {
             scripts_.pop();
-            // idle();
+            idle();
         });
     auto res = script->load(engine_);
     if (p != modules_.end()) {
@@ -643,12 +656,14 @@ QJSValue Module::load(QJSEngine &engine)
 
     while (!input.atEnd())
         dst << input.readLine() << "\n";
+    dst << "\nexports;\n";
 
     auto res = engine.evaluate(contents, file_name, line_nr);
     if (res.isError()) {
         qWarning() << "Error loading " << file_name << ":" << res.toString();
         return res;
     }
+    setExports(res);
     is_loaded_ = true;
     return exports();
 }
