@@ -174,6 +174,7 @@ private:
 
     int unreplied_count_;
     QScopedPointer<WorkerThread> worker_;
+    QMap<Endpoint*, endpoint_ptr> endpoints_;
 };
 
 class QmlActor : public Actor
