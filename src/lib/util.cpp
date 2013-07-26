@@ -54,10 +54,9 @@ QJSValue toQJSValue(QVariant const& v)
 
 QJSValue toQJSValue(QJSEngine &engine, v8::Handle<v8::Value> src)
 {
-    const QJSValuePrivate priv(engine.handle(), src);
-    return QJSValuePrivate::get(&priv);
+    v8::HandleScope hscope;
+    return QJSValuePrivate::get(new QJSValuePrivate(engine.handle(), src));
 }
-
 
 namespace js {
 

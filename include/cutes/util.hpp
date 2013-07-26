@@ -41,10 +41,20 @@ QJSValue toQJSValue(QJSEngine &engine, v8::Handle<v8::Value>);
 
 namespace js {
 
+static inline QJSEngine *engine(v8::Arguments const &args)
+{
+    return QV8Engine::get(V8ENGINE());
+}
+
+static inline v8::Local<v8::String> toString(QString const &name)
+{
+    return v8::String::New(name.toUtf8().data());
+}
+
 static inline void V8ExceptionQString(QString const &msg)
 {
     using namespace v8;
-    ThrowException(Exception::Error(String::New(msg.toUtf8().data())));
+    ThrowException(Exception::Error(toString(msg)));
 }
 
 typedef v8::Handle<v8::Value> VHandle;
@@ -64,6 +74,25 @@ static inline void Set
 (v8::Handle<v8::Object> o, char const *name, VHandle v)
 {
     o->Set(v8::String::New(name), v);
+}
+
+static inline v8::Handle<v8::Function>
+newFunction(QV8Engine *e, v8::InvocationCallback fn)
+{
+    using namespace v8;
+    if (!e)
+        throw std::logic_error("Null engine is passed");
+    v8::HandleScope hscope;
+    auto res = FunctionTemplate::New(fn, v8::External::New(e))->GetFunction();
+    return hscope.Close(res);
+}
+
+static inline void Set
+(QJSEngine &e, QJSValue v, QString const &name, v8::InvocationCallback fn)
+{
+    v8::HandleScope hscope;
+    auto v8e = e.handle();
+    v.setProperty(name, toQJSValue(e, newFunction(v8e, fn)));
 }
 
 VHandle callConvertException(const v8::Arguments &, v8::InvocationCallback);
