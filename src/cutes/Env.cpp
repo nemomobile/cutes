@@ -638,7 +638,9 @@ QJSValue Module::load(QJSEngine &engine)
     if (!file.open(QFile::ReadOnly))
         throw Error(QString("Can't open %1").arg(file_name));
 
-    const QString prolog = "var module = cutes.module; var exports = module.exports;\n";
+    const QString prolog = "var module = cutes.module; "
+        "var exports = module.exports;"
+        "var require = module.require;\n";
     QString contents;
     contents.reserve(file.size() + prolog.size());
 
