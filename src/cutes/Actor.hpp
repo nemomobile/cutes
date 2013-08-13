@@ -105,12 +105,14 @@ private:
     void processRequest(Request *);
     void processResult(QJSValue, endpoint_handle);
     void toActor(Event*);
+    QJSValue callConvertError(QJSValue const&, QJSValue const&, QJSValueList const&);
 
     Actor *actor_;
     QJSEngine *engine_;
     QJSValue handler_;
     QWaitCondition cond_;
     QMutex mutex_;
+    QJSValue convert_error_;
 };
 
 class WorkerThread : protected QThread

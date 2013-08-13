@@ -31,6 +31,7 @@
 #include "qt_quick_types.hpp"
 #include <QDebug>
 #include <QCoreApplication>
+#include <QMap>
 
 namespace cutes {
 
@@ -209,7 +210,7 @@ void Actor::callback(Message *msg, QJSValue& cb)
     if (!cb.isCallable())
         return;
     auto params = QJSValueList();
-    params.push_back(cutes::toQJSValue((msg->data_)));
+    params.push_back(cutes::toQJSValue(*engine_, msg->data_));
     cb.callWithInstance(cb, params);
 }
 
@@ -221,7 +222,10 @@ void Actor::error(Message *reply)
         return;
     }
     auto params = QJSValueList();
-    params.push_back(cutes::toQJSValue((reply->data_)));
+    auto err = engine_
+        ? cutes::toQJSValue(*engine_, reply->data_)
+        : cutes::toQJSValue(reply->data_);
+    params.push_back(err);
     cb.callWithInstance(cb, params);
 }
 
@@ -297,15 +301,44 @@ void WorkerThread::run()
 
 void Engine::processResult(QJSValue ret, endpoint_handle ep)
 {
-    qDebug() << "Result is "<< ret.toString()
-             << "/" << asString(ret) << ", err? " << ret.isError();
     if (!ret.isError()) {
         reply(ret.toVariant(), ep, Event::Return);
     } else {
-        auto err = ret.toVariant();
-        qWarning() << "Actor error: " << err << ", sending to source";
+        QVariantMap err;
+        for (auto p : {"message", "stack", "arguments"
+                    , "type", "isWrapped", "originalError"})
+            err[p] = ret.property(p).toVariant();
+        
         error(err, ep);
     }
+}
+
+QJSValue Engine::callConvertError(QJSValue const &fn
+                                  , QJSValue const &instance
+                                  , QJSValueList const &params)
+{
+    if (convert_error_.isUndefined()) {
+        auto code = errorConverterTry("var res = function(fn, obj) {")
+            + "return fn.apply(obj, [].slice.call(arguments, 2));"
+            + errorConverterCatch("}; res;");
+        if (!engine_) {
+            qWarning() << "Engine is null!";
+            return convert_error_;
+        }
+        convert_error_ = engine_->evaluate(code);
+        if (!convert_error_.isCallable()) {
+            qWarning() << "Can't evaluate properly error conversion code: "
+                       << "expected conversion function, got "
+                       << convert_error_.toString();
+            convert_error_ = QJSValue();
+            return convert_error_;
+        }
+    }
+
+    QJSValueList converter_params(params);
+    converter_params.push_front(instance);
+    converter_params.push_front(fn);
+    return convert_error_.callWithInstance(convert_error_, converter_params);
 }
 
 void Engine::processMessage(Message *msg)
@@ -314,10 +347,10 @@ void Engine::processMessage(Message *msg)
 
     if (handler_.isCallable()) {
         QJSValueList params;
-        params.push_back(cutes::toQJSValue(msg->data_));
+        params.push_back(cutes::toQJSValue(*engine_, msg->data_));
         params.push_back(engine_->newQObject
                          (new MessageContext(this, msg->endpoint_)));
-        ret = handler_.callWithInstance(handler_, params);
+        ret = callConvertError(handler_, handler_, params);
     } else if (!(handler_.isNull() && handler_.isUndefined())) {
         qWarning() << "Handler is not a function but "
                  << (handler_.toString());
@@ -338,7 +371,7 @@ void Engine::processRequest(Request *req)
             QJSValueList params;
             params.push_back(engine_->toScriptValue(req->data_));
             params.push_back(engine_->newQObject(ctx));
-            ret = method.callWithInstance(handler_, params);
+            ret = callConvertError(method, handler_, params);
             ctx->disable();
             ctx->deleteLater();
         } else if (method.isUndefined() || method.isNull()) {
