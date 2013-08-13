@@ -26,6 +26,9 @@
 
 namespace cutes {
 
+QString errorConverterTry(QString const &);
+QString errorConverterCatch(QString const &);
+
 class Module;
 class Env;
 

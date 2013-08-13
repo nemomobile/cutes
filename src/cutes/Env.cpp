@@ -21,6 +21,27 @@
 
 namespace cutes {
 
+static char const *error_converter_try = "%1 try {\n";
+
+static char const *error_converter_catch =
+    "} catch (e) { \n"
+    "    if (e instanceof Error) throw e;\n"
+    "    var res = new Error('Wrapped error: ' + e);\n"
+    "    res.isWrapped = true;\n"
+    "    res.originalError = e;\n"
+    "    throw res;\n"
+    "}; %1\n";
+
+QString errorConverterTry(QString const &prolog)
+{
+    return QString(error_converter_try).arg(prolog);
+}
+
+QString errorConverterCatch(QString const &epilog)
+{
+    return QString(error_converter_catch).arg(epilog);
+}
+
 #ifdef Q_OS_WIN32
 const char *os_name = "windows";
 #elif defined(Q_OS_LINUX)
@@ -224,7 +245,7 @@ Env::Env(QObject *parent, QCoreApplication &app, QJSEngine &engine)
     // auto global = v8e->global();
     auto self = engine.newQObject(this);
     engine.globalObject().setProperty("process", engine.newObject());
-    // if it is created by some ecmascript engine there should be print() 
+    // if it is created by some ecmascript engine there should be print()
     auto v8e = engine_.handle();
     v8::Context::Scope cscope(v8e->context());
     if (engine.globalObject().property("print").isUndefined())
@@ -640,16 +661,12 @@ QJSValue Module::load(QJSEngine &engine)
     if (!file.open(QFile::ReadOnly))
         throw Error(QString("Can't open %1").arg(file_name));
 
-    const QString prolog = "var module = cutes.module, "
-        "exports = module.exports,"
-        "require = module.require; try {\n";
-    const QString epilog = "} catch (e) { "
-        "if (e instanceof Error) throw e;"
-        "var res = new Error('Wrapped error: ' + e);"
-        "res.isWrapped = true;"
-        "res.originalError = e;"
-        "throw res;"
-        "}; exports;\n";
+    const QString prolog = errorConverterTry
+        ("var module = cutes.module"
+         ", exports = module.exports"
+         ", require = module.require;");
+
+    const QString epilog = errorConverterCatch("exports;\n");
     QString contents;
     contents.reserve(file.size() + prolog.size() + epilog.size());
 
