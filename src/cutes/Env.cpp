@@ -9,6 +9,7 @@
 #include <QTextStream>
 #include <QProcess>
 #include <QLibrary>
+#include <QJSValueIterator>
 
 #include <unistd.h>
 
@@ -668,6 +669,22 @@ QJSValue Module::load(QJSEngine &engine)
     setExports(res);
     is_loaded_ = true;
     return exports();
+}
+
+QString asString(QJSValue v)
+{
+    if (!v.isObject())
+        return v.toString();
+
+    QString res;
+    QTextStream out(&res);
+    QJSValueIterator it(v);
+    while (it.hasNext()) {
+        it.next();
+        out << it.name() << ": " << it.value().toString() << ", ";
+    }
+    out.flush();
+    return res;
 }
 
 }

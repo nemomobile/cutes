@@ -227,6 +227,8 @@ void anyFromScriptValue(const QJSValue &object, T* &out)
 //         (engine, anyToScriptValue<T>, anyFromScriptValue<T>);
 // }
 
+QString asString(QJSValue);
+
 } // namespace
 
 #endif // _QSEXECUTE_QSENV_HPP_
