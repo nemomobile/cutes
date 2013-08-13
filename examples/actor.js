@@ -1,4 +1,4 @@
-qtscript.extend("qt.core")
+cutes.extend("qt.core")
 
 exports = function(data, ctx) {
     print("Actor got:", data.from_qml)

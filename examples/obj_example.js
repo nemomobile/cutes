@@ -1,8 +1,8 @@
 var main = function() {
-    var a = qtscript.actor()
+    var a = cutes.actor()
     a.source = "actor_obj.js"
     a.error.connect(function(err) {
-        print("ERR:", err)
+        print("Caller got error:", err)
         for (var v in err)
             print("\t", v, "=", err[v])
     })
@@ -15,19 +15,21 @@ var main = function() {
       , function(name) {
             a.request(
                 name, [1, 2, 3, 4]
-              , function(name) {
+                , { on_reply : function(name) {
                     if (name === 'done')
                         print(name, "actor function is returned");
                     else
                         print(name, "actor returned smth. wrong");
-                }
-              , null
-              , function(d) {
+                }, on_progress : function(d) {
                     print(name, "reply", d)
-                })
+                }})
         });
 
-    a.request('cause_error', 1, function(d) {
+    a.request('throw_Error', 1, function(d) {
+        print("Why you are here? There must be a error");
+    });
+
+    a.request('throw_exception', 1, function(d) {
         print("Why you are here? There must be a error");
     });
 
@@ -35,12 +37,12 @@ var main = function() {
         print("Why you are here? There must be a error");
     });
 
-    a.request('cause_error', 1, function(d) {
+    a.request('throw_exception', 1, { on_reply : function(d) {
         print("Why you are here? There must be a error");
-    }, function(err) {
+    }, on_error : function(err) {
         print("Error processed in function:", err)
         for (var v in err)
             print("\t", v, "=", err[v])
-    });
+    }});
 }
 main()
