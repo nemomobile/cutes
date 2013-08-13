@@ -52,6 +52,13 @@ QJSValue toQJSValue(QVariant const& v)
     }
 }
 
+QJSValue toQJSValue(QJSEngine &engine, QVariant const& v)
+{
+    v8::HandleScope hscope;
+    auto v8e = engine.handle();
+    return toQJSValue(engine, v8e->fromVariant(v));
+}
+
 QJSValue toQJSValue(QJSEngine &engine, v8::Handle<v8::Value> src)
 {
     v8::HandleScope hscope;

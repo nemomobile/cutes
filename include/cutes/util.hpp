@@ -37,6 +37,7 @@
 namespace cutes {
 
 QJSValue toQJSValue(QVariant const&);
+QJSValue toQJSValue(QJSEngine &engine, QVariant const&);
 QJSValue toQJSValue(QJSEngine &engine, v8::Handle<v8::Value>);
 
 namespace js {
