@@ -22,7 +22,7 @@
 // }
 
 // typedef QsExecute::Env QsExecuteEnv;
-// typedef QsExecute::Module QsExecuteModule;
+// typedef cutes::Module CutesModule;
 
 namespace cutes {
 

@@ -15,6 +15,7 @@
 
 // Q_DECLARE_METATYPE(QsExecuteEnv*);
 // Q_DECLARE_METATYPE(QsExecuteModule*);
+// Q_DECLARE_METATYPE(CutesModule*);
 
 // Q_DECLARE_METATYPE(QDir);
 
@@ -639,11 +640,18 @@ QJSValue Module::load(QJSEngine &engine)
     if (!file.open(QFile::ReadOnly))
         throw Error(QString("Can't open %1").arg(file_name));
 
-    const QString prolog = "var module = cutes.module; "
-        "var exports = module.exports;"
-        "var require = module.require;\n";
+    const QString prolog = "var module = cutes.module, "
+        "exports = module.exports,"
+        "require = module.require; try {\n";
+    const QString epilog = "} catch (e) { "
+        "if (e instanceof Error) throw e;"
+        "var res = new Error('Wrapped error: ' + e);"
+        "res.isWrapped = true;"
+        "res.originalError = e;"
+        "throw res;"
+        "}; exports;\n";
     QString contents;
-    contents.reserve(file.size() + prolog.size());
+    contents.reserve(file.size() + prolog.size() + epilog.size());
 
     int line_nr = 1;
 
@@ -659,7 +667,7 @@ QJSValue Module::load(QJSEngine &engine)
 
     while (!input.atEnd())
         dst << input.readLine() << "\n";
-    dst << "\nexports;\n";
+    dst << epilog;
 
     auto res = engine.evaluate(contents, file_name, line_nr);
     if (res.isError()) {
