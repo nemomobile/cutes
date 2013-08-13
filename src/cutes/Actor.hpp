@@ -40,6 +40,8 @@
 #endif
 #include <QSharedPointer>
 
+#include <memory>
+
 namespace cutes
 {
 
@@ -54,7 +56,8 @@ public:
         Return,
         QuitThread,
         LoadException,
-        Error
+        Error,
+        EndpointRemove
     };
 
     Event();
@@ -74,6 +77,10 @@ class Request;
 
 class Endpoint;
 typedef QSharedPointer<Endpoint> endpoint_ptr;
+// handle does not delete endpoint directly but sends request for
+// removal to the hosting Env it (QJSValue should be deleted in the
+// corresponding Isolate)
+typedef std::shared_ptr<Endpoint> endpoint_handle;
 
 class Actor;
 class Engine : public QObject
@@ -86,8 +93,8 @@ public:
     void run();
     virtual bool event(QEvent *);
 
-    void reply(QVariant const&, endpoint_ptr, Event::Type);
-    void error(QVariant const&, endpoint_ptr);
+    void reply(QVariant const&, endpoint_handle, Event::Type);
+    void error(QVariant const&, endpoint_handle);
 
 signals:
     void onQuit();
@@ -96,7 +103,7 @@ private:
     void load(Load *);
     void processMessage(Message *);
     void processRequest(Request *);
-    void processResult(QJSValue &, endpoint_ptr);
+    void processResult(QJSValue, endpoint_handle);
     void toActor(Event*);
 
     Actor *actor_;
@@ -135,18 +142,8 @@ protected:
     QString source() const;
     void setSource(QString const&);
 
-    Q_INVOKABLE void send
-    (QJSValue const&
-     , QJSValue const& on_reply = QJSValue()
-     , QJSValue const& on_error = QJSValue()
-     , QJSValue const& on_progress = QJSValue());
-
-    Q_INVOKABLE void request
-    (QString const&, QJSValue const&
-     , QJSValue const& on_reply = QJSValue()
-     , QJSValue const& on_error = QJSValue()
-     , QJSValue const& on_progress = QJSValue());
-
+    Q_INVOKABLE void send(QJSValue const&, QJSValue callbacks);
+    Q_INVOKABLE void request(QString const&, QVariant, QJSValue callbacks);
     Q_INVOKABLE void wait();
     Q_INVOKABLE void reload();
 
@@ -171,10 +168,12 @@ private:
     void release();
     void callback(Message*, QJSValue&);
     void execute(std::function<void()>);
+    endpoint_handle endpoint_new(QJSValue);
 
     int unreplied_count_;
     QScopedPointer<WorkerThread> worker_;
     QMap<Endpoint*, endpoint_ptr> endpoints_;
+    long cookie_;
 };
 
 class QmlActor : public Actor

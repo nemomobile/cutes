@@ -50,27 +50,45 @@ class Load : public Event
 {
 public:
     Load(QString const&, QString const&);
-    virtual ~Load() {}
+    virtual ~Load();
 
     QString src_;
     QString top_script_;
 };
 
+class LoadError : public Event
+{
+public:
+    LoadError(QString const&);
+    virtual ~LoadError();
+
+    QString src_;
+};
+
+class EndpointRemove : public Event
+{
+public:
+    EndpointRemove(Endpoint*);
+    virtual ~EndpointRemove();
+
+    Endpoint *endpoint_;
+};
+
 class Message : public Event
 {
 public:
-    Message(QVariant const&, endpoint_ptr, Event::Type);
-    virtual ~Message() {}
+    Message(QVariant const&, endpoint_handle, Event::Type);
+    virtual ~Message();
 
     QVariant data_;
-    endpoint_ptr endpoint_;
+    endpoint_handle endpoint_;
 };
 
 class Request : public Message
 {
 public:
-    Request(QString const&, QVariant const&, endpoint_ptr, Event::Type);
-    virtual ~Request() {}
+    Request(QString const&, QVariant const&, endpoint_handle, Event::Type);
+    virtual ~Request();
 
     QString method_name_;
 };
@@ -79,7 +97,7 @@ class MessageContext : public QObject
 {
     Q_OBJECT;
 public:
-    MessageContext(Engine *, endpoint_ptr);
+    MessageContext(Engine *, endpoint_handle);
     virtual ~MessageContext();
 
     Q_INVOKABLE void reply(QJSValue);
@@ -87,7 +105,7 @@ public:
     void disable();
 private:
     Engine *engine_;
-    endpoint_ptr endpoint_;
+    endpoint_handle endpoint_;
 };
 
 class EngineException : public Event
