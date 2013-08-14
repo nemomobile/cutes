@@ -54,9 +54,6 @@ const char *os_name = "unix";
 const char *os_name = "unknown";
 #endif
 
-#define STRINGIFY(x) #x
-#define DQUOTESTR(x) STRINGIFY(x)
-
 Error::Error(QString const &s)
     : std::runtime_error(s.toStdString()),
       msg(s)
@@ -132,94 +129,6 @@ Env *loadEnv(QCoreApplication &app, QJSEngine &engine)
     auto res = new Env(&engine, app, engine);
     return res;
 }
-
-// static QJSValue jsPrintImpl
-// (QTextStream &out, int begin, QJSContext *context, QJSEngine *engine)
-// {
-//     auto len = context->argumentCount();
-//     if (len >= begin) {
-//         --len;
-//         for (int i = begin; i < len; ++i)
-//             out << context->argument(i).toString() << " ";
-
-//         out << context->argument(len).toString() << endl;
-//     }
-//     return engine->undefinedValue();
-// }
-
-// static QJSValue jsPrintStdout(QJSContext *context, QJSEngine *engine)
-// {
-//     QTextStream out(stdout);
-//     return jsPrintImpl(out, 0, context, engine);
-// }
-
-// static QJSValue jsFPrint(QJSContext *context, QJSEngine *engine)
-// {
-//     QTextStream out(stdout);
-//     auto res = engine->undefinedValue();
-//     auto len = context->argumentCount();
-//     if (!len)
-//         return res;
-//     auto dst = context->argument(0);
-//     if (dst.isNumber()) {
-//         auto i = dst.toInt32();
-//         FILE *f = (i == STDOUT_FILENO
-//                    ? stdout : (i == STDERR_FILENO
-//                                ? stderr : nullptr));
-//         if (!f)
-//             return res;
-
-//         QTextStream out(f);
-//         return jsPrintImpl(out, 1, context, engine);
-//     } else if (dst.isQObject()){
-//         QIODevice *dev = dynamic_cast<QIODevice*>(dst.toQObject());
-//         if (dev) {
-//             QTextStream out(dev);
-//             return jsPrintImpl(out, 1, context, engine);
-//         }
-
-//         qDebug() << dst.toString() << " is not QIODevice";
-//     } else {
-//         qDebug() << dst.toString() << " is not file nr or QIODevice";
-//     }
-//     return res;
-// }
-
-// static QJSValue jsRequire(QJSContext *context, QJSEngine *engine)
-// {
-//     auto qtscript = findProperty(engine->globalObject(), {"qtscript"});
-//     auto include = findProperty(qtscript, {"include"});
-//     auto len = context->argumentCount();
-//     if (!len)
-//         return engine->undefinedValue();
-//     auto params = engine->newArray(1);
-//     auto name = context->argument(0).toString();
-//     params.setProperty(0, QJSValue(name));
-//     return include.call(qtscript, params);
-// }
-
-// Global::Global(QCoreApplication &app, QJSEngine &engine, QJSValue & global)
-//     : QObject(&engine)
-//     , env_(new Env(this, app, engine))
-// {
-//     auto self = engine.newQObject(this);
-
-//     anyMetaTypeRegister<QsExecuteModule>(&engine);
-//     anyMetaTypeRegister<QsExecuteEnv>(&engine);
-
-//     self.setPrototype(global);
-//     // engine.setGlobalObject(self);
-//     // self.setProperty("print", engine.newFunction(jsPrintStdout));
-//     // self.setProperty("require", engine.newFunction(jsRequire));
-//     // process - used by node.js etc. modules
-//     self.setProperty("process", engine.newObject());
-// }
-
-
-// Module * Global::module() const
-// {
-//     return env_->module();
-// }
 
 js::VHandle printImpl(v8::Arguments const &args)
 {
