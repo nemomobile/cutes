@@ -37,28 +37,28 @@ int executeScript(int argc, char *argv[])
         ? app.exec() : rc;
 }
 
-// int executeDeclarative(int argc, char *argv[])
-// {
-//     QApplication app(argc, argv);
-//     if (app.arguments().size() < 2)
-//         return usage(argc, argv);
-//     QString script_file(app.arguments().at(1));
+int executeDeclarative(int argc, char *argv[])
+{
+    QApplication app(argc, argv);
+    if (app.arguments().size() < 2)
+        return usage(argc, argv);
+    QString script_file(app.arguments().at(1));
 
-//     QDeclarativeView view;
+    QDeclarativeView view;
 
-//     setupDeclarative(app, view, QFileInfo(script_file).absoluteFilePath());
-//     view.setSource(QUrl::fromLocalFile(script_file));
+    setupDeclarative(app, view, QFileInfo(script_file).absoluteFilePath());
+    view.setSource(QUrl::fromLocalFile(script_file));
 
-// #if QT_VERSION < 0x050000
-//     view.setAttribute(Qt::WA_OpaquePaintEvent);
-//     view.setAttribute(Qt::WA_NoSystemBackground);
-//     view.viewport()->setAttribute(Qt::WA_OpaquePaintEvent);
-//     view.viewport()->setAttribute(Qt::WA_NoSystemBackground);
-// #endif
+#if QT_VERSION < 0x050000
+    view.setAttribute(Qt::WA_OpaquePaintEvent);
+    view.setAttribute(Qt::WA_NoSystemBackground);
+    view.viewport()->setAttribute(Qt::WA_OpaquePaintEvent);
+    view.viewport()->setAttribute(Qt::WA_NoSystemBackground);
+#endif
 
-//     view.showFullScreen();
-//     return app.exec();
-// }
+    view.showFullScreen();
+    return app.exec();
+}
 
 }
 

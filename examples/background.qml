@@ -1,12 +1,12 @@
 import QtQuick 1.1
-import Mer.QtScript 1.1
+import Mer.Cutes 1.1
 
 Rectangle
 {
     id : main
     width : 300
     height: 300
-    QtScriptActor {
+    CutesActor {
         id : actor
         source : "actor.js"
         onError : {

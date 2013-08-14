@@ -8,7 +8,7 @@
 
 namespace cutes {
 
-#define QML_NAMESPACE Mer.QtScript
+#define QML_NAMESPACE Mer.Cutes
 static inline void registerDeclarativeTypes(char const *uri)
 {
     qmlRegisterType<QmlActor>(uri, 1, 1, "CutesActor");

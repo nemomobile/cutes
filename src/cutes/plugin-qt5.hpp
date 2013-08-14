@@ -8,7 +8,7 @@
 #include <QtQml/QQmlExtensionPlugin>
 #include "qt_quick_types.hpp"
 
-namespace QsExecute
+namespace cutes
 {
 
 class Plugin : public QQmlExtensionPlugin
@@ -18,7 +18,7 @@ class Plugin : public QQmlExtensionPlugin
 public:
     void initializeEngine(QQmlEngine *engine, const char *)
     {
-        loadEnv(*QCoreApplication::instance(), *script_engine);
+        loadEnv(*QCoreApplication::instance(), *engine);
     }
 
     void registerTypes(char const* uri) {

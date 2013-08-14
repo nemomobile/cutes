@@ -1,5 +1,5 @@
 import QtQuick 1.1
-import Mer.QtScript 1.1
+import Mer.Cutes 1.1
 
 Rectangle
 {
@@ -30,8 +30,8 @@ Rectangle
     QtScriptAdapter { qml : "basic.qml" }
 
     Component.onCompleted : {
-        qtscript.script.args
-        qtscript.extend("qt.core")
+        cutes.script.args
+        cutes.extend("qt.core")
         var name = "./basic.qml"
         var d = new QFileInfo(name)
         console.log("is ", name, "absolute?", d.isAbsolute())
