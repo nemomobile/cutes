@@ -9,13 +9,3 @@ target_link_libraries(cutes-core
   ${V8_LIBRARIES}
 )
 
-SET(SRC
-  main.cpp
-)
-ADD_EXECUTABLE(qttest ${SRC})
-
-target_link_libraries(qttest
-  cutes-core
-  ${CMAKE_THREAD_LIBS_INIT}
-)
-

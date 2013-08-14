@@ -27,3 +27,4 @@ set(CMAKE_AUTOMOC TRUE)
 
 add_subdirectory(lib)
 add_subdirectory(cutes)
+add_subdirectory(tests)
