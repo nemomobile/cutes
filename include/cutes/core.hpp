@@ -168,6 +168,21 @@ public:
                         , v8::Handle<v8::ObjectTemplate>);
 };
 
+class Mutex : public QMutex
+{
+public:
+    typedef QMutex base_type;
+    typedef QMutex impl_type;
+
+    Mutex(v8::Arguments const&);
+
+    static v8::Persistent<v8::FunctionTemplate> cutesCtor_;
+
+    static void v8Setup(QV8Engine *
+                        , v8::Handle<v8::FunctionTemplate>
+                        , v8::Handle<v8::ObjectTemplate>);
+};
+
 }}
 
 #endif // _CUTES_JS_OS_HPP_

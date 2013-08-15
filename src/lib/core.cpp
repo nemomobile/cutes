@@ -320,23 +320,40 @@ void Process::v8Setup(QV8Engine *v8e
 #undef QUERY_
 #undef SIMPLE_
 
-extern "C" void cutesRegister(QJSEngine *e)
+v8::Persistent<v8::FunctionTemplate> Mutex::cutesCtor_;
+
+Mutex::Mutex(v8::Arguments const &) {}
+
+void Mutex::v8Setup(QV8Engine *v8e
+                    , v8::Handle<v8::FunctionTemplate>
+                    , v8::Handle<v8::ObjectTemplate> obj)
+{
+    setupTemplate(v8e, obj)
+        << CUTES_FN_PARAM(tryLock, bool, QMutex, QMutex
+                             , int, int)
+        << CUTES_VOID_FN(lock, QMutex, QMutex)
+        << CUTES_VOID_FN(unlock, QMutex, QMutex);
+}
+
+extern "C" QJSValue cutesRegister(QJSEngine *e)
 {
     if (!e) {
         qWarning() << "null engine is passed";
-        return;
+        return QJSValue();
     }
     QV8Engine *v8e = e->handle();
     using namespace cutes::js;
     v8::HandleScope hscope;
-    auto global = v8e->global();
-    v8EngineAdd(v8e, global)
-            << v8Class<File>("QFile")
-            << v8Class<FileInfo>("QFileInfo")
-            << v8Class<IODevice>("QIODevice")
-            << v8Class<ByteArray>("QByteArray")
-            << v8Class<Dir>("QDir")
-            << v8Class<Process>("QProcess");
+    auto res = v8::Object::New();
+    v8EngineAdd(v8e, res)
+            << v8Class<File>("File")
+            << v8Class<FileInfo>("FileInfo")
+            << v8Class<IODevice>("IODevice")
+            << v8Class<ByteArray>("ByteArray")
+            << v8Class<Dir>("Dir")
+            << v8Class<Mutex>("Mutex")
+            << v8Class<Process>("Process");
+    return toQJSValue(*e, hscope.Close(res));
 }
 
 }}
