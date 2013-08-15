@@ -71,9 +71,7 @@ int main(int argc, char *argv[])
 
     QString script_file(argv[1]);
     
-    if (QFileInfo(script_file).suffix() == "qml") {
-        // TODO return executeDeclarative(argc, argv);
-    } else {
-        return executeScript(argc, argv);
-    }
+    return (QFileInfo(script_file).suffix() == "qml")
+        ? executeDeclarative(argc, argv)
+        : executeScript(argc, argv);
 }
