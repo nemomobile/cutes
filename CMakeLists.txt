@@ -15,9 +15,9 @@ set(DST_LIB lib${LIB_SUFFIX})
 set(CUTES_LIB_PATH "${prefix}/share/cutes")
 
 if(${prefix} STREQUAL "/usr")
-  set(CUTES_LIB_PATH "${CUTES_LIB_PATH}:/usr/${DST_LIB}/qt5/plugins")
+  set(CUTES_LIB_PATH "${CUTES_LIB_PATH}:/usr/${DST_LIB}/qt5/cutes")
 else(${prefix} STREQUAL "/usr")
-  set(CUTES_LIB_PATH "${CUTES_LIB_PATH}:${prefix}/${DST_LIB}/qt5/plugins:/usr/${DST_LIB}/qt5/plugins")
+  set(CUTES_LIB_PATH "${CUTES_LIB_PATH}:${prefix}/${DST_LIB}/qt5/cutes:/usr/${DST_LIB}/qt5/cutes")
 endif(${prefix} STREQUAL "/usr")
 
 find_package(Qt5Core REQUIRED)
