@@ -12,6 +12,7 @@ namespace cutes {
 static inline void registerDeclarativeTypes(char const *uri)
 {
     qmlRegisterType<QmlActor>(uri, 1, 1, "CutesActor");
+    qmlRegisterType<Adapter>(uri, 1, 1, "CutesAdapter");
 }
 
 void setupDeclarative(QCoreApplication &, QDeclarativeView &, QString const &);

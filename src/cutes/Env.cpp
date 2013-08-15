@@ -10,6 +10,7 @@
 #include <QProcess>
 #include <QLibrary>
 #include <QJSValueIterator>
+#include <QQmlContext>
 
 #include <unistd.h>
 
@@ -18,6 +19,8 @@
 // Q_DECLARE_METATYPE(CutesModule*);
 
 // Q_DECLARE_METATYPE(QDir);
+
+Q_DECLARE_METATYPE(cutes::Env*);
 
 namespace cutes {
 
@@ -85,23 +88,6 @@ QString JsError::errorMessage(Env *env, QString const &// file
 }
 
 /**
- * find property by path
- *
- * @param root root object
- * @param path path separated on components
- *
- * @return property value or none
- */
-QJSValue findProperty(QJSValue const& root, QStringList const &path)
-{
-    QJSValue res(root);
-    for (auto &name : path)
-        res = res.property(name);
-
-    return res;
-}
-
-/**
  * convert system environment from "name=value" to map
  *
  * @return system env map
@@ -143,23 +129,25 @@ js::VHandle printImpl(v8::Arguments const &args)
     return js::VHandle();
 }
 
+static void setupEngine(QJSEngine &engine)
+{
+    // if it is created by some ecmascript engine there should be print()
+    auto v8e = engine.handle();
+    v8::Context::Scope cscope(v8e->context());
+
+    engine.globalObject().setProperty("process", engine.newObject());
+    if (engine.globalObject().property("print").isUndefined())
+        js::Set(engine, engine.globalObject(), "print", printImpl);
+}
+
 Env::Env(QObject *parent, QCoreApplication &app, QJSEngine &engine)
     : QObject(parent)
     , engine_(engine)
+    , module_engine_(nullptr)
     , actor_count_(0)
     , is_waiting_exit_(false)
 {
     setObjectName("cutes");
-    // auto v8e = jseng->handle();
-    // auto global = v8e->global();
-    auto self = engine.newQObject(this);
-    engine.globalObject().setProperty("process", engine.newObject());
-    // if it is created by some ecmascript engine there should be print()
-    auto v8e = engine_.handle();
-    v8::Context::Scope cscope(v8e->context());
-    if (engine.globalObject().property("print").isUndefined())
-        js::Set(engine_, engine.globalObject(), "print", printImpl);
-    // cutes::js::Set(global, "process", engine.newObject());
 
     args_ = app.arguments();
     args_.pop_front(); // remove interpreter name
@@ -187,12 +175,36 @@ Env::Env(QObject *parent, QCoreApplication &app, QJSEngine &engine)
         path_.push_back(QDir(path).canonicalPath());
 
     app.setLibraryPaths(path_);
-    engine.globalObject().setProperty("cutes", self);
+
+    /// if qmlengine is used it is impossible to modify global object,
+    /// so cutes is added to qml context
+    auto qml_engine = dynamic_cast<QQmlEngine*>(&engine_);
+    if (qml_engine) {
+        qml_engine->rootContext()->setContextProperty("cutes", this);
+    } else {
+        setupEngine(engine);
+        engine.globalObject().setProperty("cutes", engine.newQObject(this));
+        // engine has non-frozen global object so using the same
+        // engine to load modules
+        module_engine_ = &engine;
+    }
+}
+
+Module *Env::current_module()
+{
+    return scripts_.top();
 }
 
 QJSValue Env::module()
 {
-    return engine().newQObject(scripts_.top());
+    auto m = current_module();
+    QQmlData *ddata = QQmlData::get(m, true);
+    if (ddata) {
+        ddata->indestructible = true;
+        ddata->explicitIndestructibleSet = true;
+    }
+
+    return engine().newQObject(m);
 }
 
 QJSValue Env::actor()
@@ -387,8 +399,7 @@ QJSValue Env::extend(QString const& extension)
                    << " in '" << full_path << "'";
         return QJSValue();
     }
-    fn(&engine());
-    return QJSValue();
+    return fn(&engine());
 }
 
 void Env::addSearchPath(QString const &path, Position pos)
@@ -471,9 +482,19 @@ QJSValue Env::load(QString const &script_name, bool is_reload)
         }
         , [this]() {
             scripts_.pop();
-            idle();
         });
-    auto res = script->load(engine_);
+
+    /// qqmlengine is used and to supply "cutes" global to the invoked
+    /// module new engine is invoked in the same thread with
+    /// non-frozen global object
+    if (!module_engine_) {
+        module_engine_ = new QJSEngine(this);
+        setupEngine(*module_engine_);
+        auto self = module_engine_->newQObject(new EnvWrapper(this));
+        module_engine_->globalObject().setProperty("cutes", self);
+
+    }
+    auto res = script->load(*module_engine_);
     if (p != modules_.end()) {
         p.value()->deleteLater();
     }
@@ -620,5 +641,58 @@ QString asString(QJSValue v)
     out.flush();
     return res;
 }
+
+
+QJSValue EnvWrapper::include(QString const& fname, bool is_reload)
+{
+    return env_->include(fname, is_reload);
+}
+
+QJSValue EnvWrapper::extend(QString const& fname)
+{
+    return env_->extend(fname);
+}
+
+QJSValue EnvWrapper::actor()
+{
+    return env_->actor();
+}
+
+void EnvWrapper::exit(int status)
+{
+    return env_->exit(status);
+}
+
+void EnvWrapper::defer(QJSValue const &fn)
+{
+    return env_->defer(fn);
+}
+
+void EnvWrapper::idle()
+{
+    return env_->idle();
+}
+
+
+QJSValue EnvWrapper::module()
+{
+    return env_->module();
+}
+
+QString EnvWrapper::os() const
+{
+    return env_->os();
+}
+
+StringMap const& EnvWrapper::env() const
+{
+    return env_->env();
+}
+
+QStringList const& EnvWrapper::path() const
+{
+    return env_->path();
+}
+
 
 }

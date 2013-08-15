@@ -51,8 +51,6 @@ private:
     static QString errorMessage(Env *env, QString const &file);
 };
 
-QJSValue findProperty(QJSValue const&, QStringList const &);
-
 // class Agent : public QJSEngineAgent
 // {
 // public:
@@ -68,7 +66,7 @@ QJSValue findProperty(QJSValue const&, QStringList const &);
 // class Global : public QObject
 // {
 //     Q_OBJECT;
-
+//
 //     Q_PROPERTY(QsExecuteModule * module READ module);
 //     Q_PROPERTY(QObject * qtscript READ qtscript);
 //     Q_PROPERTY(QJSValue exports READ exports WRITE setExports);
@@ -151,11 +149,13 @@ public:
     void pushParentScriptPath(QString const&);
 
     QJSEngine &engine();
+    Module *current_module();
 private:
     Env(Env const&);
     QString findFile(QString const &);
 
     QJSEngine &engine_;
+    QJSEngine *module_engine_;
     QMap<QString, Module*> modules_;
 
     StringMap env_;
@@ -231,6 +231,42 @@ void anyFromScriptValue(const QJSValue &object, T* &out)
 // }
 
 QString asString(QJSValue);
+
+
+/**
+ * just a wrapper supplied to the engine used to run modules (if
+ * qmlengine is used). It uses pimpl idiom forwarding calls to Env and
+ * it is owned by module engine
+ *
+ */
+class EnvWrapper : public QObject
+{
+    Q_OBJECT;
+
+    Q_PROPERTY(QJSValue module READ module);
+    Q_PROPERTY(QString os READ os);
+    Q_PROPERTY(StringMap env READ env);
+    Q_PROPERTY(QStringList path READ path);
+
+public:
+
+    EnvWrapper(Env* env) : QObject(env), env_(env) {}
+
+    Q_INVOKABLE QJSValue include(QString const&, bool is_reload = false);
+    Q_INVOKABLE QJSValue extend(QString const&);
+    Q_INVOKABLE QJSValue actor();
+    Q_INVOKABLE void exit(int);
+    Q_INVOKABLE void defer(QJSValue const&);
+    Q_INVOKABLE void idle();
+
+    QJSValue module();
+    QString os() const;
+    StringMap const& env() const;
+    QStringList const& path() const;
+
+private:
+    Env *env_;
+};
 
 } // namespace
 

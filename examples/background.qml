@@ -1,4 +1,4 @@
-import QtQuick 1.1
+import QtQuick 2.0
 import Mer.Cutes 1.1
 
 Rectangle
@@ -21,10 +21,10 @@ Rectangle
         data.append({ name: "click items while", value : "loading" })
         var add_item = function (reply) {
             for (var n in reply)
-                data.append({ name: n, value : reply[n] });
+                data.append({ name: n, value : reply[n].toString() });
         };
-        actor.send({ from_qml : "qml data"}, add_item
-                   , null, add_item);
+        actor.send({ from_qml : "qml data"}
+                   ,{on_reply : add_item, on_progress: add_item});
         data.append({ name: "after message", value : "more items to follow" })
     }
 
@@ -32,11 +32,11 @@ Rectangle
         id: data
         ListElement {
             name : "initial"
-            value: 1
+            value: "----"
         }
         ListElement {
             name : "initial"
-            value: 2
+            value: "----"
         }
     }
 

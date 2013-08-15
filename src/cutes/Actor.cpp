@@ -88,9 +88,14 @@ void Actor::reload()
             << " Not qml engine and missing initialization?";
             return;
         }
+        auto engine = qmlEngine(this);
+        auto env = engine->rootContext()->contextProperty("cutes").value<Env*>();
+        if (!env) {
+            qWarning() << "No env set in context?";
+            return;
+        }
         // cwd should be set to the same directory as for main engine
-        auto script = static_cast<Module*>
-        (findProperty(engine_->globalObject(), {"cutes", "module"}).toQObject());
+        auto script = env->current_module();
 
         worker_.reset(new WorkerThread(this, src_, script->fileName()));
     };
@@ -109,12 +114,6 @@ void Actor::setSource(QString const& src)
 QmlActor::QmlActor(QJSEngine *engine)
     : Actor(engine)
 {
-    // if Actor is created by QtScript environment it should have
-    // engine_ set while declarative view does not provide direct
-    // access to the engine and it will be initialized on first call
-    // to this method
-    if (!engine_)
-        engine_ = qmlEngine(this);
 }
 
 QUrl QmlActor::source() const
@@ -124,6 +123,17 @@ QUrl QmlActor::source() const
 
 void QmlActor::setSource(QUrl const& src)
 {
+    // if Actor is created by QtScript environment it should have
+    // engine_ set while declarative view does not provide direct
+    // access to the engine and it will be initialized on first call
+    // to this method
+    if (!engine_)
+        engine_ = qmlEngine(this);
+
+    if (!engine_) {
+        qWarning() << "CutesActor have not engine assigned. No go...";
+        return;
+    }
     Actor::setSource(src.path());
 }
 
@@ -308,7 +318,7 @@ void Engine::processResult(QJSValue ret, endpoint_handle ep)
         for (auto p : {"message", "stack", "arguments"
                     , "type", "isWrapped", "originalError"})
             err[p] = ret.property(p).toVariant();
-        
+
         error(err, ep);
     }
 }
@@ -490,19 +500,32 @@ void Engine::error(QVariant const &data, endpoint_handle ep)
 }
 
 
-QUrl QtScriptAdapter::qml() const
+QUrl Adapter::qml() const
 {
     return qml_;
 }
 
-void QtScriptAdapter::setQml(QUrl const& url)
+void Adapter::setQml(QUrl const& url)
 {
     qml_ = url;
+    auto env = getEnv();
+    if (!env) {
+        qWarning() << "Adapter:Env is null!";
+        return;
+    }
+    env->pushParentScriptPath(url.path());
+}
+
+Env * Adapter::getEnv() const
+{
     auto engine = qmlEngine(this);
 
-    auto env = static_cast<Env*>
-        (findProperty(engine->globalObject(), {"cutes"}).toQObject());
-    env->pushParentScriptPath(url.path());
+    if (!engine) {
+        qWarning() << "Adapter.engine is null!";
+        return nullptr;
+    }
+    auto env = engine->rootContext()->contextProperty("cutes").value<Env*>();
+    return env;
 }
 
 

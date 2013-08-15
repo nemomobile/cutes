@@ -65,6 +65,11 @@ QJSValue toQJSValue(QJSEngine &engine, v8::Handle<v8::Value> src)
     return QJSValuePrivate::get(new QJSValuePrivate(engine.handle(), src));
 }
 
+v8::Handle<v8::Value> fromQJSValue(QJSValue const& v)
+{
+    return QJSValuePrivate::get(v)->handle();
+}
+
 namespace js {
 
 v8::Handle<v8::Value> callConvertException

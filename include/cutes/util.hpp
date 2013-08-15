@@ -39,6 +39,7 @@ namespace cutes {
 QJSValue toQJSValue(QVariant const&);
 QJSValue toQJSValue(QJSEngine &engine, QVariant const&);
 QJSValue toQJSValue(QJSEngine &engine, v8::Handle<v8::Value>);
+v8::Handle<v8::Value> fromQJSValue(QJSValue const&);
 
 namespace js {
 
@@ -564,9 +565,9 @@ static inline char const *cutesRegisterName()
     return "cutesRegister";
 }
 
-typedef void (*cutesRegisterFnType)(QJSEngine *);
+typedef QJSValue (*cutesRegisterFnType)(QJSEngine *);
 }
 
-extern "C" void cutesRegister(QJSEngine *);
+extern "C" QJSValue cutesRegister(QJSEngine *);
 
 #endif // _CUTES_JS_UTIL_HPP_

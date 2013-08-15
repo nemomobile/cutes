@@ -201,16 +201,19 @@ public:
     virtual ~StdActor() {}
 };
 
-class QtScriptAdapter : public QObject
+class Env;
+class Adapter : public QObject
 {
     Q_OBJECT;
     Q_PROPERTY(QUrl qml READ qml WRITE setQml);
+    Q_PROPERTY(Env* env READ getEnv);
 public:
-    QtScriptAdapter() {}
-    virtual ~QtScriptAdapter() {}
+    Adapter() {}
+    virtual ~Adapter() {}
 
     QUrl qml() const;
     void setQml(QUrl const&);
+    Q_INVOKABLE Env *getEnv() const;
 
 private:
     QUrl qml_;

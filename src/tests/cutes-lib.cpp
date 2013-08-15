@@ -47,7 +47,7 @@ struct ExecEnv
         auto v8e = v8engine();
         v8::Context::Scope cscope(v8e->context());
         v8e->global()->Set(v8::String::New("log"), V8FUNCTION(log, v8e));
-        cutesRegister(jseng.get());
+        jseng->globalObject().setProperty("Q", cutesRegister(jseng.get()));
     }
 
     QV8Engine *v8engine()
@@ -77,11 +77,13 @@ void object::test<tid_qfile>()
     QString fname("cutes-test-file-%1");
     fname = fname.arg(t);
     QString fpath(wdir.filePath(fname));
-    QString code("var f = new QFile('%1');"
-                 "var is_opened = f.open(QIODevice.WriteOnly);"
+    QString code(
+                 "var f = new Q.File('%1');"
+                 "var is_opened = f.open(Q.IODevice.WriteOnly);"
                  "f.write('ee');"
                  " f.close();"
-                 "is_opened");
+                 "is_opened"
+                 );
     auto res = env->exec(code.arg(fpath));
     auto rmfile = cor::on_scope_exit([&]() { wdir.remove(fname); });
     ensure("Code should not return error", !res.isError());
