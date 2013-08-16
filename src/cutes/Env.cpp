@@ -621,7 +621,8 @@ QJSValue Module::load(QJSEngine &engine)
     const QString prolog = errorConverterTry
         ("var module = cutes.module"
          ", exports = module.exports"
-         ", require = module.require;");
+         ", require = module.require"
+         ", __filename = module.filename;");
 
     const QString epilog = errorConverterCatch("exports;\n");
     QString contents;
