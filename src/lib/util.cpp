@@ -79,10 +79,12 @@ v8::Handle<v8::Value> callConvertException
         return fn(args);
     } catch (std::exception const &e) {
         using namespace v8;
-        qWarning() << "Exception on invoking fn. Args:";
+        qWarning() << "Exception (" << e.what()
+                   << ") invoking native fn. Args("
+                   << args.Length() << "):";
         for (int i = 0; i < args.Length(); ++i) {
             v8::String::Utf8Value cs(args[i]);
-            qWarning() << *cs;
+            qWarning() << " " << *cs << ",";
         }
         ThrowException(Exception::Error(String::New(e.what())));
         return Handle<Value>();
