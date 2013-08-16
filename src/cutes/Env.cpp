@@ -21,7 +21,7 @@
 // Q_DECLARE_METATYPE(QDir);
 
 Q_DECLARE_METATYPE(cutes::Env*);
-Q_DECLARE_METATYPE(cutes::StringMap);
+//Q_DECLARE_METATYPE(cutes::StringMap);
 
 namespace cutes {
 
@@ -93,9 +93,9 @@ QString JsError::errorMessage(Env *env, QString const &// file
  *
  * @return system env map
  */
-static StringMap mkEnv()
+static QVariantMap mkEnv()
 {
-    StringMap res;
+    QVariantMap res;
     QStringList env = QProcess::systemEnvironment();
     for (auto &item : env) {
         QStringList kv = item.split('=');
@@ -173,7 +173,7 @@ Env::Env(QObject *parent, QCoreApplication &app, QJSEngine &engine)
     , actor_count_(0)
     , is_waiting_exit_(false)
 {
-    qRegisterMetaType<StringMap>("StringMap");
+    //qRegisterMetaType<StringMap>("StringMap");
     setObjectName("cutes");
 
     args_ = app.arguments();
@@ -188,7 +188,7 @@ Env::Env(QObject *parent, QCoreApplication &app, QJSEngine &engine)
     // remove empty paths
     auto paths = std::move
         (filter
-         (env_paths.split(":"), [](QString const &v) {
+         (env_paths.toString().split(":"), [](QString const &v) {
              return v.size() > 0;
          }));
 
@@ -535,9 +535,9 @@ QString Env::os() const
     return QString(os_name);
 }
 
-StringMap const* Env::env() const
+QVariantMap const& Env::env() const
 {
-    return &env_;
+    return env_;
 }
 
 QStringList const& Env::path() const
@@ -712,7 +712,7 @@ QString EnvWrapper::os() const
     return env_->os();
 }
 
-StringMap const* EnvWrapper::env() const
+QVariantMap const& EnvWrapper::env() const
 {
     return env_->env();
 }

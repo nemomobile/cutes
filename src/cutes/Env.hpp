@@ -115,7 +115,7 @@ class Env : public QObject
 
     Q_PROPERTY(QJSValue module READ module);
     Q_PROPERTY(QString os READ os);
-    Q_PROPERTY(StringMap env READ env);
+    Q_PROPERTY(QVariantMap env READ env);
     Q_PROPERTY(QStringList path READ path);
 
 public:
@@ -139,7 +139,7 @@ public:
 
     QJSValue module();
     QString os() const;
-    StringMap const* env() const;
+    QVariantMap const& env() const;
     QStringList const& path() const;
 
     bool shouldWait();
@@ -158,7 +158,7 @@ private:
     QJSEngine *module_engine_;
     QMap<QString, Module*> modules_;
 
-    StringMap env_;
+    QVariantMap env_;
     QStringList path_;
     QStack<Module*> scripts_;
     QStringList args_;
@@ -245,7 +245,7 @@ class EnvWrapper : public QObject
 
     Q_PROPERTY(QJSValue module READ module);
     Q_PROPERTY(QString os READ os);
-    Q_PROPERTY(StringMap env READ env);
+    Q_PROPERTY(QVariantMap env READ env);
     Q_PROPERTY(QStringList path READ path);
 
 public:
@@ -261,7 +261,7 @@ public:
 
     QJSValue module();
     QString os() const;
-    StringMap const* env() const;
+    QVariantMap const& env() const;
     QStringList const& path() const;
 
 private:
