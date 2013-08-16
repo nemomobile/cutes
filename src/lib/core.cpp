@@ -136,6 +136,7 @@ void FileInfo::v8Setup(QV8Engine *v8e
         << BOOL_QUERY_(isRelative)
         << BOOL_QUERY_(isRoot)
         << BOOL_QUERY_(isHidden)
+        << CUTES_GET_CONST(lastModified, QDateTime, QFileInfo, QFileInfo)
         << STR_QUERY_(owner)
         << STR_QUERY_(group)
         << STR_QUERY_(path)
@@ -243,6 +244,8 @@ void Dir::v8Setup(QV8Engine *v8e
         << STR_QUERY_(path)
         << CUTES_GET(cdUp, bool, QDir, QDir)
         << CUTES_FN(entryInfoList, Dir)
+        << CUTES_FN_PARAM_CONST(relativeFilePath, QString, QDir, QDir
+                                , QString, const QString &)
         ;
 }
 
