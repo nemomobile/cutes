@@ -116,17 +116,40 @@ Env *loadEnv(QCoreApplication &app, QJSEngine &engine)
     return res;
 }
 
-js::VHandle printImpl(v8::Arguments const &args)
+static js::VHandle fprintImpl(FILE *f, int first, v8::Arguments const &args)
 {
-    QTextStream out(stdout);
+    QTextStream out(f);
     auto engine = js::engine(args);
-    if (engine) {
-        for (int i = 0; i < args.Length(); ++i)
-            out << toQJSValue(*engine, args[i]).toString();
+    auto len = args.Length();
+
+    if (engine && len > first) {
+        out << toQJSValue(*engine, args[first]).toString();
+        for (int i = first + 1; i < len; ++i)
+            out << " " << toQJSValue(*engine, args[i]).toString();
         out << '\n';
     }
 
     return js::VHandle();
+}
+
+static js::VHandle jsFPrint(v8::Arguments const &args)
+{
+    auto len = args.Length();
+    if (!len)
+        return js::VHandle();
+
+    auto engine = js::engine(args);
+
+    auto i = toQJSValue(*engine, args[0]).toVariant().toInt();
+    FILE *f = (i == STDOUT_FILENO
+               ? stdout : (i == STDERR_FILENO
+                           ? stderr : nullptr));
+    return fprintImpl(f, 1, args);
+}
+
+static js::VHandle jsPrint(v8::Arguments const &args)
+{
+    return fprintImpl(stdout, 0, args);
 }
 
 static void setupEngine(QJSEngine &engine)
@@ -137,7 +160,9 @@ static void setupEngine(QJSEngine &engine)
 
     engine.globalObject().setProperty("process", engine.newObject());
     if (engine.globalObject().property("print").isUndefined())
-        js::Set(engine, engine.globalObject(), "print", printImpl);
+        js::Set(engine, engine.globalObject(), "print", jsPrint);
+
+    js::Set(engine, engine.globalObject(), "fprint", jsFPrint);
 }
 
 Env::Env(QObject *parent, QCoreApplication &app, QJSEngine &engine)
