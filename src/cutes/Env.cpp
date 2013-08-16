@@ -619,12 +619,12 @@ QJSValue Module::load(QJSEngine &engine)
         throw Error(QString("Can't open %1").arg(file_name));
 
     const QString prolog = errorConverterTry
-        ("var module = cutes.module"
+        ("(function() { var module = cutes.module"
          ", exports = module.exports"
          ", require = module.require"
          ", __filename = module.filename;");
 
-    const QString epilog = errorConverterCatch("exports;\n");
+    const QString epilog = errorConverterCatch(" return exports; }).call(this)\n");
     QString contents;
     contents.reserve(file.size() + prolog.size() + epilog.size());
 
