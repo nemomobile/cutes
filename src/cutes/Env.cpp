@@ -21,6 +21,7 @@
 // Q_DECLARE_METATYPE(QDir);
 
 Q_DECLARE_METATYPE(cutes::Env*);
+Q_DECLARE_METATYPE(cutes::StringMap);
 
 namespace cutes {
 
@@ -172,6 +173,7 @@ Env::Env(QObject *parent, QCoreApplication &app, QJSEngine &engine)
     , actor_count_(0)
     , is_waiting_exit_(false)
 {
+    qRegisterMetaType<StringMap>("StringMap");
     setObjectName("cutes");
 
     args_ = app.arguments();
@@ -533,9 +535,9 @@ QString Env::os() const
     return QString(os_name);
 }
 
-StringMap const& Env::env() const
+StringMap const* Env::env() const
 {
-    return env_;
+    return &env_;
 }
 
 QStringList const& Env::path() const
@@ -709,7 +711,7 @@ QString EnvWrapper::os() const
     return env_->os();
 }
 
-StringMap const& EnvWrapper::env() const
+StringMap const* EnvWrapper::env() const
 {
     return env_->env();
 }

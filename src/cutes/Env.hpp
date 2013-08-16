@@ -139,7 +139,7 @@ public:
 
     QJSValue module();
     QString os() const;
-    StringMap const& env() const;
+    StringMap const* env() const;
     QStringList const& path() const;
 
     bool shouldWait();
@@ -261,7 +261,7 @@ public:
 
     QJSValue module();
     QString os() const;
-    StringMap const& env() const;
+    StringMap const* env() const;
     QStringList const& path() const;
 
 private:
