@@ -20,6 +20,7 @@ tf cor_cutes_lib_test("cutes_lib");
 
 enum test_ids {
     tid_qfile = 1
+    , tid_qprocess
 };
 
 static v8::Handle<v8::Value> log(const v8::Arguments& args)
@@ -90,6 +91,21 @@ void object::test<tid_qfile>()
     ensure("Code should return bool", res.isBool());
     ensure("Code should return true", res.toBool());
     ensure("File should be created", QFileInfo(fpath).exists());
+}
+
+template<> template<>
+void object::test<tid_qprocess>()
+{
+    std::unique_ptr<ExecEnv> env(new ExecEnv());
+    QString code(
+                 "var p = new Q.Process();"
+                 "p.start('/bin/echo', ['-n', 1]);"
+                 "var is_done = p.waitForFinished(10000);"
+                 "[is_done, p.readAllStandardOutput().toString()]"
+                 );
+    auto res = env->exec(code);
+    ensure("Code should not return error", !res.isError());
+    qDebug() << "##" << res.toVariant();
 }
 
 }
