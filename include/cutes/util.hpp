@@ -179,6 +179,20 @@ template<> struct Convert<QString> {
     }
 };
 
+char charFromV8(QV8Engine *, VHandle);
+
+template<> struct Convert<char> {
+    static inline char fromV8(QV8Engine *e, VHandle v)
+    {
+        return charFromV8(e, v);
+    }
+
+    static inline VHandle toV8(char v)
+    {
+        return QJSConverter::toString(QChar(v));
+    }
+};
+
 template<> struct Convert<QDateTime> {
     static inline QDateTime fromV8(QV8Engine *, VHandle v)
     {

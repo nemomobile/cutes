@@ -111,4 +111,14 @@ std::pair<bool, VHandle> copyCtor(const v8::Arguments &args)
     return {false, VHandle()};
 }
 
+char charFromV8(QV8Engine *, VHandle v)
+{
+    v8::String::AsciiValue cs(v);
+    if (!cs.length())
+        throw std::invalid_argument("String is not convertible to ascii");
+    if (cs.length() > 1)
+        throw std::invalid_argument("Expecting char but string length > 1");
+    return cs.length() ? (*cs)[0] : 0;
+}
+
 }}
