@@ -25,7 +25,7 @@ int executeScript(int argc, char *argv[])
     int rc = EXIT_SUCCESS;
 
     try {
-        auto res = script_env->load(script_file);
+        auto res = script_env->load(script_file, false);
         if (res.isError())
             rc = EXIT_FAILURE;
     } catch (Error const &e) {

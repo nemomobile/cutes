@@ -587,9 +587,9 @@ Module::Module(Env *parent, QString const& fname, QString const& cwd)
     setObjectName("script");
 }
 
-QJSValue Module::require(QString const& name, bool is_reload)
+QJSValue Module::require(QString const& name)
 {
-    return env()->include(name, is_reload);
+    return env()->include(name, false);
 }
 
 bool Module::loaded() const

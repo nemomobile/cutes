@@ -274,7 +274,7 @@ void Engine::load(Load *msg)
     try {
         auto script_env = loadEnv(*QCoreApplication::instance(), *engine_);
         script_env->pushParentScriptPath(msg->top_script_);
-        handler_ = script_env->load(msg->src_);
+        handler_ = script_env->load(msg->src_, false);
         if (!(handler_.isCallable() || handler_.isObject())) {
             qWarning() << "Not a function or object but "
                        << handler_.toString();
