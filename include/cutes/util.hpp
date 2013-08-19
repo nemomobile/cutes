@@ -470,7 +470,7 @@ template <typename ResT, typename ObjT>
 struct FnWrapper
 {
     template <typename FnT, FnT fn>
-    static inline VHandle param0(const v8::Arguments &args)
+    static VHandle param0(const v8::Arguments &args)
     {
         return callConvertException(args, [](const v8::Arguments &args) -> VHandle {
                 auto self = cutesObjFromThis<ObjT>(args);
@@ -479,14 +479,30 @@ struct FnWrapper
     }
 
     template <typename ParamT, typename FnT, FnT fn>
-    static inline VHandle param1(const v8::Arguments &args)
+    static VHandle param1(const v8::Arguments &args)
     {
         return callConvertException(args, [](const v8::Arguments &args) -> VHandle {
                 auto self = cutesObjFromThis<ObjT>(args);
+                if (args.Length() < 1)
+                    throw std::invalid_argument("Need 2 parameters");
                 auto p0 = Arg<ParamT>(args, 0);
                 return ValueToV8((self->*fn)(p0));
             });
     }
+
+    template <typename FnT, FnT fn, typename P1T, typename P2T>
+    static VHandle param2(const v8::Arguments &args)
+    {
+        return callConvertException(args, [](const v8::Arguments &args) -> VHandle {
+                auto self = cutesObjFromThis<ObjT>(args);
+                if (args.Length() < 2)
+                    throw std::invalid_argument("Need 2 parameters");
+                auto p0 = Arg<P1T>(args, 0);
+                auto p1 = Arg<P2T>(args, 1);
+                return ValueToV8((self->*fn)(p0, p1));
+            });
+    }
+
 };
 
 template <typename ObjT>
@@ -518,6 +534,13 @@ template <typename ResT, typename ObjT, typename ParamT, typename FnT, FnT fn>
 inline VHandle fnWithParam(const v8::Arguments &args)
 {
     return FnWrapper<ResT, ObjT>::template param1<ParamT, FnT, fn>(args);
+}
+
+template <typename ResT, typename ObjT, typename FnT, FnT fn
+          , typename P1T, typename P2T>
+inline VHandle fnWithParam(const v8::Arguments &args)
+{
+    return FnWrapper<ResT, ObjT>::template param2<FnT, fn, P1T, P2T>(args);
 }
 
 template <typename ResT, typename ObjT, typename FnT, FnT fn>
@@ -553,6 +576,12 @@ static VHandle fnWOParams(const v8::Arguments &args)
                             <res, type, param_t,                               \
                              res (obj_type::*)(param_sig) const,               \
                              &obj_type::name>)
+
+#define CUTES_FN_PARAM2(name, res, type, obj_type, p1_t, p2_t, param_sig) \
+    cutes::js::Callback(#name, fnWithParam                                  \
+                        <res, type,                                         \
+                        res (obj_type::*)(param_sig),                       \
+                        &obj_type::name, p1_t, p2_t>)
 
 #define CUTES_FLAG_CONVERTIBLE_INT(flag_type)               \
 template<> struct Convert<flag_type> {                      \
