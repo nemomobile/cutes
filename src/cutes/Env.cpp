@@ -659,6 +659,8 @@ QJSValue Module::load(QJSEngine &engine)
     auto res = engine.evaluate(contents, file_name, line_nr);
     if (res.isError()) {
         qWarning() << "Error loading " << file_name << ":" << res.toString();
+        if (res.hasProperty("stack"))
+            qWarning() << "Stack:" << res.property("stack").toString();
         return res;
     }
     setExports(res);
