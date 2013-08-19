@@ -24,53 +24,71 @@
  * http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
  */
 
-#include "QsActor.hpp"
+#include "Actor.hpp"
 
 #include <QObject>
 #include <QVariant>
 #include <QString>
-#include <QScriptValue>
+#include <QJSValue>
 
 
-namespace QsExecute
+namespace cutes
 {
 
 class Endpoint : public QObject
 {
     Q_OBJECT;
 public:
-    Endpoint(QScriptValue const&, QScriptValue const&, QScriptValue const&);
+    Endpoint(QJSValue const&, QJSValue const&, QJSValue const&);
 
-    QScriptValue on_reply_;
-    QScriptValue on_error_;
-    QScriptValue on_progress_;
+    QJSValue on_reply_;
+    QJSValue on_error_;
+    QJSValue on_progress_;
 };
 
 class Load : public Event
 {
 public:
     Load(QString const&, QString const&);
-    virtual ~Load() {}
+    virtual ~Load();
 
     QString src_;
     QString top_script_;
 };
 
+class LoadError : public Event
+{
+public:
+    LoadError(QString const&);
+    virtual ~LoadError();
+
+    QString src_;
+};
+
+class EndpointRemove : public Event
+{
+public:
+    EndpointRemove(Endpoint*);
+    virtual ~EndpointRemove();
+
+    Endpoint *endpoint_;
+};
+
 class Message : public Event
 {
 public:
-    Message(QVariant const&, endpoint_ptr, Event::Type);
-    virtual ~Message() {}
+    Message(QVariant const&, endpoint_handle, Event::Type);
+    virtual ~Message();
 
     QVariant data_;
-    endpoint_ptr endpoint_;
+    endpoint_handle endpoint_;
 };
 
 class Request : public Message
 {
 public:
-    Request(QString const&, QVariant const&, endpoint_ptr, Event::Type);
-    virtual ~Request() {}
+    Request(QString const&, QVariant const&, endpoint_handle, Event::Type);
+    virtual ~Request();
 
     QString method_name_;
 };
@@ -79,25 +97,24 @@ class MessageContext : public QObject
 {
     Q_OBJECT;
 public:
-    MessageContext(Engine *, endpoint_ptr);
+    MessageContext(Engine *, endpoint_handle);
     virtual ~MessageContext();
 
-    Q_INVOKABLE void reply(QScriptValue);
+    Q_INVOKABLE void reply(QJSValue);
 
     void disable();
 private:
     Engine *engine_;
-    endpoint_ptr endpoint_;
+    endpoint_handle endpoint_;
 };
 
 class EngineException : public Event
 {
 public:
-    EngineException(QScriptEngine const&);
+    EngineException(QJSEngine const&, QJSValue const&);
     virtual ~EngineException() {}
 
     QVariant exception_;
-    QStringList backtrace_;
 };
 
 }

@@ -22,37 +22,39 @@
  * http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
  */
 
-#include "QsActor.hpp"
-#include "QsActorEvents.hpp"
-#include "QsEnv.hpp"
+#include "Actor.hpp"
+#include "ActorEvents.hpp"
+#include "Env.hpp"
 #include "QmlAdapter.hpp"
 
+#include <cutes/util.hpp>
 #include "qt_quick_types.hpp"
 #include <QDebug>
 #include <QCoreApplication>
+#include <QMap>
 
-namespace QsExecute {
+namespace cutes {
 
-Endpoint::Endpoint(QScriptValue const& on_reply
-                   , QScriptValue const& on_error
-                   , QScriptValue const& on_progress)
-    : on_reply_(on_reply)
-    , on_error_(on_error)
-    , on_progress_(on_progress)
+static endpoint_ptr endpoint(QJSValue const& ep)
 {
-}
-
-static inline endpoint_ptr endpoint
-(QScriptValue const& on_reply
- , QScriptValue const& on_error
- , QScriptValue const& on_progress)
-{
+    QJSValue on_reply, on_error, on_progress;
+    if (ep.isObject()) {
+        on_reply = ep.property("on_reply");
+        on_error = ep.property("on_error");
+        on_progress = ep.property("on_progress");
+    } else if (ep.isCallable()) {
+        on_reply = ep;
+    } else {
+        throw Error(QString("Wrong endpoint is passed, should be a function"
+                            " or endpoint objects: ") + ep.toString());
+    }
     return endpoint_ptr(new Endpoint(on_reply, on_error, on_progress));
 }
 
-Actor::Actor(QScriptEngine *engine)
+Actor::Actor(QJSEngine *engine)
     : engine_(engine)
     , unreplied_count_(0)
+    , cookie_(0)
 {
 }
 
@@ -70,15 +72,11 @@ void Actor::execute(std::function<void ()> fn)
     try{
         fn();
     } catch (Error const &e) {
-        if (engine_)
-            engine_->currentContext()->throwError(e.msg);
-        else
-            qDebug() << "Error " << e.msg;
+        qWarning() << "Error executing request/send:" << e.msg;
+        // TODO throw js error
     } catch (...) {
-        if (engine_)
-            engine_->currentContext()->throwError("Unhandled error");
-        else
-            qDebug() << "Error " << "Unhandled error";
+        qWarning() << "Some error executing request/send";
+        // TODO throw js error
     }
 }
 
@@ -86,14 +84,18 @@ void Actor::reload()
 {
     auto fn = [this]() {
         if (!engine_) {
-            qDebug() << "Can't get script engine."
+            qWarning() << "Can't get script engine."
             << " Not qml engine and missing initialization?";
             return;
         }
+        auto engine = qmlEngine(this);
+        auto env = engine->rootContext()->contextProperty("cutes").value<Env*>();
+        if (!env) {
+            qWarning() << "No env set in context?";
+            return;
+        }
         // cwd should be set to the same directory as for main engine
-        auto script = static_cast<Module*>
-        (findProperty
-         (engine_->globalObject(), {"qtscript", "module"}).toQObject());
+        auto script = env->current_module();
 
         worker_.reset(new WorkerThread(this, src_, script->fileName()));
     };
@@ -109,36 +111,42 @@ void Actor::setSource(QString const& src)
     reload();
 }
 
-DeclarativeActor::DeclarativeActor(QScriptEngine *engine)
+QmlActor::QmlActor(QJSEngine *engine)
     : Actor(engine)
-{}
+{
+}
 
-QUrl DeclarativeActor::source() const
+QUrl QmlActor::source() const
 {
     return Actor::source();
 }
 
-void DeclarativeActor::setSource(QUrl const& src)
+void QmlActor::setSource(QUrl const& src)
 {
     // if Actor is created by QtScript environment it should have
     // engine_ set while declarative view does not provide direct
     // access to the engine and it will be initialized on first call
     // to this method
     if (!engine_)
-        engine_ = getDeclarativeScriptEngine(qmlEngine(this));
+        engine_ = qmlEngine(this);
+
+    if (!engine_) {
+        qWarning() << "CutesActor have not engine assigned. No go...";
+        return;
+    }
     Actor::setSource(src.path());
 }
 
-QtScriptActor::QtScriptActor(QScriptEngine *engine)
+StdActor::StdActor(QJSEngine *engine)
     : Actor(engine)
 {}
 
-// QUrl QtScriptActor::source() const
+// QUrl StdActor::source() const
 // {
 //     return Actor::source();
 // }
 
-// void QtScriptActor::setSource(QUrl const& src)
+// void StdActor::setSource(QUrl const& src)
 // {
 //     Actor::setSource(src.path());
 // }
@@ -169,33 +177,31 @@ void Actor::release()
         emit released();
 }
 
-void Actor::send
-(QScriptValue const &msg
- , QScriptValue const& on_reply
- , QScriptValue const& on_error
- , QScriptValue const& on_progress)
+endpoint_handle Actor::endpoint_new(QJSValue cb)
+{
+        auto ep = endpoint(cb);
+        endpoints_.insert(ep.data(), ep);
+        endpoint_handle h(ep.data(), [this](Endpoint *p) {
+                QCoreApplication::postEvent(this, new EndpointRemove(p));
+            });
+        return h;
+}
+
+void Actor::send(QJSValue const &msg, QJSValue cb)
 {
     auto fn = [&]() {
         acquire();
-        worker()->send(new Message
-                       (msg.toVariant()
-                        , endpoint(on_reply, on_error, on_progress)
-                        , Event::Message));
+        worker()->send
+        (new Message(msg.toVariant(), endpoint_new(cb), Event::Message));
     };
     execute(fn);
 }
-void Actor::request
-(QString const &method_name, QScriptValue const &msg
- , QScriptValue const& on_reply
- , QScriptValue const& on_error
- , QScriptValue const& on_progress)
+
+void Actor::request(QString const &method, QVariant msg, QJSValue cb)
 {
     auto fn = [&]() {
         acquire();
-        worker_->send(new Request
-                      (method_name, msg.toVariant()
-                       , endpoint(on_reply, on_error, on_progress)
-                       , Event::Request));
+        worker_->send(new Request(method, msg, endpoint_new(cb), Event::Request));
     };
     execute(fn);
 }
@@ -209,28 +215,28 @@ void Actor::progress(Message *msg)
     callback(msg, msg->endpoint_->on_progress_);
 }
 
-void Actor::callback(Message *msg, QScriptValue& cb)
+void Actor::callback(Message *msg, QJSValue& cb)
 {
-    if (!cb.isValid())
+    if (!cb.isCallable())
         return;
-    auto params = cb.engine()->newArray(1);
-    auto data = cb.engine()->toScriptValue(msg->data_);
-    params.setProperty(0, data);
-    if (cb.isFunction())
-        cb.call(cb, params);
+    auto params = QJSValueList();
+    params.push_back(cutes::toQJSValue(*engine_, msg->data_));
+    cb.callWithInstance(cb, params);
 }
 
 void Actor::error(Message *reply)
 {
     auto &cb = reply->endpoint_->on_error_;
-    if (!(cb.isValid() && cb.isFunction())) {
+    if (!cb.isCallable()) {
         emit error(reply->data_);
         return;
     }
-    auto params = cb.engine()->newArray(1);
-    auto data = cb.engine()->toScriptValue(reply->data_);
-    params.setProperty(0, data);
-    cb.call(cb, params);
+    auto params = QJSValueList();
+    auto err = engine_
+        ? cutes::toQJSValue(*engine_, reply->data_)
+        : cutes::toQJSValue(reply->data_);
+    params.push_back(err);
+    cb.callWithInstance(cb, params);
 }
 
 Event::Event()
@@ -240,12 +246,6 @@ Event::Event()
 
 Event::Event(Event::Type t)
     : QEvent(static_cast<QEvent::Type>(t))
-{ }
-
-Load::Load(QString const &src, QString const& top_script)
-    : Event(Event::LoadScript)
-    ,  src_(src)
-    , top_script_(top_script)
 { }
 
 Event::~Event() {}
@@ -268,50 +268,25 @@ void Engine::toActor(Event *ev)
     QCoreApplication::postEvent(actor_, ev);
 }
 
-EngineException::EngineException(QScriptEngine const& engine)
-    : Event(Event::LoadException)
-    , exception_(engine.uncaughtException().toVariant())
-    , backtrace_(engine.uncaughtExceptionBacktrace())
-{}
-
-Message::Message(QVariant const& data, endpoint_ptr ep
-                 , Event::Type type)
-    : Event(type), data_(data), endpoint_(ep)
-{}
-
-Request::Request(QString const &method_name, QVariant const& data
-                 , endpoint_ptr ep, Event::Type type)
-    : Message(data, ep, type)
-    , method_name_(method_name)
-{}
-
 void Engine::load(Load *msg)
 {
-    engine_ = new QScriptEngine(this);
+    engine_ = new QJSEngine(this);
     try {
         auto script_env = loadEnv(*QCoreApplication::instance(), *engine_);
         script_env->pushParentScriptPath(msg->top_script_);
         handler_ = script_env->load(msg->src_);
-        if (!(handler_.isFunction() || handler_.isObject())) {
-            qDebug() << "Not a function or object";
+        if (!(handler_.isCallable() || handler_.isObject())) {
+            qWarning() << "Not a function or object but "
+                       << handler_.toString();
             if (handler_.isError()) {
-                error(handler_.toVariant()
-                      , endpoint(QScriptValue()
-                                 , QScriptValue()
-                                 , QScriptValue()));
-            } else {
-                auto cls = handler_.scriptClass();
-                qDebug() << "Handler is "
-                         << (cls ? cls->name() : "unknown value");
+                qWarning() << "Exception while loading:" << handler_.toString();
+                toActor(new LoadError(msg->src_));
             }
         }
     } catch (Error const &e) {
-        qDebug() << "Failed to eval:" << msg->src_;
-        qDebug() << e.msg;
-        if (engine_->hasUncaughtException()) {
-            toActor(new EngineException(*engine_));
-            engine_->clearExceptions();
-        }
+        qWarning() << "Failed to eval:" << msg->src_;
+        qWarning() << e.msg;
+        // TODO toActor(new EngineException(*engine_));
     }
 }
 
@@ -334,66 +309,90 @@ void WorkerThread::run()
     engine_.reset(nullptr);
 }
 
-void Engine::processResult(QScriptValue &ret, endpoint_ptr ep)
+void Engine::processResult(QJSValue ret, endpoint_handle ep)
 {
-    QVariant err;
-    if (engine_->hasUncaughtException()) {
-        qDebug() << "Uncaught exception in actor";
-        err = engine_->uncaughtException().toVariant();
-    } else if (ret.isError()) {
-        err = ret.toVariant();
-    } else {
+    if (!ret.isError()) {
         reply(ret.toVariant(), ep, Event::Return);
-        return;
+    } else {
+        QVariantMap err;
+        for (auto p : {"message", "stack", "arguments"
+                    , "type", "isWrapped", "originalError"})
+            err[p] = ret.property(p).toVariant();
+
+        error(err, ep);
     }
-    qDebug() << "Actor error: " << err << ", sending to source";
-    error(err, ep);
+}
+
+QJSValue Engine::callConvertError(QJSValue const &fn
+                                  , QJSValue const &instance
+                                  , QJSValueList const &params)
+{
+    if (convert_error_.isUndefined()) {
+        auto code = errorConverterTry("var res = function(fn, obj) {")
+            + "return fn.apply(obj, [].slice.call(arguments, 2));"
+            + errorConverterCatch("}; res;");
+        if (!engine_) {
+            qWarning() << "Engine is null!";
+            return convert_error_;
+        }
+        convert_error_ = engine_->evaluate(code);
+        if (!convert_error_.isCallable()) {
+            qWarning() << "Can't evaluate properly error conversion code: "
+                       << "expected conversion function, got "
+                       << convert_error_.toString();
+            convert_error_ = QJSValue();
+            return convert_error_;
+        }
+    }
+
+    QJSValueList converter_params(params);
+    converter_params.push_front(instance);
+    converter_params.push_front(fn);
+    return convert_error_.callWithInstance(convert_error_, converter_params);
 }
 
 void Engine::processMessage(Message *msg)
 {
-    QScriptValue ret;
+    QJSValue ret;
 
-    if (handler_.isFunction()) {
-        auto params = engine_->newArray(2);
-        params.setProperty(0, engine_->toScriptValue(msg->data_));
-        params.setProperty(1, engine_->newQObject
-                           (new MessageContext(this, msg->endpoint_)));
-        ret = handler_.call(handler_, params);
-    } else if (handler_.isValid()) {
-        auto cls = handler_.scriptClass();
-        qDebug() << "Handler is not a function but "
-                 << (cls ? cls->name() : "unknown value");
+    if (handler_.isCallable()) {
+        QJSValueList params;
+        params.push_back(cutes::toQJSValue(*engine_, msg->data_));
+        params.push_back(engine_->newQObject
+                         (new MessageContext(this, msg->endpoint_)));
+        ret = callConvertError(handler_, handler_, params);
+    } else if (!(handler_.isNull() && handler_.isUndefined())) {
+        qWarning() << "Handler is not a function but "
+                 << (handler_.toString());
     } else {
-        qDebug() << "No handler";
+        qWarning() << "No handler";
     }
     processResult(ret, msg->endpoint_);
 }
 
 void Engine::processRequest(Request *req)
 {
-    QScriptValue ret;
+    QJSValue ret;
 
     if (handler_.isObject()) {
         auto method = handler_.property(req->method_name_);
-        if (method.isFunction()) {
+        if (method.isCallable()) {
             MessageContext *ctx = new MessageContext(this, req->endpoint_);
-            auto params = engine_->newArray(2);
-            params.setProperty(0, engine_->toScriptValue(req->data_));
-            params.setProperty(1, engine_->newQObject(ctx));
-            ret = method.call(handler_, params);
+            QJSValueList params;
+            params.push_back(engine_->toScriptValue(req->data_));
+            params.push_back(engine_->newQObject(ctx));
+            ret = callConvertError(method, handler_, params);
             ctx->disable();
             ctx->deleteLater();
-        } else if (method.isUndefined()) {
-            qDebug() << "Actor does not have method" << req->method_name_;
+        } else if (method.isUndefined() || method.isNull()) {
+            qWarning() << "Actor does not have method" << req->method_name_;
         } else {
-            auto cls = handler_.scriptClass();
-            qDebug() << "Actor property " << req->method_name_
+            qWarning() << "Actor property " << req->method_name_
                      << " is not a method but "
-                     << (cls ? cls->name() : "unknown value");
+                     << method.toString();
         }
     } else {
-        qDebug() << "Handler is not an object";
+        qWarning() << "Handler is not an object";
     }
     processResult(ret, req->endpoint_);
 }
@@ -443,6 +442,12 @@ bool Actor::event(QEvent *e)
         error(static_cast<Message*>(e));
         res = true;
         break;
+    case Event::EndpointRemove: {
+        EndpointRemove *rm = static_cast<EndpointRemove*>(e);
+        endpoints_.remove(rm->endpoint_);
+        res = true;
+        break;
+    }
     default:
         res = QObject::event(e);
         break;
@@ -452,19 +457,17 @@ bool Actor::event(QEvent *e)
     return res;
 }
 
-
-MessageContext::MessageContext(Engine *engine, endpoint_ptr ep)
+MessageContext::MessageContext(Engine *engine, endpoint_handle ep)
     : QObject(engine)
     , engine_(engine)
     , endpoint_(ep)
 {}
+MessageContext::~MessageContext() {}
 
 void MessageContext::disable()
 {
-    endpoint_.clear();
+    endpoint_.reset();
 }
-
-MessageContext::~MessageContext() {}
 
 void Actor::wait()
 {
@@ -476,40 +479,53 @@ void Actor::wait()
     loop.exec();
 }
 
-void MessageContext::reply(QScriptValue data)
+void MessageContext::reply(QJSValue data)
 {
     if (engine_)
         engine_->reply(data.toVariant(), endpoint_, Event::Progress);
     else
-        qDebug() << "MessageContext is disabled, " <<
+        qWarning() << "MessageContext is disabled, " <<
             "are you using it outside processing function?";
 }
 
 void Engine::reply
-(QVariant const &data, endpoint_ptr ep, Event::Type type)
+(QVariant const &data, endpoint_handle ep, Event::Type type)
 {
     toActor(new Message(data, ep, type));
 }
 
-void Engine::error(QVariant const &data, endpoint_ptr ep)
+void Engine::error(QVariant const &data, endpoint_handle ep)
 {
     toActor(new Message(data, ep, Event::Error));
 }
 
 
-QUrl QtScriptAdapter::qml() const
+QUrl Adapter::qml() const
 {
     return qml_;
 }
 
-void QtScriptAdapter::setQml(QUrl const& url)
+void Adapter::setQml(QUrl const& url)
 {
     qml_ = url;
-    auto engine = getDeclarativeScriptEngine(qmlEngine(this));
-
-    auto env = static_cast<Env*>
-        (findProperty(engine->globalObject(), {"qtscript"}).toQObject());
+    auto env = getEnv();
+    if (!env) {
+        qWarning() << "Adapter:Env is null!";
+        return;
+    }
     env->pushParentScriptPath(url.path());
+}
+
+Env * Adapter::getEnv() const
+{
+    auto engine = qmlEngine(this);
+
+    if (!engine) {
+        qWarning() << "Adapter.engine is null!";
+        return nullptr;
+    }
+    auto env = engine->rootContext()->contextProperty("cutes").value<Env*>();
+    return env;
 }
 
 

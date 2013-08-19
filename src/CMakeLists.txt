@@ -1,68 +1,30 @@
-SET(PLUGIN_NAME qtscript)
-set(SRC main.cpp)
-set(LIBSRC QmlAdapter.cpp QsActor.cpp QsEnv.cpp)
-set(QMLPKG Mer/QtScript)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(V8 Qt5V8 REQUIRED)
+find_package(Qt5Core REQUIRED)
+find_package(Qt5Qml REQUIRED)
 
-set(HDRS EngineAccess.hpp QsActor.hpp QsActorEvents.hpp QsEnv.hpp)
+set(V8_PRIVATE_INCLUDES
+  "/usr/include/qt5/QtV8/${Qt5Qml_VERSION_STRING}/QtV8"
+)
+
+include_directories(
+  ${PROJECT_SOURCE_DIR}/include
+  ${Qt5Core_INCLUDE_DIRS}
+  ${Qt5Qml_INCLUDE_DIRS}
+  ${V8_PRIVATE_INCLUDES}
+  ${Qt5Qml_PRIVATE_INCLUDE_DIRS}
+)
+
+add_definitions(
+  ${Qt5Core_DEFINITIONS}
+  ${Qt5Qml_DEFINITIONS}
+  ${V8_DEFINITIONS}
+)
 
 add_definitions(-DQT_SHARED)
 
-if(${USEQT} STREQUAL "4")
+set(CMAKE_AUTOMOC TRUE)
 
-set(PLUGIN_SRC QmlPlugin.cpp)
-set(NAME cutes)
-set(LIBNAME cutescript-qt4)
-set(QT_BINDIR lib/qt4/bin)
-
-qt4_wrap_cpp(MOC_SRC ${HDRS})
-
-elseif(${USEQT} STREQUAL "5")
-
-set(PLUGIN_SRC )
-set(NAME cutes)
-set(LIBNAME cutescript-qt5)
-set(QT_BINDIR lib/qt5/bin)
-
-qt5_wrap_cpp(MOC_SRC ${HDRS} plugin-qt5.hpp)
-
-endif(${USEQT} STREQUAL "4")
-
-add_library(${PLUGIN_NAME} MODULE ${PLUGIN_SRC} ${MOC_SRC})
-add_library(${LIBNAME} SHARED ${LIBSRC} ${MOC_SRC})
-add_executable(${NAME} ${SRC})
-
-target_link_libraries(${PLUGIN_NAME}
-  ${LIBNAME}
-)
-
-if(${USEQT} STREQUAL "4")
-target_link_libraries(${NAME}
-  ${LIBNAME}
-  ${QT_QTCORE_LIBRARY}
-  ${QT_QTDECLARATIVE_LIBRARY}
-  ${QT_QTSCRIPT_LIBRARY}
-  ${QT_QTGUI_LIBRARY}
-  )
-
-install(TARGETS ${PLUGIN_NAME} DESTINATION lib${LIB_SUFFIX}/qt4/imports/${QMLPKG})
-install(FILES qmldir DESTINATION lib${LIB_SUFFIX}/qt4/imports/${QMLPKG})
-
-elseif(${USEQT} STREQUAL "5")
-
-target_link_libraries(${NAME}
-  ${LIBNAME}
-  ${Qt5Core_LIBRARIES}
-  ${Qt5Gui_LIBRARIES}
-  ${Qt5Widgets_LIBRARIES}
-  ${Qt5Qml_LIBRARIES}
-  ${Qt5Script_LIBRARIES}
-  ${Qt5Quick_LIBRARIES}
-  )
-
-install(TARGETS ${PLUGIN_NAME} DESTINATION lib${LIB_SUFFIX}/qt5/qml/${QMLPKG})
-install(FILES qmldir DESTINATION lib${LIB_SUFFIX}/qt5/qml/${QMLPKG})
-
-endif(${USEQT} STREQUAL "4")
-
-install(TARGETS ${NAME} DESTINATION ${QT_BINDIR})
-install(TARGETS ${LIBNAME} DESTINATION lib${LIB_SUFFIX})
+add_subdirectory(lib)
+add_subdirectory(cutes)
+add_subdirectory(tests)

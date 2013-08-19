@@ -1,5 +1,5 @@
-import QtQuick 1.1
-import Mer.QtScript 1.1
+import QtQuick 2.1
+import Mer.Cutes 1.1
 
 Rectangle
 {
@@ -27,15 +27,14 @@ Rectangle
         }
     }
 
-    QtScriptAdapter { qml : "basic.qml" }
+    CutesAdapter { qml : "basic.qml" }
 
     Component.onCompleted : {
-        qtscript.script.args
-        qtscript.extend("qt.core")
+        var Q = cutes.extend("qt.core")
         var name = "./basic.qml"
-        var d = new QFileInfo(name)
+        var d = new Q.FileInfo(name)
         console.log("is ", name, "absolute?", d.isAbsolute())
-        got.text = require("basic.js")("from qml ")
+        got.text = cutes.include("basic.js")("from qml ")
         if (got.text === expected.text)
             result.text = "passed"
     }

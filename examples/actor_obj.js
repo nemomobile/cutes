@@ -15,13 +15,22 @@ that.plus1 = function(data, ctx) {
     return "done"
 }
 
-that.cause_error = function(data, ctx) {
-    print("I should raise error");
-    throw {msg : "Expected error", src: "coming from actor"};
+that.throw_Error = function(data, ctx) {
+    print("I should raise error, should be passed to the caller");
+    throw Error("Expected error, coming from actor");
+    print("This line should not be printed");
+    return "This value should never be returned";
+};
+
+that.throw_exception = function(data, ctx) {
+    print("I should raise string exception, should be passed to the caller");
+    throw "Expected string exception, coming from actor";
+    print("This line should not be printed");
+    return "This value should never be returned";
 };
 
 that.call_undefined = function(data, ctx) {
-    print("I should try to call undefined");
+    print("Trying to call undefined from actor, should pass error to the caller");
     util.some_undefined_function();
 };
 

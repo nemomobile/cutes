@@ -9,7 +9,7 @@
 #include <QtDeclarative>
 #include <QtDeclarative/QDeclarativeExtensionPlugin>
 #include <QtDeclarative/qdeclarative.h>
-#include <QScriptEngine>
+#include <QJSEngine>
 
 #else
 

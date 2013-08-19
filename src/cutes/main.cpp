@@ -1,11 +1,10 @@
-#include "QsEnv.hpp"
+#include "Env.hpp"
 #include <iostream>
 #include <QApplication>
+#include <QDebug>
 #include "QmlAdapter.hpp"
 
-using namespace QsExecute;
-
-namespace QsExecute {
+namespace cutes {
 
 static int usage(int, char *argv[])
 {
@@ -21,14 +20,13 @@ int executeScript(int argc, char *argv[])
 
     QString script_file(app.arguments().at(1));
 
-    QScriptEngine engine;
+    QJSEngine engine;
     auto script_env = loadEnv(app, engine);
     int rc = EXIT_SUCCESS;
 
     try {
         auto res = script_env->load(script_file);
-        if (engine.hasUncaughtException()
-            && engine.uncaughtException().isValid())
+        if (res.isError())
             rc = EXIT_FAILURE;
     } catch (Error const &e) {
         qDebug() << "Failed to eval:" << script_file;
@@ -67,15 +65,13 @@ int executeDeclarative(int argc, char *argv[])
 
 int main(int argc, char *argv[])
 {
-    using namespace QsExecute;
+    using namespace cutes;
     if (argc < 2)
         return usage(argc, argv);
 
     QString script_file(argv[1]);
     
-    if (QFileInfo(script_file).suffix() == "qml") {
-        return executeDeclarative(argc, argv);
-    } else {
-        return executeScript(argc, argv);
-    }
+    return (QFileInfo(script_file).suffix() == "qml")
+        ? executeDeclarative(argc, argv)
+        : executeScript(argc, argv);
 }

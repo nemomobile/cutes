@@ -1,10 +1,10 @@
-qtscript.extend("qt.core")
+var Q = cutes.extend("qt.core")
 
 exports = function(data, ctx) {
     print("Actor got:", data.from_qml)
     var e = 1
     // delays using mutex tryLock timeout
-    var lock = new QMutex()
+    var lock = new Q.Mutex()
     lock.lock()
     try {
         for (var j = 0; j < 100; ++j) {

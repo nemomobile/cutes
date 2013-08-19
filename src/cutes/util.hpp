@@ -42,4 +42,7 @@ ContainerT filter(ContainerT const& src, FnT fn) {
     return res;
 }
 
+#define STRINGIFY(x) #x
+#define DQUOTESTR(x) STRINGIFY(x)
+
 #endif // _CUTES_UTIL_HPP_

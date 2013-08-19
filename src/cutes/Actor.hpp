@@ -27,7 +27,7 @@
 #include <QObject>
 #include <QVariant>
 #include <QString>
-#include <QScriptValue>
+#include <QJSValue>
 #include <QThread>
 #include <QEvent>
 #include <QWaitCondition>
@@ -40,7 +40,9 @@
 #endif
 #include <QSharedPointer>
 
-namespace QsExecute
+#include <memory>
+
+namespace cutes
 {
 
 class Event : public QEvent
@@ -54,7 +56,8 @@ public:
         Return,
         QuitThread,
         LoadException,
-        Error
+        Error,
+        EndpointRemove
     };
 
     Event();
@@ -74,6 +77,10 @@ class Request;
 
 class Endpoint;
 typedef QSharedPointer<Endpoint> endpoint_ptr;
+// handle does not delete endpoint directly but sends request for
+// removal to the hosting Env it (QJSValue should be deleted in the
+// corresponding Isolate)
+typedef std::shared_ptr<Endpoint> endpoint_handle;
 
 class Actor;
 class Engine : public QObject
@@ -86,8 +93,8 @@ public:
     void run();
     virtual bool event(QEvent *);
 
-    void reply(QVariant const&, endpoint_ptr, Event::Type);
-    void error(QVariant const&, endpoint_ptr);
+    void reply(QVariant const&, endpoint_handle, Event::Type);
+    void error(QVariant const&, endpoint_handle);
 
 signals:
     void onQuit();
@@ -96,14 +103,16 @@ private:
     void load(Load *);
     void processMessage(Message *);
     void processRequest(Request *);
-    void processResult(QScriptValue &, endpoint_ptr);
+    void processResult(QJSValue, endpoint_handle);
     void toActor(Event*);
+    QJSValue callConvertError(QJSValue const&, QJSValue const&, QJSValueList const&);
 
     Actor *actor_;
-    QScriptEngine *engine_;
-    QScriptValue handler_;
+    QJSEngine *engine_;
+    QJSValue handler_;
     QWaitCondition cond_;
     QMutex mutex_;
+    QJSValue convert_error_;
 };
 
 class WorkerThread : protected QThread
@@ -128,25 +137,15 @@ class Actor : public QObject
 {
     Q_OBJECT;
 public:
-    Actor(QScriptEngine *engine = nullptr);
+    Actor(QJSEngine *engine = nullptr);
     virtual ~Actor();
 
 protected:
     QString source() const;
     void setSource(QString const&);
 
-    Q_INVOKABLE void send
-    (QScriptValue const&
-     , QScriptValue const& on_reply = QScriptValue()
-     , QScriptValue const& on_error = QScriptValue()
-     , QScriptValue const& on_progress = QScriptValue());
-
-    Q_INVOKABLE void request
-    (QString const&, QScriptValue const&
-     , QScriptValue const& on_reply = QScriptValue()
-     , QScriptValue const& on_error = QScriptValue()
-     , QScriptValue const& on_progress = QScriptValue());
-
+    Q_INVOKABLE void send(QJSValue const&, QJSValue callbacks);
+    Q_INVOKABLE void request(QString const&, QVariant, QJSValue callbacks);
     Q_INVOKABLE void wait();
     Q_INVOKABLE void reload();
 
@@ -164,51 +163,57 @@ protected:
     void error(Message*);
     WorkerThread *worker();
 
-    mutable QScriptEngine *engine_;
+    mutable QJSEngine *engine_;
 private:
 
     void acquire();
     void release();
-    void callback(Message*, QScriptValue&);
+    void callback(Message*, QJSValue&);
     void execute(std::function<void()>);
+    endpoint_handle endpoint_new(QJSValue);
 
     int unreplied_count_;
     QScopedPointer<WorkerThread> worker_;
+    QMap<Endpoint*, endpoint_ptr> endpoints_;
+    long cookie_;
 };
 
-class DeclarativeActor : public Actor
+class QmlActor : public Actor
 {
     Q_OBJECT;
     // uses QUrl to allow declarative engine to resolve full path
     Q_PROPERTY(QUrl source READ source WRITE setSource);
 public:
-    DeclarativeActor(QScriptEngine *engine = nullptr);
-    virtual ~DeclarativeActor() {}
+    QmlActor(QJSEngine *engine = nullptr);
+    virtual ~QmlActor() {}
 
     QUrl source() const;
     void setSource(QUrl const&);
 };
 
-class QtScriptActor : public Actor
+class StdActor : public Actor
 {
     Q_OBJECT;
     // in QtScript using simple string as a source name
     Q_PROPERTY(QString source READ source WRITE setSource);
 public:
-    QtScriptActor(QScriptEngine *engine = nullptr);
-    virtual ~QtScriptActor() {}
+    StdActor(QJSEngine *engine = nullptr);
+    virtual ~StdActor() {}
 };
 
-class QtScriptAdapter : public QObject
+class Env;
+class Adapter : public QObject
 {
     Q_OBJECT;
     Q_PROPERTY(QUrl qml READ qml WRITE setQml);
+    Q_PROPERTY(Env* env READ getEnv);
 public:
-    QtScriptAdapter() {}
-    virtual ~QtScriptAdapter() {}
+    Adapter() {}
+    virtual ~Adapter() {}
 
     QUrl qml() const;
     void setQml(QUrl const&);
+    Q_INVOKABLE Env *getEnv() const;
 
 private:
     QUrl qml_;
