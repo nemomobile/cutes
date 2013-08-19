@@ -43,7 +43,7 @@ rm -rf %{buildroot}
 %files
 %defattr(-,root,root,-)
 %{_bindir}/cutes
-%{_libdir}/libcutescript-qt5.so
-%{qt_importdir}/Mer/QtScript/libqtscript.so
-%{qt_importdir}/Mer/QtScript/qmldir
+%{_libdir}/libcutes-qt5.so
+%{qt_importdir}/Mer/Cutes/libcutesqml.so
+%{qt_importdir}/Mer/Cutes/qmldir
 %{_mandir}/man1/cutes.1.gz
