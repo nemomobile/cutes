@@ -130,7 +130,7 @@ public:
 
     virtual bool event(QEvent *);
 
-    Q_INVOKABLE QJSValue include(QString const&, bool is_reload = false);
+    Q_INVOKABLE QJSValue include(QString const&, bool is_reload);
     Q_INVOKABLE QJSValue extend(QString const&);
     Q_INVOKABLE QJSValue actor();
     Q_INVOKABLE void exit(int);
@@ -144,7 +144,7 @@ public:
 
     bool shouldWait();
     QStringList const& args() const;
-    QJSValue load(QString const &, bool is_reload = false);
+    QJSValue load(QString const &, bool is_reload);
     void addSearchPath(QString const &, Position);
     void pushParentScriptPath(QString const&);
 
@@ -153,6 +153,7 @@ public:
 private:
     Env(Env const&);
     QString findFile(QString const &);
+    QString libPath() const;
 
     QJSEngine &engine_;
     QJSEngine *module_engine_;
@@ -186,7 +187,7 @@ public:
     Module(Env *parent, QString const&, QString const&);
     virtual ~Module() {}
 
-    Q_INVOKABLE QJSValue require(QString const&, bool is_reload = false);
+    Q_INVOKABLE QJSValue require(QString const&);
 
     QString fileName() const;
     bool loaded() const;

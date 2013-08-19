@@ -467,15 +467,25 @@ QString Env::findFile(QString const &file_name)
     return QString();
 }
 
+QString Env::libPath() const
+{
+    QString res;
+    QTextStream s(&res);
+    s << QDir(scripts_.top()->cwd()).canonicalPath();
+    for (auto &d : path_)
+        s << ":" << d;
+    return res;
+}
+
 QJSValue Env::include(QString const &file_name, bool is_reload)
 {
     QString err_msg;
     try {
         return load(file_name, is_reload);
     } catch (JsError const &e) {
-        err_msg = QString("Exception loading 1:%2").arg(file_name, e.msg);
+        err_msg = QString("Exception loading 1: %2").arg(file_name, e.msg);
     } catch (Error const &e) {
-        err_msg = QString("Exception loading %1:%2").arg(file_name, e.msg);
+        err_msg = QString("Exception loading %1: %2").arg(file_name, e.msg);
     } catch (...) {
         err_msg = QString("Unspecified error loading %1").arg(file_name);
     }
@@ -491,8 +501,10 @@ QJSValue Env::load(QString const &script_name, bool is_reload)
     QString file_name = findFile(QFileInfo(script_name).suffix() != "js"
                                   ? script_name + ".js" : script_name);
 
-    if (file_name.isEmpty())
-        throw Error(QString("Can't find file %1").arg(script_name));
+    if (file_name.isEmpty()) {
+        throw Error(QString("Can't find file %1. Search path: %2")
+                    .arg(script_name, libPath()));
+    }
 
     Module *script = new Module(this, file_name);
 
