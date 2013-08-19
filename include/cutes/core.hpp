@@ -135,6 +135,7 @@ public:
     static VHandle rootPath(const v8::Arguments &);
     static VHandle homePath(const v8::Arguments &);
     static VHandle entryInfoList(const v8::Arguments &);
+    static VHandle entryList(const v8::Arguments &);
 
     static void v8Setup(QV8Engine *
                         , v8::Handle<v8::FunctionTemplate>

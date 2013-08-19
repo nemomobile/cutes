@@ -194,6 +194,22 @@ VHandle Dir::entryInfoList(const v8::Arguments &args)
         });
 }
 
+VHandle Dir::entryList(const v8::Arguments &args)
+{
+    return callConvertException
+        (args, [](const v8::Arguments &args) -> VHandle {
+            auto self = cutesObjFromThis<base_type>(args);
+            auto p0 = Arg<QStringList>(args, 0);
+            auto p1 = args.Length() > 1
+                ? Arg<QDir::Filter>(args, 1)
+                : QDir::NoFilter;
+            auto p2 = args.Length() > 2
+                ? Arg<QDir::SortFlag>(args, 2)
+                : QDir::NoSort;
+            return ValueToV8(self->entryList(p0, p1, p2));
+        });
+}
+
 VHandle Dir::homePath(const v8::Arguments &)
 {
     return ValueToV8(QDir::homePath());
@@ -260,7 +276,10 @@ void Dir::v8Setup(QV8Engine *v8e
         << STR_QUERY_(path)
         << CUTES_GET(cdUp, bool, QDir, QDir)
         << CUTES_FN(entryInfoList, Dir)
+        << CUTES_FN(entryList, Dir)
         << CUTES_FN_PARAM_CONST(relativeFilePath, QString, QDir, QDir
+                                , QString, const QString &)
+        << CUTES_FN_PARAM_CONST(filePath, QString, QDir, QDir
                                 , QString, const QString &)
         << CUTES_FN_PARAM2(rename, bool, QDir, QDir
                            , QString, QString, const QString & COMMA const QString&)
