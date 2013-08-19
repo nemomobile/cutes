@@ -121,4 +121,24 @@ char charFromV8(QV8Engine *, VHandle v)
     return cs.length() ? (*cs)[0] : 0;
 }
 
+QStringList QStringListFromV8(QV8Engine *, VHandle v)
+{
+    using namespace v8;
+    if (!v->IsArray()) {
+        throw std::invalid_argument("Not an array");
+        return QStringList();
+    }
+    return QJSConverter::toStringList(Handle<Array>::Cast(v));
+}
+
+VHandle QStringListToV8(QStringList const &src)
+{
+    using namespace v8;
+    auto res = Array::New(src.length());
+    int i = 0;
+    for (auto const &v : src)
+        res->Set(i++, ValueToV8<QString>(v));
+    return res;
+}
+
 }}

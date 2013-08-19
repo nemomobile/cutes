@@ -245,15 +245,17 @@ template<> struct Convert<QVariant> {
     }
 };
 
+QStringList QStringListFromV8(QV8Engine *, VHandle);
+VHandle QStringListToV8(QStringList const &);
+
 template<> struct Convert<QStringList> {
-    static inline QStringList fromV8(QV8Engine *, VHandle v)
+    static inline QStringList fromV8(QV8Engine *e, VHandle v)
     {
-        using namespace v8;
-        if (!v->IsArray()) {
-            throw std::invalid_argument("Not an array");
-            return QStringList();
-        }
-        return QJSConverter::toStringList(Handle<Array>::Cast(v));
+        return QStringListFromV8(e, v);
+    }
+    static inline VHandle toV8(QStringList const &src)
+    {
+        return QStringListToV8(src);
     }
 };
 
