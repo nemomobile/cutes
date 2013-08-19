@@ -53,8 +53,18 @@ void IODevice::v8Setup(QV8Engine *v8e
 
 v8::Persistent<v8::FunctionTemplate> ByteArray::cutesCtor_;
 
+static inline QByteArray QByteArrayFromV8String(v8::Arguments const &args)
+{
+    QByteArray a;
+    if (args.Length()) {
+        auto v = Arg<QString>(args, 0);
+        a.append(v);
+    }
+    return a;
+}
+
 ByteArray::ByteArray(v8::Arguments const &args)
-    : base_type(Arg<QByteArray>(args, 0))
+    : base_type(QByteArrayFromV8String(args))
 {
 }
 
@@ -72,7 +82,12 @@ void ByteArray::v8Setup(QV8Engine *v8e
                         , v8::Handle<v8::ObjectTemplate> obj)
 {
     setupTemplate(v8e, obj)
-        << CUTES_FN(toString, ByteArray);
+        << CUTES_FN(toString, ByteArray)
+        << CUTES_FN_PARAM_CONST(split, QList<QByteArray>, QByteArray, QByteArray
+                                , int, char)
+        << CUTES_FN_PARAM(append, QByteArray&, QByteArray, QByteArray
+                          , QString, const QString&)
+        ;
 }
 
 v8::Persistent<v8::FunctionTemplate> File::cutesCtor_;
@@ -196,6 +211,7 @@ VHandle Dir::rootPath(const v8::Arguments &)
     CUTES_GET_CONST(name, QString, QDir, QDir)
 
 #define CONST_(name) CUTES_CONST(name, QDir)
+#define COMMA ,
 
 void Dir::v8Setup(QV8Engine *v8e
                   , v8::Handle<v8::FunctionTemplate> cls
@@ -246,9 +262,12 @@ void Dir::v8Setup(QV8Engine *v8e
         << CUTES_FN(entryInfoList, Dir)
         << CUTES_FN_PARAM_CONST(relativeFilePath, QString, QDir, QDir
                                 , QString, const QString &)
+        << CUTES_FN_PARAM2(rename, bool, QDir, QDir
+                           , QString, QString, const QString & COMMA const QString&)
         ;
 }
 
+#undef COMMA
 #undef BOOL_QUERY_
 #undef STR_QUERY_
 #undef CONST_

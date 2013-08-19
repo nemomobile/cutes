@@ -4,6 +4,14 @@
 #include <tut/tut.hpp>
 #include <memory>
 
+
+std::basic_ostream<char> & operator <<(std::basic_ostream<char> &s
+                                       , QVariant const& v)
+{
+    s << v.toString().toStdString();
+    return s;
+}
+
 namespace tut
 {
 
@@ -21,6 +29,7 @@ tf cor_cutes_lib_test("cutes_lib");
 enum test_ids {
     tid_qfile = 1
     , tid_qprocess
+    , tid_qbytearray
 };
 
 static v8::Handle<v8::Value> log(const v8::Arguments& args)
@@ -105,7 +114,28 @@ void object::test<tid_qprocess>()
                  );
     auto res = env->exec(code);
     ensure("Code should not return error", !res.isError());
-    qDebug() << "##" << res.toVariant();
+    auto v = res.toVariant().value<QVariantList>();
+    ensure_eq("expected [bool, string]", v.size(), 2);
+    ensure_eq("Process was ended", v[0].toBool(), true);
+
+}
+
+template<> template<>
+void object::test<tid_qbytearray>()
+{
+    std::unique_ptr<ExecEnv> env(new ExecEnv());
+    QString code(
+                 "var v = new Q.ByteArray();"
+                 "v.append('a.b');"
+                 "var s = v.split('.'.charCodeAt(0));"
+                 "[v.toString(), s[0].toString(), s[1].toString()]"
+                 );
+    auto res = env->exec(code);
+    ensure("Code should not return error", !res.isError());
+    auto v = res.toVariant().value<QVariantList>();
+    ensure_eq("expected [string, string, string]", v.size(), 3);
+    ensure_eq("expected 'a'", v[1], QVariant("a"));
+    ensure_eq("expected 'a'", v[2], QVariant("b"));
 }
 
 }
