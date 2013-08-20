@@ -32,18 +32,72 @@
 #include <QDebug>
 #include <QCoreApplication>
 #include <QMap>
+#include <QJSValueIterator>
 
 namespace cutes {
+
+#define MAX_MSG_DEPTH 200
+
+static QVariant msgFromValue(QJSValue const &v, size_t depth)
+{
+    if (depth > MAX_MSG_DEPTH)
+        throw Error("Reached max msg depth encoding QJSValue. Is there a cycle?");
+
+    // TODO function does not handle cycles
+    if (v.isArray()) {
+        QVariantList res;
+        auto len = v.property("length").toUInt();
+        for (decltype(len) i = 0; i < len; ++i) {
+            auto value = msgFromValue(v.property(i), depth + 1);
+            res.push_back(value);
+        }
+        return res;
+    } else if (v.isBool()) {
+        return v.toBool();
+    } else if (v.isDate()) {
+        return v.toDateTime();
+    } else if (v.isNumber()) {
+    } else if (v.isObject()) {
+        QVariantMap res;
+        QJSValueIterator it(v);
+        while (it.hasNext()) {
+            it.next();
+            auto value = msgFromValue(it.value(), depth + 1);
+            if (value.isValid())
+                res[it.name()] = value;
+        }
+        return res;
+    } else if (v.isString() || v.isRegExp()) {
+        return v.toString();
+    } else if (v.isVariant()) {
+        return v.toVariant();
+    } else if (v.isError()) {
+        throw Error(QString("Can't convert error") + v.toString());
+    // } else if (v.isCallable()) {
+    // } else if (v.isUndefined()) {
+    // } else if (v.isNull()) {
+    }
+    return QVariant();
+}
+
+static QVariant msgFromValue(QJSValue const &v)
+{
+    return msgFromValue(v, 0);
+}
 
 static endpoint_ptr endpoint(QJSValue const& ep)
 {
     QJSValue on_reply, on_error, on_progress;
-    if (ep.isObject()) {
+    if (ep.isCallable()) {
+        on_reply = ep;
+    } else if (ep.isObject()) {
         on_reply = ep.property("on_reply");
         on_error = ep.property("on_error");
         on_progress = ep.property("on_progress");
-    } else if (ep.isCallable()) {
-        on_reply = ep;
+        if (!(on_reply.isCallable() || on_progress.isCallable()))
+            qWarning() << "Endpoint on_reply/progress are not callable";
+        if (!on_error.isCallable())
+            qWarning() << "There is no error processing for endpoint";
     } else {
         throw Error(QString("Wrong endpoint is passed, should be a function"
                             " or endpoint objects: ") + ep.toString());
@@ -201,16 +255,17 @@ void Actor::send(QJSValue const &msg, QJSValue cb)
     auto fn = [&]() {
         acquire();
         worker()->send
-        (new Message(msg.toVariant(), endpoint_new(cb), Event::Message));
+        (new Message(msgFromValue(msg), endpoint_new(cb), Event::Message));
     };
     execute(fn);
 }
 
-void Actor::request(QString const &method, QVariant msg, QJSValue cb)
+void Actor::request(QString const &method, QJSValue msg, QJSValue cb)
 {
     auto fn = [&]() {
         acquire();
-        worker_->send(new Request(method, msg, endpoint_new(cb), Event::Request));
+        worker_->send(new Request(method, msgFromValue(msg)
+                                  , endpoint_new(cb), Event::Request));
     };
     execute(fn);
 }
@@ -321,12 +376,12 @@ void WorkerThread::run()
 void Engine::processResult(QJSValue ret, endpoint_handle ep)
 {
     if (!ret.isError()) {
-        reply(ret.toVariant(), ep, Event::Return);
+        reply(msgFromValue(ret), ep, Event::Return);
     } else {
         QVariantMap err;
         for (auto p : {"message", "stack", "arguments"
                     , "type", "isWrapped", "originalError"})
-            err[p] = ret.property(p).toVariant();
+            err[p] = msgFromValue(ret.property(p));
 
         error(err, ep);
     }
@@ -357,7 +412,7 @@ QJSValue Engine::callConvertError(QJSValue const &fn
     QJSValueList converter_params(params);
     converter_params.push_front(instance);
     converter_params.push_front(fn);
-    return convert_error_.callWithInstance(convert_error_, converter_params);
+    return convert_error_.call(converter_params);
 }
 
 void Engine::processMessage(Message *msg)
@@ -388,7 +443,7 @@ void Engine::processRequest(Request *req)
         if (method.isCallable()) {
             MessageContext *ctx = new MessageContext(this, req->endpoint_);
             QJSValueList params;
-            params.push_back(engine_->toScriptValue(req->data_));
+            params.push_back(cutes::toQJSValue(*engine_, req->data_));
             params.push_back(engine_->newQObject(ctx));
             ret = callConvertError(method, handler_, params);
             ctx->disable();
@@ -491,7 +546,7 @@ void Actor::wait()
 void MessageContext::reply(QJSValue data)
 {
     if (engine_)
-        engine_->reply(data.toVariant(), endpoint_, Event::Progress);
+        engine_->reply(msgFromValue(data), endpoint_, Event::Progress);
     else
         qWarning() << "MessageContext is disabled, " <<
             "are you using it outside processing function?";

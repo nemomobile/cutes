@@ -144,8 +144,8 @@ protected:
     QString source() const;
     void setSource(QString const&);
 
-    Q_INVOKABLE void send(QJSValue const&, QJSValue callbacks);
-    Q_INVOKABLE void request(QString const&, QVariant, QJSValue callbacks);
+    Q_INVOKABLE void send(QJSValue const&, QJSValue);
+    Q_INVOKABLE void request(QString const&, QJSValue, QJSValue);
     Q_INVOKABLE void wait();
     Q_INVOKABLE void reload();
 
