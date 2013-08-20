@@ -9,4 +9,4 @@ target_link_libraries(cutes-core
   ${V8_LIBRARIES}
 )
 
-install(TARGETS cutes-util cutes-core DESTINATION ${DST_LIB})
+install(TARGETS cutes-util cutes-core DESTINATION ${DST_LIB}/qt5/cutes/qt)
