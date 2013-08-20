@@ -131,6 +131,7 @@ public:
     virtual bool event(QEvent *);
 
     Q_INVOKABLE QJSValue include(QString const&, bool is_reload);
+    Q_INVOKABLE QJSValue require(QString const&);
     Q_INVOKABLE QJSValue extend(QString const&);
     Q_INVOKABLE QJSValue actor();
     Q_INVOKABLE void exit(int);

@@ -477,6 +477,11 @@ QString Env::libPath() const
     return res;
 }
 
+QJSValue Env::require(QString const &file_name)
+{
+    return include(file_name, false);
+}
+
 QJSValue Env::include(QString const &file_name, bool is_reload)
 {
     QString err_msg;
