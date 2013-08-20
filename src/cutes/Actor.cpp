@@ -80,6 +80,16 @@ void Actor::execute(std::function<void ()> fn)
     }
 }
 
+template <typename T>
+static inline T* contextProperty(QJSEngine &engine, QString const& name)
+{
+    auto qmleng = dynamic_cast<QQmlEngine*>(&engine);
+    QVariant v = (!qmleng
+                  ? engine.globalObject().property(name).toVariant()
+                  : qmleng->rootContext()->contextProperty(name));
+    return v.value<T*>();
+}
+
 void Actor::reload()
 {
     auto fn = [this]() {
@@ -88,8 +98,7 @@ void Actor::reload()
             << " Not qml engine and missing initialization?";
             return;
         }
-        auto engine = qmlEngine(this);
-        auto env = engine->rootContext()->contextProperty("cutes").value<Env*>();
+        auto env = contextProperty<Env>(*engine_, "cutes");
         if (!env) {
             qWarning() << "No env set in context?";
             return;
