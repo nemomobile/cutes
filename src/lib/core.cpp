@@ -165,6 +165,7 @@ void FileInfo::v8Setup(QV8Engine *v8e
         << STR_QUERY_(absoluteFilePath)
         << STR_QUERY_(absolutePath)
         << CUTES_GET_CONST(dir, QDir, QFileInfo, QFileInfo)
+        << CUTES_GET_CONST(size, qint64, QFileInfo, QFileInfo)
         ;
 }
 
