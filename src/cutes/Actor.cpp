@@ -57,6 +57,8 @@ static QVariant msgFromValue(QJSValue const &v, size_t depth)
     } else if (v.isDate()) {
         return v.toDateTime();
     } else if (v.isNumber()) {
+    } else if (v.isUndefined() || v.isNull()) {
+        // do nothing
     } else if (v.isObject()) {
         QVariantMap res;
         QJSValueIterator it(v);
