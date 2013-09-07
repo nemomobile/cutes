@@ -567,6 +567,10 @@ static VHandle fnWOParams(const v8::Arguments &args)
     cutes::js::Callback(#name, fnWOParams<void, type,                               \
                                           void(obj_type::*)(), &obj_type::name>)
 
+#define CUTES_VOID_CONST_FN(name, type, obj_type)                                   \
+    cutes::js::Callback(#name, fnWOParams<void, type,                                   \
+                        void(obj_type::*)() const, &obj_type::name>)
+
 #define CUTES_FN_PARAM(name, res, type, obj_type, param_t, param_sig)    \
     cutes::js::Callback(#name, fnWithParam                                  \
                             <res, type, param_t,                            \

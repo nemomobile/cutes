@@ -278,6 +278,7 @@ void Dir::v8Setup(QV8Engine *v8e
         << CUTES_GET(cdUp, bool, QDir, QDir)
         << CUTES_FN(entryInfoList, Dir)
         << CUTES_FN(entryList, Dir)
+        << CUTES_VOID_CONST_FN(refresh, QDir, QDir)
         << CUTES_FN_PARAM_CONST(relativeFilePath, QString, QDir, QDir
                                 , QString, const QString &)
         << CUTES_FN_PARAM_CONST(filePath, QString, QDir, QDir
