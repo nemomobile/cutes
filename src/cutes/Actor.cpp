@@ -44,7 +44,19 @@ static QVariant msgFromValue(QJSValue const &v, size_t depth)
         throw Error("Reached max msg depth encoding QJSValue. Is there a cycle?");
 
     // TODO function does not handle cycles
-    if (v.isArray()) {
+    if (v.isUndefined() || v.isNull()) {
+        // do nothing
+    } else if (v.isString() || v.isRegExp()) {
+        return v.toString();
+    } else if (v.isBool()) {
+        return v.toBool();
+    } else if (v.isDate()) {
+        return v.toDateTime();
+    } else if (v.isNumber()) {
+        return v.toNumber();
+    } else if (v.isVariant()) {
+        return v.toVariant();
+    } else if (v.isArray()) {
         QVariantList res;
         auto len = v.property("length").toUInt();
         for (decltype(len) i = 0; i < len; ++i) {
@@ -52,14 +64,8 @@ static QVariant msgFromValue(QJSValue const &v, size_t depth)
             res.push_back(value);
         }
         return res;
-    } else if (v.isBool()) {
-        return v.toBool();
-    } else if (v.isDate()) {
-        return v.toDateTime();
-    } else if (v.isNumber()) {
-        return v.toNumber();
-    } else if (v.isUndefined() || v.isNull()) {
-        // do nothing
+    } else if (v.isError()) {
+        throw Error(QString("Can't convert error") + v.toString());
     } else if (v.isObject()) {
         QVariantMap res;
         QJSValueIterator it(v);
@@ -70,15 +76,6 @@ static QVariant msgFromValue(QJSValue const &v, size_t depth)
                 res[it.name()] = value;
         }
         return res;
-    } else if (v.isString() || v.isRegExp()) {
-        return v.toString();
-    } else if (v.isVariant()) {
-        return v.toVariant();
-    } else if (v.isError()) {
-        throw Error(QString("Can't convert error") + v.toString());
-    // } else if (v.isCallable()) {
-    // } else if (v.isUndefined()) {
-    // } else if (v.isNull()) {
     }
     return QVariant();
 }
