@@ -224,6 +224,24 @@ template<> struct Convert<int> {
     }
 };
 
+template<> struct Convert<unsigned> {
+    static inline int fromV8(QV8Engine *, VHandle v)
+    {
+        using namespace v8;
+        if (!v->IsNumber()) {
+            v8::String::Utf8Value cs(v);
+            throw std::invalid_argument(std::string("Not a number: ") + *cs);
+            return 0;
+        }
+        return v->ToInteger()->Value();
+    }
+
+    static inline VHandle toV8(unsigned v)
+    {
+        return v8::Integer::New(v);
+    }
+};
+
 template<> struct Convert<long long> {
     static inline VHandle toV8(long long v)
     {

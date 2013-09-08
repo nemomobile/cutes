@@ -103,6 +103,9 @@ public:
                         , v8::Handle<v8::ObjectTemplate>);
 };
 
+CUTES_FLAG_CONVERTIBLE_INT(QFileDevice::Permission);
+CUTES_FLAG_CONVERTIBLE_INT(QFile::Permissions);
+
 class FileInfo : public QFileInfo
 {
 public:

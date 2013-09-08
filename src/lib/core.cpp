@@ -108,16 +108,32 @@ VHandle File::open(const v8::Arguments &args)
         });
 }
 
+
 void File::v8Setup(QV8Engine *v8e
-                   , v8::Handle<v8::FunctionTemplate>
+                   , v8::Handle<v8::FunctionTemplate> cls
                    , v8::Handle<v8::ObjectTemplate> obj)
 {
+    setupTemplate(v8e, cls)
+        << CUTES_CONST(ReadOwner, QFileDevice)
+        << CUTES_CONST(WriteOwner, QFileDevice)
+        << CUTES_CONST(ExeOwner, QFileDevice)
+        << CUTES_CONST(ReadUser, QFileDevice)
+        << CUTES_CONST(WriteUser, QFileDevice)
+        << CUTES_CONST(ExeUser, QFileDevice)
+        << CUTES_CONST(ReadGroup, QFileDevice)
+        << CUTES_CONST(WriteGroup, QFileDevice)
+        << CUTES_CONST(ExeGroup, QFileDevice)
+        << CUTES_CONST(ReadOther, QFileDevice)
+        << CUTES_CONST(WriteOther, QFileDevice)
+        << CUTES_CONST(ExeOther, QFileDevice)
+        ;
     setupTemplate(v8e, obj)
         << CUTES_FN(open, File)
         << CUTES_FN_PARAM(write, qint64, QFile, QIODevice
                              , QByteArray, const QByteArray&)
         << CUTES_VOID_FN(close, QFile, QIODevice)
         << CUTES_GET_CONST(isOpen, bool, QFile, QIODevice)
+        << CUTES_GET_CONST(permissions, QFile::Permissions, QFile, QFile)
         << CUTES_GET(readAll, QByteArray, QFile, QIODevice)
         ;
 }
@@ -142,6 +158,7 @@ void FileInfo::v8Setup(QV8Engine *v8e
     setupTemplate(v8e, obj)
         << BOOL_QUERY_(exists)
         << BOOL_QUERY_(isFile)
+        << BOOL_QUERY_(caching)
         << BOOL_QUERY_(isSymLink)
         << BOOL_QUERY_(isDir)
         << BOOL_QUERY_(isExecutable)
@@ -151,19 +168,29 @@ void FileInfo::v8Setup(QV8Engine *v8e
         << BOOL_QUERY_(isRelative)
         << BOOL_QUERY_(isRoot)
         << BOOL_QUERY_(isHidden)
+
         << CUTES_GET_CONST(lastModified, QDateTime, QFileInfo, QFileInfo)
-        << STR_QUERY_(owner)
-        << STR_QUERY_(group)
-        << STR_QUERY_(path)
-        << STR_QUERY_(fileName)
-        << STR_QUERY_(filePath)
-        << STR_QUERY_(canonicalFilePath)
-        << STR_QUERY_(canonicalPath)
-        << STR_QUERY_(baseName)
-        << STR_QUERY_(completeBaseName)
-        << STR_QUERY_(completeSuffix)
+
         << STR_QUERY_(absoluteFilePath)
         << STR_QUERY_(absolutePath)
+        << STR_QUERY_(baseName)
+        << STR_QUERY_(canonicalFilePath)
+        << STR_QUERY_(canonicalPath)
+        << STR_QUERY_(completeBaseName)
+        << STR_QUERY_(completeSuffix)
+        << STR_QUERY_(fileName)
+        << STR_QUERY_(filePath)
+        << STR_QUERY_(group)
+        << STR_QUERY_(owner)
+        << STR_QUERY_(path)
+        << STR_QUERY_(symLinkTarget)
+        << STR_QUERY_(suffix)
+
+        << CUTES_GET_CONST(permissions, QFile::Permissions, QFileInfo, QFileInfo)
+
+        << CUTES_GET_CONST(groupId, unsigned, QFileInfo, QFileInfo)
+        << CUTES_GET_CONST(ownerId, unsigned, QFileInfo, QFileInfo)
+
         << CUTES_GET_CONST(dir, QDir, QFileInfo, QFileInfo)
         << CUTES_GET_CONST(size, qint64, QFileInfo, QFileInfo)
         ;
