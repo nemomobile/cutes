@@ -1,15 +1,17 @@
 .TH "cutes" "1" "Jolla Ltd." "Feb 11, 2013"
 .SH "NAME"
 .PP
-cutes allows to run JavaScript and QML files with QtScript support
+cutes allows to run JavaScript files from the command line as also
+QML files. cutes environment can be made available in QML context by
+importing Mer.Cutes QML plugin.
 .SH "SYNOPSIS"
 .PP
 \fBcutes\fP [-h] \fIscript\d\s-2file\s+2\u\fP [script arguments]
 .SH "DESCRIPTION"
 .PP
-QtScript is the Qt library JavaScript engine. cutes command
-provides the way to run JavaScript files as shell scripts or to load QML
-UI with QtScript support.
+cutes is the Qt library JavaScript engine. cutes command provides the
+way to run JavaScript files as shell scripts or to load QML UI with
+cutes support.
 .SH "COMMAND LINE OPTIONS"
 .TP
 \fB\fB-h\fP\fP
@@ -22,84 +24,110 @@ QML UI files, other - as JS files
 .TP
 \fB\fB[script arguments]\fP\fP
 arguments to be passed to javascript in
-the \fBqtscript.args\fP variable
+the \fBcutes.module.args\fP variable
 .SH "ENVIRONMENT"
 .TP
-\fB\fBQTSCRIPT\_LIBRARY\_PATH\fP\fP
-contains colon-separated list of
-paths to directories containing QtScript extensions and
-JavaScript modules, available for importing. Because this paths
-are just library paths, extensions themselves (shared objects)
-should reside in subdirectories ./script/. JavaScript modules
-should reside in ./. By default qtscript is trying to add
-/usr/lib{,32,64}/qt4/plugins directories.
+\fB\fBCUTES\_LIBRARY\_PATH\fP\fP
+contains colon-separated list of paths
+to directories containing cutes extensions and JavaScript
+modules, available for importing. By default cutes is trying to
+add /usr/lib{,32,64}/cutes and /usr/share/cutes directories.
 .SH "JAVASCRIPT CONTEXT"
 .PP
-qtscript provides several objects/functions, available in executed
-scripts.
+cutes provides several objects/functions, available in executed
+scripts. In qml context all variables are available only as members
+of the \fIcutes\fP context variable. fprint is available only in pure js
+context. The ideal purpose of the context is to resemble environment
+used by popular js frameworks (like node.js or narwhal) to allow to
+reuse modules written for 'em and also to provide smooth transition
+for js developers using this frameworks.
 
 .TP
-\fB\fBqtscript.os\fP\fP
+\fB\fBprint\fP\fP
+prints whitespace separated arguments to stdout
+.TP
+\fB\fBfprint(fd, args...)\fP\fP
+fprint(dst, ...) prints whitespace
+separated arguments to dst, where dst is QIODevice or 1 (stdout)
+or 2 (stderr)
+.TP
+\fB\fBcutes\fP\fP
+cutes global variable storing execution context. Also
+available in qml context as a context variable
+.TP
+\fB\fBcutes.os\fP\fP
 OS "name": can be any of ["linux", "macos",
 "win32", "unknown"]
 .TP
-\fB\fBqtscript.env\fP\fP
+\fB\fBcutes.env\fP\fP
 environment variables
 .TP
-\fB\fBqtscript.path\fP\fP
+\fB\fBcutes.path\fP\fP
 Application library paths
 .TP
-\fB\fBqtscript.debug\fP\fP
-boolean, set to enable backtrace
+\fB\fBcutes.include(path, is\d\s-2reload\s+2\u)\fP\fP
+function to evaluate javascript
+file by file name as a module. File name can be absolute or
+relative to the directory where running script resides or to any
+directory in the library path. It also has bool parameter telling
+is module should be taken from cache if it is already loaded or
+it should be loaded anew (so, module data will not be shared with
+other modules run by current engine). module.exports (has also
+reference called exports) is returned as a result of execution.
 .TP
-\fB\fBqtscript.backtrace\fP\fP
-javascript backtrace
+\fB\fBcutes.require(path)\fP\fP
+similar to cutes.include but does not have
+boolean 'is\d\s-2reload'\s+2\u parameter, so module will always be taken
+from the cache
 .TP
-\fB\fBqtscript.fprint\fP\fP
-fprint(dst, ...) prints whitespace separated
-arguments to dst, where dst is QIODevice or 1 (stdout) or 2
-(stderr)
+\fB\fBcutes.extend(path)\fP\fP
+instructs engine to load cutes c++ extension
+library
 .TP
-\fB\fBqtscript.include\fP\fP
-function to execute javascript file by file
-name. File name can be absolute or relative to the directory
-where running script resides or to any directory in the library
-path. Result of execution is returned
+\fB\fBcutes.idle()\fP\fP
+process events in cutes event loop, can be called
+during long operations to improve
+interactivity. This function can be unsafe
 .TP
-\fB\fBqtscript.extend\fP\fP
-instructs engine to import QtScript extension
+\fB\fBcutes.defer(fn)\fP\fP
+defer execution of the \fBfn\fP until exit from
+current execution context or until cutes.idle() is called
 .TP
-\fB\fBqtscript.module.args\fP\fP
+\fB\fBcutes.module\fP\fP
+current module/file context. It resembles
+node.js/narwhal module object.It has the following
+members
+.TP
+\fB\fBmodule.args\fP\fP
 list of command line arguments
 .TP
-\fB\fBqtscript.module.exports\fP\fP
+\fB\fBmodule.exports\fP\fP
 see \fIexports\fP below
 .TP
-\fB\fBqtscript.module.filename\fP\fP
-currently executed script file name
-(e.g. in \fBqtscript.include\fP it will be included script path name)
+\fB\fBmodule.cwd\fP\fP
+current module working directory
 .TP
-\fB\fBqtscript.module.cwd\fP\fP
+\fB\fBmodule.loaded\fP\fP
+is module already evaluated/loaded
+.TP
+\fB\fBmodule.filename\fP\fP
+currently executed script file name
+(e.g. in \fBcutes.include\fP it will be included script path name)
+.TP
+\fB\fBmodule.id\fP\fP
+synomym for the cutes.module.filename
+.TP
+\fB\fBmodule.cwd\fP\fP
 current working directory or directory
 where currently executed/evaluated script is located
 .TP
-\fB\fBmodule\fP\fP
-current file module object, resembling e.g. node.js
-module object
-.TP
 \fB\fBrequire\fP\fP
-synonym for qtscript.include, compatible with other
+synonym for cutes.require, compatible with other
 module systems, returns symbols exported by module
 .TP
 \fB\fBexports\fP\fP
 object to be used to hold exported symbols, it is just
-reference to the current module.exports. QtScript
-engine resolves it only in file scope but does not do
-it inside internal scopes (functions etc.)
-.TP
-\fB\fBprint\fP\fP
-prints whitespace separated arguments to stdout
-
+reference to the current module.exports
 .SH "AUTHOR"
 .PP
 Denis Zalevskiy <denis.zalevskiy@jollamobile.com>
