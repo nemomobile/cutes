@@ -98,8 +98,6 @@ static endpoint_ptr endpoint(QJSValue const& ep)
         on_progress = ep.property("on_progress");
         if (!(on_reply.isCallable() || on_progress.isCallable()))
             qWarning() << "on_reply or on_progress expected to be callable";
-        if (!on_error.isCallable())
-            qWarning() << "There is no error processing for endpoint";
     } else {
         throw Error(QString("Wrong endpoint is passed, should be a function"
                             " or endpoint objects: ") + ep.toString());
@@ -294,6 +292,7 @@ void Actor::error(Message *reply)
 {
     auto &cb = reply->endpoint_->on_error_;
     if (!cb.isCallable()) {
+        qWarning() << "Error: " << reply->data_;
         emit error(reply->data_);
         return;
     }
