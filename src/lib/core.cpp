@@ -23,6 +23,7 @@
  */
 
 #include <cutes/core.hpp>
+#include <QtQml/private/qscriptisolate_p.h>
 
 namespace cutes { namespace js {
 
@@ -412,6 +413,7 @@ extern "C" QJSValue cutesRegister(QJSEngine *e)
         return QJSValue();
     }
     QV8Engine *v8e = e->handle();
+    QScriptIsolate api(v8e, QScriptIsolate::NotNullEngine);
     using namespace cutes::js;
     v8::HandleScope hscope;
     auto res = v8::Object::New();
