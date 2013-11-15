@@ -27,8 +27,11 @@
 #include "Env.hpp"
 #include "QmlAdapter.hpp"
 
-#include <cutes/util.hpp>
 #include "qt_quick_types.hpp"
+
+#include <cutes/util.hpp>
+#include <cor/util.hpp>
+
 #include <QDebug>
 #include <QCoreApplication>
 #include <QMap>
@@ -335,7 +338,7 @@ void Engine::toActor(Event *ev)
 
 void Engine::load(Load *msg)
 {
-    engine_ = new QJSEngine(this);
+    engine_.reset(new QJSEngine(this));
     try {
         auto script_env = loadEnv(*QCoreApplication::instance(), *engine_);
         script_env->pushParentScriptPath(msg->top_script_);
@@ -366,12 +369,14 @@ WorkerThread::~WorkerThread()
 
 void WorkerThread::run()
 {
+    auto on_exit = cor::on_scope_exit([this]() {
+            engine_.reset();
+        });
     engine_.reset(new Engine(actor_));
     mutex_.lock();
     cond_.wakeAll();
     mutex_.unlock();
     exec();
-    engine_.reset(nullptr);
 }
 
 void Engine::processResult(QJSValue ret, endpoint_handle ep)

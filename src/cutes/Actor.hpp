@@ -107,8 +107,8 @@ private:
     void toActor(Event*);
     QJSValue callConvertError(QJSValue const&, QJSValue const&, QJSValueList const&);
 
+    QScopedPointer<QJSEngine> engine_;
     Actor *actor_;
-    QJSEngine *engine_;
     QJSValue handler_;
     QWaitCondition cond_;
     QMutex mutex_;
