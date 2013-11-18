@@ -140,7 +140,6 @@ public:
     Actor(QJSEngine *engine = nullptr);
     virtual ~Actor();
 
-protected:
     QString source() const;
     void setSource(QString const&);
 
@@ -148,6 +147,8 @@ protected:
     Q_INVOKABLE void request(QString const&, QJSValue, QJSValue);
     Q_INVOKABLE void wait();
     Q_INVOKABLE void reload();
+
+protected:
 
     virtual bool event(QEvent *);
 
