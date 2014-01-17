@@ -13,7 +13,7 @@
 #include <QQmlContext>
 
 #include <unistd.h>
-
+#include <iostream>
 // Q_DECLARE_METATYPE(QsExecuteEnv*);
 // Q_DECLARE_METATYPE(QsExecuteModule*);
 // Q_DECLARE_METATYPE(CutesModule*);
@@ -57,6 +57,13 @@ const char *os_name = "unix";
 #else
 const char *os_name = "unknown";
 #endif
+
+static bool is_trace = false;
+
+bool isTrace()
+{
+    return is_trace;
+}
 
 Error::Error(QString const &s)
     : std::runtime_error(s.toStdString()),
@@ -192,6 +199,7 @@ Env::Env(QObject *parent, QCoreApplication &app, QJSEngine &engine)
     auto env = std::move(mkEnv());
 
     auto env_paths = env["CUTES_LIBRARY_PATH"];
+    is_trace = env["CUTES_TRACE"].toBool();
     // remove empty paths
     auto paths = std::move
         (filter
@@ -208,6 +216,7 @@ Env::Env(QObject *parent, QCoreApplication &app, QJSEngine &engine)
     for (auto &path : paths)
         path_.push_back(QDir(path).canonicalPath());
 
+    if (isTrace()) trace() << "Path:" << path_;
     app.setLibraryPaths(path_);
 
     /// if qmlengine is used it is impossible to modify global object,
@@ -668,6 +677,7 @@ QJSValue Module::load(QJSEngine &engine)
         dst << input.readLine() << "\n";
     dst << epilog;
 
+    if (isTrace()) trace() << "Load: " << file_name;
     auto res = engine.evaluate(contents, file_name, line_nr);
     if (res.isError()) {
         qWarning() << "Error loading " << file_name << ":" << res.toString();

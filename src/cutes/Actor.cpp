@@ -170,6 +170,7 @@ void Actor::reload()
 
 void Actor::setSource(QString const& src)
 {
+    if (isTrace()) trace() << "Actor src:" << src;
     if (src == src_)
         return;
 
