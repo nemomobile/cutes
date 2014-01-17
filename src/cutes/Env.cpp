@@ -153,6 +153,12 @@ static js::VHandle jsPrint(v8::Arguments const &args)
     return fprintImpl(stdout, 0, args);
 }
 
+static js::VHandle jsReadline(v8::Arguments const &)
+{
+    QTextStream stream(stdin);
+    return cutes::js::ValueToV8(stream.readLine());
+}
+
 static void setupEngine(QJSEngine &engine)
 {
     // if it is created by some ecmascript engine there should be print()
@@ -164,6 +170,7 @@ static void setupEngine(QJSEngine &engine)
         js::Set(engine, engine.globalObject(), "print", jsPrint);
 
     js::Set(engine, engine.globalObject(), "fprint", jsFPrint);
+    js::Set(engine, engine.globalObject(), "readline", jsReadline);
 }
 
 Env::Env(QObject *parent, QCoreApplication &app, QJSEngine &engine)
