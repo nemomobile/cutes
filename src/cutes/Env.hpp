@@ -127,7 +127,7 @@ public:
     };
 
     Env(QObject *, QCoreApplication &, QJSEngine &);
-    virtual ~Env() {}
+    virtual ~Env();
 
     virtual bool event(QEvent *);
 

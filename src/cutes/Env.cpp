@@ -233,6 +233,11 @@ Env::Env(QObject *parent, QCoreApplication &app, QJSEngine &engine)
     }
 }
 
+Env::~Env()
+{
+    cutes::js::isolateRelease();
+}
+
 Module *Env::current_module()
 {
     return scripts_.top();

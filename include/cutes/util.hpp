@@ -43,6 +43,15 @@ v8::Handle<v8::Value> fromQJSValue(QJSValue const&);
 
 namespace js {
 
+v8::Handle<v8::FunctionTemplate> isolateFnTemplateGet(intptr_t key);
+void isolateFnTemplateSet(intptr_t key, v8::Handle<v8::FunctionTemplate> ctor);
+void isolateRelease();
+
+template <typename T> intptr_t objKey()
+{
+    return reinterpret_cast<intptr_t>(&T::v8Setup);
+}
+
 static inline QJSEngine *engine(v8::Arguments const &args)
 {
     return QV8Engine::get(V8ENGINE());
@@ -149,7 +158,8 @@ static inline VHandle objToV8(T const& v)
     typedef typename ObjectTraits<T>::js_type obj_type;
     auto p = new T(v);
     VHandle external = v8::External::New(p);
-    auto ctor = obj_type::cutesCtor_->GetFunction();
+    auto tpl = isolateFnTemplateGet(objKey<obj_type>());
+    auto ctor = tpl->GetFunction();
     auto obj = ctor->NewInstance(1, &external);
     auto ph = v8::Persistent<v8::Value>::New(obj);
     ph.MakeWeak(p, &v8DeleteCppObj<T>);
@@ -375,7 +385,7 @@ static void v8EngineAdd_(QV8Engine *v8e, v8::Local<v8::Object> tgt, char const *
         = FunctionTemplate::New(v8Ctor<T, typename T::base_type>
                                 , External::New(v8e));
 
-    T::cutesCtor_ = Persistent<FunctionTemplate>::New(ctor);
+    isolateFnTemplateSet(objKey<T>(), ctor);
 
     Handle<ObjectTemplate> tpl = ctor->InstanceTemplate();
     tpl->SetInternalFieldCount(1);
