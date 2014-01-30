@@ -141,4 +141,50 @@ VHandle QStringListToV8(QStringList const &src)
     return res;
 }
 
+struct IsolateContext
+{
+    static IsolateContext* instance()
+    {
+        using namespace v8;
+        auto isolate = Isolate::GetCurrent();
+        auto p = reinterpret_cast<IsolateContext*>(isolate->GetData());
+        if (!p) {
+            p = new IsolateContext{};
+            isolate->SetData(reinterpret_cast<void*>(p));
+        }
+        return p;
+    }
+
+    static void release()
+    {
+        using namespace v8;
+        auto isolate = Isolate::GetCurrent();
+        auto p = reinterpret_cast<IsolateContext*>(isolate->GetData());
+        if (p) {
+            delete p;
+            isolate->SetData(nullptr);
+        }
+    }
+
+    std::map<intptr_t, v8::Persistent<v8::FunctionTemplate> > fn_templates_;
+};
+
+void isolateFnTemplateSet(intptr_t key, v8::Handle<v8::FunctionTemplate> ctor)
+{
+    using namespace v8;
+    auto self = IsolateContext::instance();
+    self->fn_templates_.insert({key, Persistent<FunctionTemplate>::New(ctor)});
+}
+
+v8::Handle<v8::FunctionTemplate> isolateFnTemplateGet(intptr_t key)
+{
+    auto self = IsolateContext::instance();
+    return self->fn_templates_[key];
+}
+
+void isolateRelease()
+{
+    IsolateContext::release();
+}
+
 }}

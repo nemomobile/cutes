@@ -12,6 +12,7 @@
 #include <QCoreApplication>
 #include <QDir>
 #include <QStack>
+#include <QDebug>
 
 #include <stdexcept>
 
@@ -126,7 +127,7 @@ public:
     };
 
     Env(QObject *, QCoreApplication &, QJSEngine &);
-    virtual ~Env() {}
+    virtual ~Env();
 
     virtual bool event(QEvent *);
 
@@ -269,6 +270,13 @@ public:
 private:
     Env *env_;
 };
+
+bool isTrace();
+
+template <typename ... Args> decltype(qDebug()) trace(Args&&... args) {
+    return qDebug(std::forward<Args>(args)...);
+}
+
 
 } // namespace
 

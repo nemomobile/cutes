@@ -23,10 +23,9 @@
  */
 
 #include <cutes/core.hpp>
+#include <QtQml/private/qscriptisolate_p.h>
 
 namespace cutes { namespace js {
-
-v8::Persistent<v8::FunctionTemplate> IODevice::cutesCtor_;
 
 IODevice::IODevice(v8::Arguments const&)
 {
@@ -50,8 +49,6 @@ void IODevice::v8Setup(QV8Engine *v8e
 }
 
 #undef IODEVICE_CONST
-
-v8::Persistent<v8::FunctionTemplate> ByteArray::cutesCtor_;
 
 static inline QByteArray QByteArrayFromV8String(v8::Arguments const &args)
 {
@@ -89,8 +86,6 @@ void ByteArray::v8Setup(QV8Engine *v8e
                           , QString, const QString&)
         ;
 }
-
-v8::Persistent<v8::FunctionTemplate> File::cutesCtor_;
 
 File::File(v8::Arguments const& args)
     : base_type(Arg<QString>(args, 0))
@@ -137,8 +132,6 @@ void File::v8Setup(QV8Engine *v8e
         << CUTES_GET(readAll, QByteArray, QFile, QIODevice)
         ;
 }
-
-v8::Persistent<v8::FunctionTemplate> FileInfo::cutesCtor_;
 
 FileInfo::FileInfo(v8::Arguments const& args)
     : base_type(Arg<QString>(args, 0))
@@ -198,8 +191,6 @@ void FileInfo::v8Setup(QV8Engine *v8e
 
 #undef BOOL_QUERY_
 #undef STR_QUERY_
-
-v8::Persistent<v8::FunctionTemplate> Dir::cutesCtor_;
 
 Dir::Dir(v8::Arguments const &args)
     : base_type(Arg<QString>(args, 0))
@@ -334,8 +325,6 @@ template<> struct Convert<QProcess::ProcessState> {
     }
 };
 
-v8::Persistent<v8::FunctionTemplate> Process::cutesCtor_;
-
 Process::Process(v8::Arguments const &)
 {
 }
@@ -390,8 +379,6 @@ void Process::v8Setup(QV8Engine *v8e
 #undef QUERY_
 #undef SIMPLE_
 
-v8::Persistent<v8::FunctionTemplate> Mutex::cutesCtor_;
-
 Mutex::Mutex(v8::Arguments const &) {}
 
 void Mutex::v8Setup(QV8Engine *v8e
@@ -412,6 +399,7 @@ extern "C" QJSValue cutesRegister(QJSEngine *e)
         return QJSValue();
     }
     QV8Engine *v8e = e->handle();
+    QScriptIsolate api(v8e, QScriptIsolate::NotNullEngine);
     using namespace cutes::js;
     v8::HandleScope hscope;
     auto res = v8::Object::New();

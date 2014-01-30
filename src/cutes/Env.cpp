@@ -13,7 +13,7 @@
 #include <QQmlContext>
 
 #include <unistd.h>
-
+#include <iostream>
 // Q_DECLARE_METATYPE(QsExecuteEnv*);
 // Q_DECLARE_METATYPE(QsExecuteModule*);
 // Q_DECLARE_METATYPE(CutesModule*);
@@ -57,6 +57,13 @@ const char *os_name = "unix";
 #else
 const char *os_name = "unknown";
 #endif
+
+static bool is_trace = false;
+
+bool isTrace()
+{
+    return is_trace;
+}
 
 Error::Error(QString const &s)
     : std::runtime_error(s.toStdString()),
@@ -153,6 +160,12 @@ static js::VHandle jsPrint(v8::Arguments const &args)
     return fprintImpl(stdout, 0, args);
 }
 
+static js::VHandle jsReadline(v8::Arguments const &)
+{
+    QTextStream stream(stdin);
+    return cutes::js::ValueToV8(stream.readLine());
+}
+
 static void setupEngine(QJSEngine &engine)
 {
     // if it is created by some ecmascript engine there should be print()
@@ -164,6 +177,7 @@ static void setupEngine(QJSEngine &engine)
         js::Set(engine, engine.globalObject(), "print", jsPrint);
 
     js::Set(engine, engine.globalObject(), "fprint", jsFPrint);
+    js::Set(engine, engine.globalObject(), "readline", jsReadline);
 }
 
 Env::Env(QObject *parent, QCoreApplication &app, QJSEngine &engine)
@@ -185,6 +199,7 @@ Env::Env(QObject *parent, QCoreApplication &app, QJSEngine &engine)
     auto env = std::move(mkEnv());
 
     auto env_paths = env["CUTES_LIBRARY_PATH"];
+    is_trace = env["CUTES_TRACE"].toBool();
     // remove empty paths
     auto paths = std::move
         (filter
@@ -201,6 +216,7 @@ Env::Env(QObject *parent, QCoreApplication &app, QJSEngine &engine)
     for (auto &path : paths)
         path_.push_back(QDir(path).canonicalPath());
 
+    if (isTrace()) trace() << "Path:" << path_;
     app.setLibraryPaths(path_);
 
     /// if qmlengine is used it is impossible to modify global object,
@@ -215,6 +231,11 @@ Env::Env(QObject *parent, QCoreApplication &app, QJSEngine &engine)
         // engine to load modules
         module_engine_ = &engine;
     }
+}
+
+Env::~Env()
+{
+    cutes::js::isolateRelease();
 }
 
 Module *Env::current_module()
@@ -661,6 +682,7 @@ QJSValue Module::load(QJSEngine &engine)
         dst << input.readLine() << "\n";
     dst << epilog;
 
+    if (isTrace()) trace() << "Load: " << file_name;
     auto res = engine.evaluate(contents, file_name, line_nr);
     if (res.isError()) {
         qWarning() << "Error loading " << file_name << ":" << res.toString();

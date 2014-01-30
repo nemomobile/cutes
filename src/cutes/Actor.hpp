@@ -107,8 +107,8 @@ private:
     void toActor(Event*);
     QJSValue callConvertError(QJSValue const&, QJSValue const&, QJSValueList const&);
 
+    QScopedPointer<QJSEngine> engine_;
     Actor *actor_;
-    QJSEngine *engine_;
     QJSValue handler_;
     QWaitCondition cond_;
     QMutex mutex_;
@@ -140,7 +140,6 @@ public:
     Actor(QJSEngine *engine = nullptr);
     virtual ~Actor();
 
-protected:
     QString source() const;
     void setSource(QString const&);
 
@@ -148,6 +147,8 @@ protected:
     Q_INVOKABLE void request(QString const&, QJSValue, QJSValue);
     Q_INVOKABLE void wait();
     Q_INVOKABLE void reload();
+
+protected:
 
     virtual bool event(QEvent *);
 

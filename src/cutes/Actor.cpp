@@ -27,8 +27,11 @@
 #include "Env.hpp"
 #include "QmlAdapter.hpp"
 
-#include <cutes/util.hpp>
 #include "qt_quick_types.hpp"
+
+#include <cutes/util.hpp>
+#include <cor/util.hpp>
+
 #include <QDebug>
 #include <QCoreApplication>
 #include <QMap>
@@ -98,9 +101,9 @@ static endpoint_ptr endpoint(QJSValue const& ep)
         on_progress = ep.property("on_progress");
         if (!(on_reply.isCallable() || on_progress.isCallable()))
             qWarning() << "on_reply or on_progress expected to be callable";
-    } else {
-        throw Error(QString("Wrong endpoint is passed, should be a function"
-                            " or endpoint objects: ") + ep.toString());
+    } else if (!ep.isNull()) {
+        throw Error(QString("Wrong endpoint? Expecting object, function or null")
+                    + ep.toString());
     }
     return endpoint_ptr(new Endpoint(on_reply, on_error, on_progress));
 }
@@ -167,6 +170,7 @@ void Actor::reload()
 
 void Actor::setSource(QString const& src)
 {
+    if (isTrace()) trace() << "Actor src:" << src;
     if (src == src_)
         return;
 
@@ -335,7 +339,7 @@ void Engine::toActor(Event *ev)
 
 void Engine::load(Load *msg)
 {
-    engine_ = new QJSEngine(this);
+    engine_.reset(new QJSEngine(this));
     try {
         auto script_env = loadEnv(*QCoreApplication::instance(), *engine_);
         script_env->pushParentScriptPath(msg->top_script_);
@@ -366,12 +370,14 @@ WorkerThread::~WorkerThread()
 
 void WorkerThread::run()
 {
+    auto on_exit = cor::on_scope_exit([this]() {
+            engine_.reset();
+        });
     engine_.reset(new Engine(actor_));
     mutex_.lock();
     cond_.wakeAll();
     mutex_.unlock();
     exec();
-    engine_.reset(nullptr);
 }
 
 void Engine::processResult(QJSValue ret, endpoint_handle ep)

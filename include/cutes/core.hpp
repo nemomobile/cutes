@@ -41,8 +41,6 @@ public:
 
     IODevice(v8::Arguments const&);
 
-    static v8::Persistent<v8::FunctionTemplate> cutesCtor_;
-
     static void v8Setup(QV8Engine *
                         , v8::Handle<v8::FunctionTemplate>
                         , v8::Handle<v8::ObjectTemplate>);
@@ -58,8 +56,6 @@ public:
     typedef QByteArray impl_type;
 
     ByteArray(v8::Arguments const &args);
-
-    static v8::Persistent<v8::FunctionTemplate> cutesCtor_;
 
     static VHandle toString(const v8::Arguments &);
 
@@ -94,8 +90,6 @@ public:
 
     File(v8::Arguments const& args);
 
-    static v8::Persistent<v8::FunctionTemplate> cutesCtor_;
-
     static VHandle open(const v8::Arguments &);
 
     static void v8Setup(QV8Engine *v8e
@@ -114,8 +108,6 @@ public:
 
     FileInfo(v8::Arguments const&);
 
-    static v8::Persistent<v8::FunctionTemplate> cutesCtor_;
-
     static void v8Setup(QV8Engine *
                         , v8::Handle<v8::FunctionTemplate>
                         , v8::Handle<v8::ObjectTemplate>);
@@ -132,8 +124,6 @@ public:
     typedef QDir impl_type;
 
     Dir(v8::Arguments const&);
-
-    static v8::Persistent<v8::FunctionTemplate> cutesCtor_;
 
     static VHandle rootPath(const v8::Arguments &);
     static VHandle homePath(const v8::Arguments &);
@@ -163,8 +153,6 @@ public:
 
     Process(v8::Arguments const&);
 
-    static v8::Persistent<v8::FunctionTemplate> cutesCtor_;
-
     static VHandle start(const v8::Arguments &);
 
     static void v8Setup(QV8Engine *
@@ -179,8 +167,6 @@ public:
     typedef QMutex impl_type;
 
     Mutex(v8::Arguments const&);
-
-    static v8::Persistent<v8::FunctionTemplate> cutesCtor_;
 
     static void v8Setup(QV8Engine *
                         , v8::Handle<v8::FunctionTemplate>

@@ -43,6 +43,15 @@ v8::Handle<v8::Value> fromQJSValue(QJSValue const&);
 
 namespace js {
 
+v8::Handle<v8::FunctionTemplate> isolateFnTemplateGet(intptr_t key);
+void isolateFnTemplateSet(intptr_t key, v8::Handle<v8::FunctionTemplate> ctor);
+void isolateRelease();
+
+template <typename T> intptr_t objKey()
+{
+    return reinterpret_cast<intptr_t>(&T::v8Setup);
+}
+
 static inline QJSEngine *engine(v8::Arguments const &args)
 {
     return QV8Engine::get(V8ENGINE());
@@ -76,6 +85,14 @@ static inline void Set
 (v8::Handle<v8::Object> o, char const *name, VHandle v)
 {
     o->Set(v8::String::New(name), v);
+}
+
+template <typename T>
+void v8DeleteCppObj(v8::Persistent<v8::Value> v, void* p)
+{
+    delete reinterpret_cast<T*>(p);
+    v.Dispose();
+    v.Clear();
 }
 
 static inline v8::Handle<v8::Function>
@@ -139,9 +156,16 @@ static inline VHandle objToV8(T const& v)
 {
     v8::HandleScope hscope;
     typedef typename ObjectTraits<T>::js_type obj_type;
-    VHandle p = v8::External::New(new T(v));
-    auto ctor = obj_type::cutesCtor_->GetFunction();
-    return hscope.Close(ctor->NewInstance(1, &p));
+    auto p = new T(v);
+    VHandle external = v8::External::New(p);
+    auto tpl = isolateFnTemplateGet(objKey<obj_type>());
+    auto ctor = tpl->GetFunction();
+    auto obj = ctor->NewInstance(1, &external);
+    auto ph = v8::Persistent<v8::Value>::New(obj);
+    ph.MakeWeak(p, &v8DeleteCppObj<T>);
+    obj->SetInternalField(0, external);
+
+    return hscope.Close(obj);
 }
 
 template <typename T>
@@ -332,12 +356,6 @@ T CtorArg(v8::Arguments const& args, unsigned i)
  *  @{
  */
 
-template <typename T>
-void v8DeleteCppObj(v8::Persistent<v8::Value> v, void* p)
-{
-    v.Dispose();
-    delete reinterpret_cast<T*>(p);
-}
 
 std::pair<bool, VHandle> copyCtor(const v8::Arguments &args);
 
@@ -351,10 +369,9 @@ static VHandle v8Ctor(const v8::Arguments &args)
     using namespace v8;
     auto self = args.This();
     T *p = new T(args);
-    Local<External> external = External::New(static_cast<BaseT*>(p));
     auto ph = Persistent<Value>::New(self);
     ph.MakeWeak(p, &v8DeleteCppObj<T>);
-    self->SetInternalField(0, external);
+    self->SetInternalField(0, External::New(static_cast<BaseT*>(p)));
     return self;
 }
 
@@ -368,7 +385,7 @@ static void v8EngineAdd_(QV8Engine *v8e, v8::Local<v8::Object> tgt, char const *
         = FunctionTemplate::New(v8Ctor<T, typename T::base_type>
                                 , External::New(v8e));
 
-    T::cutesCtor_ = Persistent<FunctionTemplate>::New(ctor);
+    isolateFnTemplateSet(objKey<T>(), ctor);
 
     Handle<ObjectTemplate> tpl = ctor->InstanceTemplate();
     tpl->SetInternalFieldCount(1);

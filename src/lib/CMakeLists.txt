@@ -7,6 +7,7 @@ target_link_libraries(cutes-core
   ${Qt5Core_LIBRARIES}
   ${Qt5Qml_LIBRARIES}
   ${V8_LIBRARIES}
+  -ldl
 )
 
 install(TARGETS cutes-qt5v8 DESTINATION ${DST_LIB})
