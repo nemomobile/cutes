@@ -32,6 +32,11 @@
        modules, available for importing. By default cutes is trying to
        add /usr/lib{,32,64}/cutes and /usr/share/cutes directories.
 
+  - *CUTES_TRACE* :: number, if 0 or not defined - debug tracing in
+                     cutes is disabled, otherwise debug tracing is
+                     enabled. Also the number can be used by libraries
+                     to enable tracing and change tracing level.
+
 * JAVASCRIPT CONTEXT
 
   cutes provides several objects/functions, available in executed
