@@ -395,8 +395,12 @@ void Engine::processResult(QJSValue ret, endpoint_handle ep)
     } else {
         QVariantMap err;
         for (auto p : {"message", "stack", "arguments"
-                    , "type", "isWrapped", "originalError"})
-            err[p] = msgFromValue(ret.property(p));
+                    , "type", "isWrapped", "originalError", "lineNumber"
+                    , "name", "fileName", "columnNumber"}) {
+            auto v = msgFromValue(ret.property(p));
+            if (v.isValid())
+                err[p] = v;
+        }
 
         if (isTrace())
             trace() << "Actor returned error:" << err;
