@@ -301,6 +301,11 @@ void Actor::error(Message *reply)
         emit error(reply->data_);
         return;
     }
+    if (isTrace()) {
+        trace() << "Processing actor error"
+                << reply->data_;
+        trace() << " Error processing function:" << cb.toString();
+    }
     auto params = QJSValueList();
     auto err = engine_
         ? cutes::toQJSValue(*engine_, reply->data_)
@@ -384,6 +389,8 @@ void WorkerThread::run()
 void Engine::processResult(QJSValue ret, endpoint_handle ep)
 {
     if (!ret.isError()) {
+        if (isTrace())
+            trace() << "Actor returned" << ret.toString();
         reply(msgFromValue(ret), ep, Event::Return);
     } else {
         QVariantMap err;
@@ -391,6 +398,8 @@ void Engine::processResult(QJSValue ret, endpoint_handle ep)
                     , "type", "isWrapped", "originalError"})
             err[p] = msgFromValue(ret.property(p));
 
+        if (isTrace())
+            trace() << "Actor returned error:" << err;
         error(err, ep);
     }
 }
