@@ -100,7 +100,8 @@ static endpoint_ptr endpoint(QJSValue const& ep)
         on_error = ep.property("on_error");
         on_progress = ep.property("on_progress");
         if (!(on_reply.isCallable() || on_progress.isCallable()))
-            qWarning() << "on_reply or on_progress expected to be callable";
+            if (isTrace())
+                trace() << "on_reply or on_progress are not callable";
     } else if (!ep.isNull()) {
         throw Error(QString("Wrong endpoint? Expecting object, function or null")
                     + ep.toString());
