@@ -55,7 +55,9 @@
              available in qml context as a context variable
 - *cutes.os* :: OS "name": can be any of ["linux", "macos",
                    "win32", "unknown"]
-- *cutes.env* :: environment variables
+- *cutes.env* :: environment variables, read-only
+- *cutes.setEnv(name, value)* :: set interpreter environment variable
+     value
 - *cutes.path* :: Application library paths
 - *cutes.include(path, is_reload)* :: function to evaluate javascript
      file by file name as a module. File name can be absolute or

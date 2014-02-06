@@ -67,7 +67,11 @@ OS "name": can be any of ["linux", "macos",
 "win32", "unknown"]
 .TP
 \fB\fBcutes.env\fP\fP
-environment variables
+environment variables, read-only
+.TP
+\fB\fBcutes.setEnv(name, value)\fP\fP
+set interpreter environment variable
+value
 .TP
 \fB\fBcutes.path\fP\fP
 Application library paths
