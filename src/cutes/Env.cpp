@@ -578,6 +578,11 @@ QVariantMap const& Env::env() const
     return env_;
 }
 
+void Env::setEnv(QString const &name, QVariant const &value)
+{
+    env_[name] = value;
+}
+
 QStringList const& Env::path() const
 {
     return path_;

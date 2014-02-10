@@ -138,6 +138,7 @@ public:
     Q_INVOKABLE void exit(int);
     Q_INVOKABLE void defer(QJSValue const&);
     Q_INVOKABLE void idle();
+    Q_INVOKABLE void setEnv(QString const&, QVariant const&);
 
     QJSValue module();
     QString os() const;

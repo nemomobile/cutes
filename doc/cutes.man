@@ -32,6 +32,13 @@ contains colon-separated list of paths
 to directories containing cutes extensions and JavaScript
 modules, available for importing. By default cutes is trying to
 add /usr/lib{,32,64}/cutes and /usr/share/cutes directories.
+
+.TP
+\fB\fBCUTES\d\s-2TRACE\s+2\u\fP\fP
+number, if 0 or not defined - debug tracing in
+cutes is disabled, otherwise debug tracing is
+enabled. Also the number can be used by libraries
+to enable tracing and change tracing level.
 .SH "JAVASCRIPT CONTEXT"
 .PP
 cutes provides several objects/functions, available in executed
@@ -60,7 +67,11 @@ OS "name": can be any of ["linux", "macos",
 "win32", "unknown"]
 .TP
 \fB\fBcutes.env\fP\fP
-environment variables
+environment variables, read-only
+.TP
+\fB\fBcutes.setEnv(name, value)\fP\fP
+set interpreter environment variable
+value
 .TP
 \fB\fBcutes.path\fP\fP
 Application library paths

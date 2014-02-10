@@ -39,9 +39,16 @@
 
 namespace cutes {
 
-#define MAX_MSG_DEPTH 200
+#define MAX_MSG_DEPTH 50
 
-static QVariant msgFromValue(QJSValue const &v, size_t depth)
+enum class JSValueConvert
+{
+    Deep, Shallow
+};
+
+
+static QVariant msgFromValue
+(QJSValue const &v, JSValueConvert convert, size_t depth)
 {
     if (depth > MAX_MSG_DEPTH)
         throw Error("Reached max msg depth encoding QJSValue. Is there a cycle?");
@@ -63,7 +70,7 @@ static QVariant msgFromValue(QJSValue const &v, size_t depth)
         QVariantList res;
         auto len = v.property("length").toUInt();
         for (decltype(len) i = 0; i < len; ++i) {
-            auto value = msgFromValue(v.property(i), depth + 1);
+            auto value = msgFromValue(v.property(i), convert, depth + 1);
             res.push_back(value);
         }
         return res;
@@ -74,7 +81,11 @@ static QVariant msgFromValue(QJSValue const &v, size_t depth)
         QJSValueIterator it(v);
         while (it.hasNext()) {
             it.next();
-            auto value = msgFromValue(it.value(), depth + 1);
+            if (convert == JSValueConvert::Shallow
+                && !v.hasOwnProperty(it.name()))
+                continue;
+
+            auto value = msgFromValue(it.value(), convert, depth + 1);
             if (value.isValid())
                 res[it.name()] = value;
         }
@@ -83,9 +94,10 @@ static QVariant msgFromValue(QJSValue const &v, size_t depth)
     return QVariant();
 }
 
-static QVariant msgFromValue(QJSValue const &v)
+static QVariant msgFromValue(QJSValue const &v
+                             , JSValueConvert convert = JSValueConvert::Deep)
 {
-    return msgFromValue(v, 0);
+    return msgFromValue(v, convert, 0);
 }
 
 static endpoint_ptr endpoint(QJSValue const& ep)
@@ -100,7 +112,8 @@ static endpoint_ptr endpoint(QJSValue const& ep)
         on_error = ep.property("on_error");
         on_progress = ep.property("on_progress");
         if (!(on_reply.isCallable() || on_progress.isCallable()))
-            qWarning() << "on_reply or on_progress expected to be callable";
+            if (isTrace())
+                trace() << "on_reply or on_progress are not callable";
     } else if (!ep.isNull()) {
         throw Error(QString("Wrong endpoint? Expecting object, function or null")
                     + ep.toString());
@@ -300,6 +313,11 @@ void Actor::error(Message *reply)
         emit error(reply->data_);
         return;
     }
+    if (isTrace()) {
+        trace() << "Processing actor error"
+                << reply->data_;
+        trace() << " Error processing function:" << cb.toString();
+    }
     auto params = QJSValueList();
     auto err = engine_
         ? cutes::toQJSValue(*engine_, reply->data_)
@@ -382,15 +400,36 @@ void WorkerThread::run()
 
 void Engine::processResult(QJSValue ret, endpoint_handle ep)
 {
-    if (!ret.isError()) {
-        reply(msgFromValue(ret), ep, Event::Return);
-    } else {
-        QVariantMap err;
-        for (auto p : {"message", "stack", "arguments"
-                    , "type", "isWrapped", "originalError"})
-            err[p] = msgFromValue(ret.property(p));
+    try {
+        if (!ret.isError()) {
+            if (isTrace())
+                trace() << "Actor returned" << ret.toString();
+            reply(msgFromValue(ret), ep, Event::Return);
+        } else {
+            QVariantMap err;
+            for (auto p : {"message", "stack"
+                        //, "arguments" TODO depends on cycles processing
+                        // in msgFromValue()
+                        , "type", "isWrapped", "originalError", "lineNumber"
+                        , "name", "fileName", "columnNumber"
+                        , "reason"}) {
+                auto v = msgFromValue(ret.property(p), JSValueConvert::Shallow);
+                if (v.isValid())
+                    err[p] = v;
+            }
 
-        error(err, ep);
+            qWarning() << "Actor returned error:" << err;
+            error(err, ep);
+        }
+    } catch (Error const &e) {
+        qWarning() << "Error processing result:" << e.msg;
+        error(QVariant(e.msg), ep);
+    } catch (std::exception const& e) {
+        qWarning() << "Error processing result:" << e.what();
+        error(QVariant(e.what()), ep);
+    } catch(...) {
+        qWarning() << "Error processing result:";
+        error(QVariant(), ep);
     }
 }
 
@@ -425,12 +464,16 @@ QJSValue Engine::callConvertError(QJSValue const &fn
 void Engine::processMessage(Message *msg)
 {
     QJSValue ret;
+    auto reply_ep = msg->endpoint_;
+    auto on_exit = cor::on_scope_exit([this, reply_ep, &ret]() noexcept {
+            processResult(ret, reply_ep);
+        });
 
     if (handler_.isCallable()) {
         QJSValueList params;
         params.push_back(cutes::toQJSValue(*engine_, msg->data_));
         params.push_back(engine_->newQObject
-                         (new MessageContext(this, msg->endpoint_)));
+                         (new MessageContext(this, reply_ep)));
         ret = callConvertError(handler_, handler_, params);
     } else if (!(handler_.isNull() && handler_.isUndefined())) {
         qWarning() << "Handler is not a function but "
@@ -438,53 +481,66 @@ void Engine::processMessage(Message *msg)
     } else {
         qWarning() << "No handler";
     }
-    processResult(ret, msg->endpoint_);
 }
 
 void Engine::processRequest(Request *req)
 {
     QJSValue ret;
+    auto reply_ep = req->endpoint_;
+    auto on_exit = cor::on_scope_exit([this, reply_ep, &ret]() noexcept {
+            processResult(ret, reply_ep);
+        });
 
-    if (handler_.isObject()) {
-        auto method = handler_.property(req->method_name_);
-        if (method.isCallable()) {
-            MessageContext *ctx = new MessageContext(this, req->endpoint_);
-            QJSValueList params;
-            params.push_back(cutes::toQJSValue(*engine_, req->data_));
-            params.push_back(engine_->newQObject(ctx));
-            ret = callConvertError(method, handler_, params);
-            ctx->disable();
-            ctx->deleteLater();
-        } else if (method.isUndefined() || method.isNull()) {
-            qWarning() << "Actor does not have method" << req->method_name_;
-        } else {
-            qWarning() << "Actor property " << req->method_name_
-                     << " is not a method but "
-                     << method.toString();
-        }
-    } else {
+    if (!handler_.isObject()) {
         qWarning() << "Handler is not an object";
     }
-    processResult(ret, req->endpoint_);
+
+    auto method = handler_.property(req->method_name_);
+    if (method.isCallable()) {
+        MessageContext *ctx = new MessageContext(this, reply_ep);
+        QJSValueList params;
+        params.push_back(cutes::toQJSValue(*engine_, req->data_));
+        params.push_back(engine_->newQObject(ctx));
+        ret = callConvertError(method, handler_, params);
+        ctx->disable();
+        ctx->deleteLater();
+    } else if (method.isUndefined() || method.isNull()) {
+        qWarning() << "Actor does not have method" << req->method_name_;
+    } else {
+        qWarning() << "Actor property " << req->method_name_
+                   << " is not a method but "
+                   << method.toString();
+    }
 }
 
 bool Engine::event(QEvent *e)
 {
-    switch (static_cast<Event::Type>(e->type())) {
-    case (Event::LoadScript):
-        load(static_cast<Load*>(e));
-        return true;
-    case (Event::Message):
-        processMessage(static_cast<Message*>(e));
-        return true;
-    case (Event::Request):
-        processRequest(static_cast<Request*>(e));
-        return true;
-    case (Event::QuitThread):
-        emit onQuit();
-        return true;
-    default:
-        return QObject::event(e);
+    try {
+        switch (static_cast<Event::Type>(e->type())) {
+        case (Event::LoadScript):
+            load(static_cast<Load*>(e));
+            return true;
+        case (Event::Message):
+            processMessage(static_cast<Message*>(e));
+            return true;
+        case (Event::Request):
+            processRequest(static_cast<Request*>(e));
+            return true;
+        case (Event::QuitThread):
+            emit onQuit();
+            return true;
+        default:
+            return QObject::event(e);
+        }
+    } catch (Error const &e) {
+        qWarning() << "Error processing event:" << e.msg;
+        // TODO pass error
+    } catch (std::exception const& e) {
+        qWarning() << "Error processing event:" << e.what();
+        // TODO pass error
+    } catch (...) {
+        qWarning() << "Some error processing event";
+        // TODO pass error
     }
     return false;
 }
