@@ -30,6 +30,8 @@
 #include <QtQml/private/qv8engine_p.h>
 #include <QtQml/private/qv8engine_impl_p.h>
 #include <QtQml/private/qjsvalueiterator_impl_p.h>
+#include <memory>
+#include <mutex>
 
 namespace cutes {
 
@@ -143,31 +145,35 @@ VHandle QStringListToV8(QStringList const &src)
 
 struct IsolateContext
 {
-    static IsolateContext* instance()
+    static std::shared_ptr<IsolateContext> instance()
     {
         using namespace v8;
         auto isolate = Isolate::GetCurrent();
-        auto p = reinterpret_cast<IsolateContext*>(isolate->GetData());
-        if (!p) {
-            p = new IsolateContext{};
-            isolate->SetData(reinterpret_cast<void*>(p));
+        std::lock_guard<std::mutex> lock(mutex_);
+        auto pcontext = contexts_.find(isolate);
+        if (pcontext == contexts_.end()) {
+            auto iter_new = contexts_.insert({isolate, std::make_shared<IsolateContext>()});
+            pcontext = iter_new.first;
         }
-        return p;
+        return pcontext->second;
     }
 
     static void release()
     {
         using namespace v8;
         auto isolate = Isolate::GetCurrent();
-        auto p = reinterpret_cast<IsolateContext*>(isolate->GetData());
-        if (p) {
-            delete p;
-            isolate->SetData(nullptr);
-        }
+        std::lock_guard<std::mutex> lock(mutex_);
+        contexts_.erase(isolate);
     }
+
+    static std::mutex mutex_;
+    static std::map<v8::Isolate*, std::shared_ptr<IsolateContext> > contexts_;
 
     std::map<intptr_t, v8::Persistent<v8::FunctionTemplate> > fn_templates_;
 };
+
+std::mutex IsolateContext::mutex_;
+std::map<v8::Isolate*, std::shared_ptr<IsolateContext> > IsolateContext::contexts_;
 
 void isolateFnTemplateSet(intptr_t key, v8::Handle<v8::FunctionTemplate> ctor)
 {
