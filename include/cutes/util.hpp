@@ -624,6 +624,12 @@ static VHandle fnWOParams(const v8::Arguments &args)
                         res (obj_type::*)(param_sig),                       \
                         &obj_type::name, p1_t, p2_t>)
 
+#define CUTES_FN_PARAM2_CONST(name, res, type, obj_type, p1_t, p2_t, param_sig) \
+    cutes::js::Callback(#name, fnWithParam                                      \
+                        <res, type,                                             \
+                        res (obj_type::*)(param_sig) const,                     \
+                        &obj_type::name, p1_t, p2_t>)
+
 #define CUTES_FLAG_CONVERTIBLE_INT(flag_type)               \
 template<> struct Convert<flag_type> {                      \
     static inline flag_type fromV8(QV8Engine *e, VHandle v) \
