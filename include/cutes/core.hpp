@@ -58,6 +58,8 @@ public:
     ByteArray(v8::Arguments const &args);
 
     static VHandle toString(const v8::Arguments &);
+    static VHandle mid(const v8::Arguments &);
+    static VHandle indexOf(const v8::Arguments &);
 
     static void v8Setup(QV8Engine *
                         , v8::Handle<v8::FunctionTemplate>
