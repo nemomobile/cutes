@@ -406,6 +406,9 @@ void Process::v8Setup(QV8Engine *v8e
         << SIMPLE_(readAllStandardError, QByteArray)
         << QUERY_(exitCode, int)
         << QUERY_(exitStatus, QProcess::ExitStatus)
+        << CUTES_FN_PARAM(write, qint64, QProcess, QIODevice
+                             , QByteArray, const QByteArray&)
+        << CUTES_VOID_FN(closeWriteChannel, QProcess, QProcess)
         ;
 }
 
