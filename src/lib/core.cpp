@@ -74,16 +74,49 @@ VHandle ByteArray::toString(const v8::Arguments &args)
         });
 }
 
+VHandle ByteArray::mid(const v8::Arguments &args)
+{
+    return callConvertException
+        (args, [](const v8::Arguments &args) -> VHandle {
+            auto self = cutesObjFromThis<base_type>(args);
+            auto p0 = Arg<int>(args, 0);
+            auto p1 = args.Length() > 1 ? Arg<int>(args, 1) : -1;
+            return ValueToV8(self->mid(p0, p1));
+        });
+}
+
+VHandle ByteArray::indexOf(const v8::Arguments &args)
+{
+    return callConvertException
+        (args, [](const v8::Arguments &args) -> VHandle {
+            auto self = cutesObjFromThis<base_type>(args);
+            auto p0 = Arg<QString>(args, 0);
+            auto p1 = args.Length() > 1 ? Arg<int>(args, 1) : -1;
+            return ValueToV8(self->indexOf(p0, p1));
+        });
+}
+
 void ByteArray::v8Setup(QV8Engine *v8e
                         , v8::Handle<v8::FunctionTemplate>
                         , v8::Handle<v8::ObjectTemplate> obj)
 {
     setupTemplate(v8e, obj)
         << CUTES_FN(toString, ByteArray)
-        << CUTES_FN_PARAM_CONST(split, QList<QByteArray>, QByteArray, QByteArray
+        << CUTES_FN(mid, ByteArray)
+        << CUTES_FN(indexOf, ByteArray)
+        << CUTES_GET_CONST(length, int, QByteArray, QByteArray)
+        << CUTES_FN_PARAM_CONST(split, QList<QByteArray>
+                                , QByteArray, QByteArray
                                 , int, char)
-        << CUTES_FN_PARAM(append, QByteArray&, QByteArray, QByteArray
+        << CUTES_FN_PARAM(append, QByteArray&
+                          , QByteArray, QByteArray
                           , QString, const QString&)
+        << CUTES_FN_PARAM_CONST(left, QByteArray
+                                , QByteArray, QByteArray
+                                , int, int)
+        << CUTES_FN_PARAM_CONST(right, QByteArray
+                                , QByteArray, QByteArray
+                                , int, int)
         ;
 }
 
@@ -373,6 +406,9 @@ void Process::v8Setup(QV8Engine *v8e
         << SIMPLE_(readAllStandardError, QByteArray)
         << QUERY_(exitCode, int)
         << QUERY_(exitStatus, QProcess::ExitStatus)
+        << CUTES_FN_PARAM(write, qint64, QProcess, QIODevice
+                             , QByteArray, const QByteArray&)
+        << CUTES_VOID_FN(closeWriteChannel, QProcess, QProcess)
         ;
 }
 
