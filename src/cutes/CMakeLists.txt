@@ -21,7 +21,7 @@ target_link_libraries(${PLUGIN_NAME}
 )
 
 target_link_libraries(${LIBNAME}
-  cutes-qt5v8
+#  cutes-qt5v8
   ${Qt5Core_LIBRARIES}
   ${Qt5Qml_LIBRARIES}
   ${Qt5Quick_LIBRARIES}

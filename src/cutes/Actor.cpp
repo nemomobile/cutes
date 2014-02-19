@@ -29,12 +29,13 @@
 
 #include "qt_quick_types.hpp"
 
-#include <cutes/util.hpp>
+//#include <cutes/util.hpp>
 #include <cor/util.hpp>
 
 #include <QDebug>
 #include <QCoreApplication>
 #include <QMap>
+#include <QDateTime>
 #include <QJSValueIterator>
 
 namespace cutes {
@@ -296,12 +297,13 @@ void Actor::progress(Message *msg)
     callback(msg, msg->endpoint_->on_progress_);
 }
 
-void Actor::callback(Message *msg, QJSValue& cb)
+void Actor::callback(Message */*msg*/, QJSValue& cb)
 {
     if (!cb.isCallable())
         return;
     auto params = QJSValueList();
-    params.push_back(cutes::toQJSValue(*engine_, msg->data_));
+    // TODO qt52
+    // params.push_back(cutes::toQJSValue(*engine_, msg->data_));
     cb.callWithInstance(cb, params);
 }
 
@@ -319,10 +321,11 @@ void Actor::error(Message *reply)
         trace() << " Error processing function:" << cb.toString();
     }
     auto params = QJSValueList();
-    auto err = engine_
-        ? cutes::toQJSValue(*engine_, reply->data_)
-        : cutes::toQJSValue(reply->data_);
-    params.push_back(err);
+    // TODO qt52
+    // auto err = engine_
+    //     ? cutes::toQJSValue(*engine_, reply->data_)
+    //     : cutes::toQJSValue(reply->data_);
+    // params.push_back(err);
     cb.callWithInstance(cb, params);
 }
 
@@ -471,7 +474,8 @@ void Engine::processMessage(Message *msg)
 
     if (handler_.isCallable()) {
         QJSValueList params;
-        params.push_back(cutes::toQJSValue(*engine_, msg->data_));
+        // TODO qt52
+        // params.push_back(cutes::toQJSValue(*engine_, msg->data_));
         params.push_back(engine_->newQObject
                          (new MessageContext(this, reply_ep)));
         ret = callConvertError(handler_, handler_, params);
@@ -499,7 +503,8 @@ void Engine::processRequest(Request *req)
     if (method.isCallable()) {
         MessageContext *ctx = new MessageContext(this, reply_ep);
         QJSValueList params;
-        params.push_back(cutes::toQJSValue(*engine_, req->data_));
+        // TODO qt52
+        // params.push_back(cutes::toQJSValue(*engine_, req->data_));
         params.push_back(engine_->newQObject(ctx));
         ret = callConvertError(method, handler_, params);
         ctx->disable();
