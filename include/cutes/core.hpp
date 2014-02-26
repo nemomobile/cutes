@@ -162,6 +162,10 @@ public:
                         , v8::Handle<v8::ObjectTemplate>);
 };
 
+CUTES_FLAG_CONVERTIBLE_INT(QProcess::ExitStatus);
+CUTES_FLAG_CONVERTIBLE_INT(QProcess::ProcessState);
+CUTES_FLAG_CONVERTIBLE_INT(QProcess::ProcessError);
+
 class Mutex : public QMutex
 {
 public:
