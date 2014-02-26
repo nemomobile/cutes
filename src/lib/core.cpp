@@ -344,20 +344,6 @@ void Dir::v8Setup(QV8Engine *v8e
 #undef STR_QUERY_
 #undef CONST_
 
-template<> struct Convert<QProcess::ExitStatus> {
-    static inline VHandle toV8(QProcess::ExitStatus v)
-    {
-        return ValueToV8((int)v);
-    }
-};
-
-template<> struct Convert<QProcess::ProcessState> {
-    static inline VHandle toV8(QProcess::ProcessState v)
-    {
-        return ValueToV8((int)v);
-    }
-};
-
 Process::Process(v8::Arguments const &)
 {
 }
@@ -393,6 +379,12 @@ void Process::v8Setup(QV8Engine *v8e
         << CUTES_CONST(NotRunning, QProcess)
         << CUTES_CONST(Starting, QProcess)
         << CUTES_CONST(Running, QProcess)
+        << CUTES_CONST(FailedToStart, QProcess)
+        << CUTES_CONST(Crashed, QProcess)
+        << CUTES_CONST(Timedout, QProcess)
+        << CUTES_CONST(WriteError, QProcess)
+        << CUTES_CONST(ReadError, QProcess)
+        << CUTES_CONST(UnknownError, QProcess)
         ;
     setupTemplate(v8e, obj)
         << CUTES_FN_PARAM(waitForFinished, bool, QProcess, QProcess
@@ -405,6 +397,9 @@ void Process::v8Setup(QV8Engine *v8e
         << SIMPLE_(readAllStandardOutput, QByteArray)
         << SIMPLE_(readAllStandardError, QByteArray)
         << QUERY_(exitCode, int)
+        << QUERY_(state, QProcess::ProcessState)
+        << QUERY_(pid, Q_PID)
+        << QUERY_(error, QProcess::ProcessError)
         << QUERY_(exitStatus, QProcess::ExitStatus)
         << CUTES_FN_PARAM(write, qint64, QProcess, QIODevice
                              , QByteArray, const QByteArray&)
