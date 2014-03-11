@@ -70,8 +70,14 @@ int main(int argc, char *argv[])
         return usage(argc, argv);
 
     QString script_file(argv[1]);
-    
-    return (QFileInfo(script_file).suffix() == "qml")
+
+    QFileInfo info(script_file);
+    if (!info.exists()) {
+        qWarning() << "Source" << info.fileName() << "does not exist";
+        return EXIT_FAILURE;
+    }
+
+    return (info.suffix() == "qml")
         ? executeDeclarative(argc, argv)
         : executeScript(argc, argv);
 }
