@@ -363,6 +363,14 @@ VHandle Process::start(const v8::Arguments &args)
         });
 }
 
+VHandle Process::systemEnvironment(const v8::Arguments &args)
+{
+    return callConvertException
+        (args, [](const v8::Arguments &) -> VHandle {
+            return ValueToV8(QProcess::systemEnvironment());
+        });
+}
+
 #define QUERY_(name, type)                          \
     CUTES_GET_CONST(name, type, QProcess, QProcess)
 
@@ -385,6 +393,7 @@ void Process::v8Setup(QV8Engine *v8e
         << CUTES_CONST(WriteError, QProcess)
         << CUTES_CONST(ReadError, QProcess)
         << CUTES_CONST(UnknownError, QProcess)
+        << CUTES_FN(systemEnvironment, Process)
         ;
     setupTemplate(v8e, obj)
         << CUTES_FN_PARAM(waitForFinished, bool, QProcess, QProcess
@@ -404,6 +413,8 @@ void Process::v8Setup(QV8Engine *v8e
         << CUTES_FN_PARAM(write, qint64, QProcess, QIODevice
                              , QByteArray, const QByteArray&)
         << CUTES_VOID_FN(closeWriteChannel, QProcess, QProcess)
+        << CUTES_FN_PARAM(setEnvironment, void, QProcess, QProcess
+                             , QStringList, const QStringList&)
         ;
 }
 

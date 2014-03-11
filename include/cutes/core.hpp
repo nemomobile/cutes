@@ -156,6 +156,7 @@ public:
     Process(v8::Arguments const&);
 
     static VHandle start(const v8::Arguments &);
+    static VHandle systemEnvironment(const v8::Arguments &);
 
     static void v8Setup(QV8Engine *
                         , v8::Handle<v8::FunctionTemplate>
