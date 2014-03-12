@@ -1,6 +1,8 @@
 #ifndef _QSEXECUTE_QSENV_HPP_
 #define _QSEXECUTE_QSENV_HPP_
 
+#include "config.hpp"
+
 #include "Actor.hpp"
 
 #include <QObject>
@@ -118,6 +120,7 @@ class Env : public QObject
     Q_PROPERTY(QString os READ os);
     Q_PROPERTY(QVariantMap env READ env);
     Q_PROPERTY(QStringList path READ path);
+    Q_PROPERTY(QString engine READ getEngineName);
 
 public:
 
@@ -144,6 +147,7 @@ public:
     QString os() const;
     QVariantMap const& env() const;
     QStringList const& path() const;
+    QString getEngineName() const;
 
     bool shouldWait();
     QStringList const& args() const;

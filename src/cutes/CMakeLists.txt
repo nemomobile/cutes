@@ -21,11 +21,16 @@ target_link_libraries(${PLUGIN_NAME}
 )
 
 target_link_libraries(${LIBNAME}
-#  cutes-qt5v8
   ${Qt5Core_LIBRARIES}
   ${Qt5Qml_LIBRARIES}
   ${Qt5Quick_LIBRARIES}
   )
+
+if (${QT5JS} MATCHES "QT5V8")
+  target_link_libraries(${LIBNAME}
+    cutes-qt5v8
+    )
+endif (${QT5JS} MATCHES "QT5V8")
 
 target_link_libraries(${NAME}
   ${Qt5Gui_LIBRARIES}
