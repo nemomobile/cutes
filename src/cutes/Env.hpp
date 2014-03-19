@@ -15,6 +15,7 @@
 #include <QDir>
 #include <QStack>
 #include <QDebug>
+#include <QVariantList>
 
 #include <stdexcept>
 
@@ -142,6 +143,9 @@ public:
     Q_INVOKABLE void defer(QJSValue const&);
     Q_INVOKABLE void idle();
     Q_INVOKABLE void setEnv(QString const&, QVariant const&);
+    Q_INVOKABLE void fprint(QVariant const &);
+    Q_INVOKABLE void print(QVariant const &);
+    Q_INVOKABLE QVariant pass(QVariant const &);
 
     QJSValue module();
     QString os() const;
@@ -161,11 +165,15 @@ private:
     Env(Env const&);
     QString findFile(QString const &);
     QString libPath() const;
+    QJSValue getWrapper(QJSValue const &, QString const &
+                        , bool add_class_members = false);
+    void fprintImpl(FILE *, QVariantList &);
 
     QJSEngine &engine_;
     QJSEngine *module_engine_;
     QMap<QString, Module*> modules_;
 
+    QJSValue cpp_bridge_fn_;
     QVariantMap env_;
     QStringList path_;
     QStack<Module*> scripts_;
@@ -219,17 +227,17 @@ Env *loadEnv(QCoreApplication &app, QJSEngine &engine, QJSValue global);
 Env *loadEnv(QCoreApplication &app, QJSEngine &engine);
 
 
-template <typename T>
-QJSValue anyToScriptValue(QJSEngine *engine, T* const &in)
-{
-    return engine->newQObject(in);
-}
+// template <typename T>
+// QJSValue anyToScriptValue(QJSEngine *engine, T* const &in)
+// {
+//     return engine->newQObject(in);
+// }
 
-template <typename T>
-void anyFromScriptValue(const QJSValue &object, T* &out)
-{
-    out = qobject_cast<T*>(object.toQObject());
-}
+// template <typename T>
+// void anyFromScriptValue(const QJSValue &object, T* &out)
+// {
+//     out = qobject_cast<T*>(object.toQObject());
+// }
 
 // template <typename T>
 // void anyMetaTypeRegister(QJSEngine *engine)
