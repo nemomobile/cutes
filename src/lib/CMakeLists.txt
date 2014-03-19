@@ -14,6 +14,7 @@ if(NORMAL_V8_COMPILATION)
     ${Qt5V8_LIBRARIES}
     )
 else(NORMAL_V8_COMPILATION)
+  pkg_check_modules(V8 Qt5V8 REQUIRED)
   target_link_libraries(cutes-core
     ${V8_LIBRARIES}
     )

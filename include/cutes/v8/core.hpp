@@ -24,7 +24,7 @@
  * http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
  */
 
-#include <cutes/util.hpp>
+#include <cutes/v8/util.hpp>
 
 #include <QFile>
 #include <QFileInfo>

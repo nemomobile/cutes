@@ -22,7 +22,7 @@
  * http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
  */
 
-#include <cutes/core.hpp>
+#include <cutes/v8/core.hpp>
 #include <QtQml/private/qscriptisolate_p.h>
 
 namespace cutes { namespace js {

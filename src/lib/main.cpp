@@ -1,4 +1,4 @@
-#include <cutes/core.hpp>
+#include <cutes/v8/core.hpp>
 #include <QCoreApplication>
 
 static v8::Handle<v8::Value> log(const v8::Arguments& args)
