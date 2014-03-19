@@ -175,7 +175,7 @@ void Actor::reload()
             return;
         }
         // cwd should be set to the same directory as for main engine
-        auto script = env->current_module();
+        auto script = env->current_module().first;
 
         worker_.reset(new WorkerThread(this, src_, script->fileName()));
     };

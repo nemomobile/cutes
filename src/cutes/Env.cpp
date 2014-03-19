@@ -287,7 +287,9 @@ Env::Env(QObject *parent, QCoreApplication &app, QJSEngine &engine)
     args_.pop_front(); // remove interpreter name
 
     // to allow safe access to top w/o checking
-    scripts_.push(new Module(this, "", QDir::currentPath()));
+    auto m = new Module(this, "", QDir::currentPath());
+    QQmlEngine::setObjectOwnership(m, QQmlEngine::CppOwnership);
+    scripts_.push(std::make_pair(m, engine_.newQObject(m)));
 
     auto env = std::move(mkEnv());
 
@@ -319,22 +321,27 @@ Env::Env(QObject *parent, QCoreApplication &app, QJSEngine &engine)
         qml_engine->rootContext()->setContextProperty("cutes", this);
     } else {
         setupEngine(engine);
-        engine.globalObject().setProperty("cutes", engine.newQObject(this));
+        // engine has non-frozen global object so using the same
+        // engine to load modules
+        module_engine_ = &engine;
+        this_ = engine.newQObject(this);
+        QQmlEngine::setObjectOwnership(this, QQmlEngine::CppOwnership);
+        engine.globalObject().setProperty("cutes", this_);
 
 #if QJS_ENGINE == QJS_ENGINE_V4
         auto addWrapperFunction = [this](QString const &name) {
             auto parent = engine_.globalObject();
+            if (parent.property(name).isUndefined()) {
+                if (isTrace()) trace() << "Engine: add fn " << name;
+                parent.setProperty(name, getWrapper(this_, name));
+            }
             if (parent.property(name).isUndefined())
-                parent.setProperty
-                    (name, getWrapper(engine_.newQObject(this), name));
+                qWarning() << "Unable to add " << name << " to global obj";
         };
         addWrapperFunction("print");
         addWrapperFunction("fprint");
         // let wrapper to also use functions added above
 #endif
-        // engine has non-frozen global object so using the same
-        // engine to load modules
-        module_engine_ = &engine;
     }
 }
 
@@ -352,7 +359,7 @@ Env::~Env()
 }
 #endif // QJS_ENGINE
 
-Module *Env::current_module()
+std::pair<Module*, QJSValue> Env::current_module()
 {
     return scripts_.top();
 }
@@ -373,6 +380,7 @@ QJSValue Env::module()
 QJSValue Env::module()
 {
     auto m = current_module();
+    return m.second;
     // TODO qt52
     // QQmlData *ddata = QQmlData::get(m, true);
     // if (ddata) {
@@ -380,9 +388,9 @@ QJSValue Env::module()
     //     ddata->explicitIndestructibleSet = true;
     // }
 
-    auto o = engine().newQObject(m);
-    QQmlEngine::setObjectOwnership(m, QQmlEngine::CppOwnership);
-    return o;
+    // auto o = engine().newQObject(m);
+    // QQmlEngine::setObjectOwnership(m, QQmlEngine::CppOwnership);
+    // return o;
 }
 #endif // QJS_ENGINE
 
@@ -422,9 +430,11 @@ QJSValue Env::getWrapper
 {
     if (!cpp_bridge_fn_.isCallable()) {
         QString code = 
-            "function(obj, name, add_class_members) {"
+            "(function() { "
+            "return function(obj, name, add_class_members) {"
+            "    var fn = obj[name];"
             "    var res = function() {"
-            "        return obj[name].apply(obj, [[].slice.call(arguments)]);"
+            "        return fn.apply(obj, [[].slice.call(arguments)]);"
             "    };"
             "    if (add_class_members) {"
             "        var members = obj.members();"
@@ -433,14 +443,19 @@ QJSValue Env::getWrapper
             "        }"
             "    }"
             "    return res;"
-            "}";
+            "}; }).call(this)\n";
         cpp_bridge_fn_ = engine().evaluate(code);
+        if (cpp_bridge_fn_.isError())
+            qWarning() << "Error trying to evaluate wrapper"
+                       << cpp_bridge_fn_.toString();
     }
     QJSValueList params;
     params.push_back(obj);
     params.push_back(name);
     params.push_back(add_class_members);
-    return cpp_bridge_fn_.call(params);
+    auto res = cpp_bridge_fn_.call(params);
+    if (isTrace()) trace() << "Wrapper: " << name << res.toString();
+    return res;
 }
 
 bool Env::shouldWait()
@@ -607,7 +622,7 @@ QJSValue Env::extend(QString const& extension)
         qDebug() << "Extending with " << full_path;
     QLibrary lib(full_path);
     if (!lib.load()) {
-        qWarning() << "Can't load library: '" << full_path << "'";
+        qWarning() << "Can't load library: '" << full_path;
         return QJSValue();
     }
 
@@ -639,20 +654,23 @@ QJSValue Env::extend(QString const &extension)
     }
     if (isTrace())
         qDebug() << "Using " << full_path << " to extend";
-    QLibrary lib(full_path);
-    if (!lib.load()) {
-        qWarning() << "Can't load library: '" << full_path << "'";
+    auto lib = new QLibrary(full_path, this);
+    if (!lib->load()) {
+        qWarning() << "Can't load library: '" << full_path;
+        qWarning() << "Reason: " << lib->errorString();
         return QJSValue();
     }
 
     //QString code("function () { return fn.apply(fn, arguments); }");
-    auto fn = reinterpret_cast<cutesRegisterFnType>(lib.resolve(cutesRegisterName()));
+    auto fn = reinterpret_cast<cutesRegisterFnType>
+        (lib->resolve(cutesRegisterName()));
     if (!fn) {
         qWarning() << "Can't resolve symbol " << cutesRegisterName()
                    << " in '" << full_path << "'";
         return QJSValue();
     }
     auto obj = fn(&engine());
+    //libraries_.insert(extension, std::make_pair(lib, obj));
     return getWrapper(obj, "create", true);
 }
 #endif // QJS_ENGINE
@@ -667,7 +685,9 @@ void Env::addSearchPath(QString const &path, Position pos)
 
 void Env::pushParentScriptPath(QString const &file_name)
 {
-    scripts_.push(new Module(this, file_name));
+    auto m = new Module(this, file_name);
+    QQmlEngine::setObjectOwnership(m, QQmlEngine::CppOwnership);
+    scripts_.push(std::make_pair(m, engine_.newQObject(m)));
 }
 
 QString Env::findFile(QString const &file_name)
@@ -682,7 +702,7 @@ QString Env::findFile(QString const &file_name)
         return QFileInfo(res).exists();
     };
 
-    auto script = scripts_.top();
+    auto script = scripts_.top().first;
     // first - relative to cwd
     if (mkRelative(QDir(script->cwd())))
         return res;
@@ -699,7 +719,7 @@ QString Env::libPath() const
 {
     QString res;
     QTextStream s(&res);
-    s << QDir(scripts_.top()->cwd()).canonicalPath();
+    s << QDir(scripts_.top().first->cwd()).canonicalPath();
     for (auto &d : path_)
         s << ":" << d;
     return res;
@@ -762,6 +782,7 @@ QJSValue Env::load(QString const &script_name, bool is_reload)
     }
 
     Module *script = new Module(this, file_name);
+    QQmlEngine::setObjectOwnership(script, QQmlEngine::CppOwnership);
 
     file_name = script->fileName();
     auto p = modules_.find(file_name);
@@ -772,7 +793,7 @@ QJSValue Env::load(QString const &script_name, bool is_reload)
 
     auto scope = mk_scope
         ([this, script](){
-            scripts_.push(script);
+            scripts_.push(std::make_pair(script, engine_.newQObject(script)));
         }
         , [this]() {
             scripts_.pop();
@@ -784,7 +805,9 @@ QJSValue Env::load(QString const &script_name, bool is_reload)
     if (!module_engine_) {
         module_engine_ = new QJSEngine(this);
         setupEngine(*module_engine_);
-        auto self = module_engine_->newQObject(new EnvWrapper(this));
+        auto wrapper = new EnvWrapper(this);
+        QQmlEngine::setObjectOwnership(wrapper, QQmlEngine::CppOwnership);
+        auto self = module_engine_->newQObject(wrapper);
         module_engine_->globalObject().setProperty("cutes", self);
 
     }

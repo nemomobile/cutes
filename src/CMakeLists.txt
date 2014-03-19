@@ -44,6 +44,7 @@ set(CMAKE_AUTOMOC TRUE)
 if (${QT5JS} MATCHES "QT5V8")
 add_subdirectory(lib)
 else (${QT5JS} MATCHES "QT5V8")
+add_subdirectory(lib-v4)
 endif (${QT5JS} MATCHES "QT5V8")
 
 add_subdirectory(cutes)

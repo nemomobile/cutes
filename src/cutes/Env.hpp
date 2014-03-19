@@ -160,7 +160,7 @@ public:
     void pushParentScriptPath(QString const&);
 
     QJSEngine &engine();
-    Module *current_module();
+    std::pair<Module*, QJSValue> current_module();
 private:
     Env(Env const&);
     QString findFile(QString const &);
@@ -171,12 +171,13 @@ private:
 
     QJSEngine &engine_;
     QJSEngine *module_engine_;
+    QJSValue this_;
     QMap<QString, Module*> modules_;
 
     QJSValue cpp_bridge_fn_;
     QVariantMap env_;
     QStringList path_;
-    QStack<Module*> scripts_;
+    QStack<std::pair<Module*, QJSValue> > scripts_;
     QStringList args_;
     int actor_count_;
     bool is_waiting_exit_;
