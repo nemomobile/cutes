@@ -24,6 +24,7 @@ Obsoletes: cutes < 0.7.10
 QtScript environment and "interpreter"
 
 %define qt_importdir %{_libdir}/qt5/qml
+%define jslibdir %{_datadir}/cutes
 
 %prep
 %setup -q -n %{name}-%{version}
@@ -43,8 +44,8 @@ rm -rf %{buildroot}
 %defattr(-,root,root,-)
 %{_bindir}/cutes
 %{_libdir}/libcutes-qt5.so
-#%{_libdir}/libcutes-qt5v8.so
-#%{_libdir}/qt5/cutes/qt/libcutes-core.so
+%{_libdir}/qt5/cutes/qt/libcutes-core.so
 %{qt_importdir}/Mer/Cutes/libcutesqml.so
 %{qt_importdir}/Mer/Cutes/qmldir
 %{_mandir}/man1/cutes.1.gz
+%{jslibdir}/*.js

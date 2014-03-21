@@ -10,7 +10,7 @@
 #include <QMetaEnum>
 
 #include <cor/util.hpp>
-#include <cutes/v4/util.hpp>
+#include <cutes/util.hpp>
 
 
 namespace cutes { namespace js {
@@ -170,6 +170,10 @@ public:
         : AJsObject(e)
         , impl_(p)
     {}
+
+    virtual ~JsObject() {
+        //qDebug() << "~JsObject" << getClassName();
+    }
 
     virtual QString getClassName() const
     {

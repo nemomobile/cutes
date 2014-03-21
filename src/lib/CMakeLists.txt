@@ -1,24 +1,32 @@
-add_library(cutes-qt5v8 SHARED util.cpp)
-add_library(cutes-core SHARED core.cpp)
+set(CMAKE_AUTOMOC TRUE)
+
+MACRO(GENERATE_BRIDGE _name)
+  set(_tgt ${_name}.cpp)
+  set(_js qt${_name}.js)
+  set(_dst ${CMAKE_CURRENT_SOURCE_DIR}/${_tgt})
+  set(_js_file ${CMAKE_CURRENT_SOURCE_DIR}/${_js})
+  set(_src ${CMAKE_CURRENT_SOURCE_DIR}/${_name}.cpp.in)
+  set(_gen_script ${CMAKE_CURRENT_SOURCE_DIR}/preprocess_bridge.py)
+
+  add_custom_command(OUTPUT ${_tgt} ${_js}
+    COMMAND python ${_gen_script} ${_src} ${_dst} ${_js_file}
+    DEPENDS ${_src} ${_gen_script}
+    )
+  qt5_generate_moc(${_tgt} ${_name}.moc)
+ENDMACRO(GENERATE_BRIDGE)
+
+generate_bridge(core)
+add_library(cutes-core SHARED core.cpp util.hpp util.cpp core.moc)
 
 target_link_libraries(cutes-core
-  cutes-qt5v8
   ${Qt5Core_LIBRARIES}
   ${Qt5Qml_LIBRARIES}
-  ${V8_LIBRARIES}
   -ldl
 )
 
-if(NORMAL_V8_COMPILATION)
-  target_link_libraries(cutes-core
-    ${Qt5V8_LIBRARIES}
-    )
-else(NORMAL_V8_COMPILATION)
-  pkg_check_modules(V8 Qt5V8 REQUIRED)
-  target_link_libraries(cutes-core
-    ${V8_LIBRARIES}
-    )
-endif(NORMAL_V8_COMPILATION)
+add_executable(test_linking test_linking.cpp)
+target_link_libraries(test_linking cutes-core)
 
-install(TARGETS cutes-qt5v8 DESTINATION ${DST_LIB})
 install(TARGETS cutes-core DESTINATION ${DST_LIB}/qt5/cutes/qt)
+install(FILES qtcore.js DESTINATION share/cutes)
+install(FILES wrap-qt.js DESTINATION share/cutes)

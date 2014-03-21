@@ -1,12 +1,5 @@
-#include "config.hpp"
 #include "util.hpp"
-#if QJS_ENGINE == QJS_ENGINE_V8
-#include <cutes/v8/util.hpp>
-#elif QJS_ENGINE == QJS_ENGINE_V4
-#include <cutes/v4/util.hpp>
-#else
-#error Unknown engine QJS_ENGINE
-#endif // QJS_ENGINE
+#include <cutes/util.hpp>
 
 #include "Env.hpp"
 #include <QMap>
@@ -21,14 +14,8 @@
 
 #include <unistd.h>
 #include <iostream>
-// Q_DECLARE_METATYPE(QsExecuteEnv*);
-// Q_DECLARE_METATYPE(QsExecuteModule*);
-// Q_DECLARE_METATYPE(CutesModule*);
-
-// Q_DECLARE_METATYPE(QDir);
 
 Q_DECLARE_METATYPE(cutes::Env*);
-//Q_DECLARE_METATYPE(cutes::StringMap);
 
 namespace cutes {
 
@@ -133,68 +120,6 @@ Env *loadEnv(QCoreApplication &app, QJSEngine &engine)
     return res;
 }
 
-#if QJS_ENGINE == QJS_ENGINE_V8
-
-static js::VHandle fprintImpl(FILE *f, int first, v8::Arguments const &args)
-{
-    QTextStream out(f);
-    auto engine = js::engine(args);
-    auto len = args.Length();
-
-    if (engine && len > first) {
-        out << toQJSValue(*engine, args[first]).toString();
-        for (int i = first + 1; i < len; ++i)
-            out << " " << toQJSValue(*engine, args[i]).toString();
-        out << '\n';
-    }
-
-    return js::VHandle();
-}
-
-static js::VHandle jsFPrint(v8::Arguments const &args)
-{
-    auto len = args.Length();
-    if (!len)
-        return js::VHandle();
-
-    auto engine = js::engine(args);
-
-    auto i = toQJSValue(*engine, args[0]).toVariant().toInt();
-    FILE *f = (i == STDOUT_FILENO
-               ? stdout : (i == STDERR_FILENO
-                           ? stderr : nullptr));
-    return fprintImpl(f, 1, args);
-}
-
-static js::VHandle jsPrint(v8::Arguments const &args)
-{
-    return fprintImpl(stdout, 0, args);
-}
-
-static js::VHandle jsReadline(v8::Arguments const &)
-{
-    QTextStream stream(stdin);
-    return cutes::js::ValueToV8(stream.readLine());
-}
-
-#endif // QJS_ENGINE
-
-#if QJS_ENGINE == QJS_ENGINE_V8
-static void setupEngine(QJSEngine &engine)
-{
-    // if it is created by some ecmascript engine there should be print()
-    auto v8e = engine.handle();
-    v8::Context::Scope cscope(v8e->context());
-
-    engine.globalObject().setProperty("process", engine.newObject());
-
-    if (engine.globalObject().property("print").isUndefined())
-        js::Set(engine, engine.globalObject(), "print", jsPrint);
-
-    js::Set(engine, engine.globalObject(), "fprint", jsFPrint);
-    js::Set(engine, engine.globalObject(), "readline", jsReadline);
-}
-#elif QJS_ENGINE == QJS_ENGINE_V4
 static void setupEngine(QJSEngine &engine)
 {
     // if it is created by some ecmascript engine there should be print()
@@ -211,7 +136,6 @@ static void setupEngine(QJSEngine &engine)
     // js::Set(engine, engine.globalObject(), "fprint", jsFPrint);
     // js::Set(engine, engine.globalObject(), "readline", jsReadline);
 }
-#endif // QJS_ENGINE
 
 void Env::fprintImpl(FILE *f, QVariantList &l)
 {
@@ -270,9 +194,6 @@ QVariant Env::pass(QVariant const &v)
 }
 
 
-#if QJS_ENGINE == QJS_ENGINE_V4
-#endif
-
 Env::Env(QObject *parent, QCoreApplication &app, QJSEngine &engine)
     : QObject(parent)
     , engine_(engine)
@@ -328,7 +249,6 @@ Env::Env(QObject *parent, QCoreApplication &app, QJSEngine &engine)
         QQmlEngine::setObjectOwnership(this, QQmlEngine::CppOwnership);
         engine.globalObject().setProperty("cutes", this_);
 
-#if QJS_ENGINE == QJS_ENGINE_V4
         auto addWrapperFunction = [this](QString const &name) {
             auto parent = engine_.globalObject();
             if (parent.property(name).isUndefined()) {
@@ -340,67 +260,28 @@ Env::Env(QObject *parent, QCoreApplication &app, QJSEngine &engine)
         };
         addWrapperFunction("print");
         addWrapperFunction("fprint");
-        // let wrapper to also use functions added above
-#endif
     }
 }
 
 
-#if QJS_ENGINE == QJS_ENGINE_V8
 Env::~Env()
 {
-    cutes::js::isolateRelease();
 }
-#elif QJS_ENGINE == QJS_ENGINE_V4
-Env::~Env()
-{
-    // TODO qt52
-    // cutes::js::isolateRelease();
-}
-#endif // QJS_ENGINE
 
 std::pair<Module*, QJSValue> Env::current_module()
 {
     return scripts_.top();
 }
 
-#if QJS_ENGINE == QJS_ENGINE_V8
-QJSValue Env::module()
-{
-    auto m = current_module();
-    QQmlData *ddata = QQmlData::get(m, true);
-    if (ddata) {
-        ddata->indestructible = true;
-        ddata->explicitIndestructibleSet = true;
-    }
-
-    return engine().newQObject(m);
-}
-#elif QJS_ENGINE == QJS_ENGINE_V4
 QJSValue Env::module()
 {
     auto m = current_module();
     return m.second;
-    // TODO qt52
-    // QQmlData *ddata = QQmlData::get(m, true);
-    // if (ddata) {
-    //     ddata->indestructible = true;
-    //     ddata->explicitIndestructibleSet = true;
-    // }
-
-    // auto o = engine().newQObject(m);
-    // QQmlEngine::setObjectOwnership(m, QQmlEngine::CppOwnership);
-    // return o;
 }
-#endif // QJS_ENGINE
 
 QString Env::getEngineName() const
 {
-#if QJS_ENGINE == QJS_ENGINE_V8
-    return "qt5v8";
-#elif QJS_ENGINE == QJS_ENGINE_V4
-    return "qt5v4";
-#endif // QJS_ENGINE
+    return "qt5";
 }
 
 QJSValue Env::actor()
@@ -602,39 +483,6 @@ bool Env::event(QEvent *e)
     return true;
 }
 
-#if QJS_ENGINE == QJS_ENGINE_V8
-QJSValue Env::extend(QString const& extension)
-{
-    auto parts = extension.split('.');
-    auto len = parts.length();
-    if (!len) {
-        qWarning() << "Wrong extension name: '" << extension << "'";
-        return QJSValue();
-    }
-    parts.last() = QString("libcutes-%1.so").arg(parts.last());
-    auto rel_path = parts.join('/');
-    auto full_path = findFile(rel_path);
-    if (full_path.isEmpty()) {
-        qWarning() << "Can't find extension: '" << rel_path << "'";
-        return QJSValue();
-    }
-    if (isTrace())
-        qDebug() << "Extending with " << full_path;
-    QLibrary lib(full_path);
-    if (!lib.load()) {
-        qWarning() << "Can't load library: '" << full_path;
-        return QJSValue();
-    }
-
-    auto fn = reinterpret_cast<cutesRegisterFnType>(lib.resolve(cutesRegisterName()));
-    if (!fn) {
-        qWarning() << "Can't resolve symbol " << cutesRegisterName()
-                   << " in '" << full_path << "'";
-        return QJSValue();
-    }
-    return fn(&engine());
-}
-#elif QJS_ENGINE == QJS_ENGINE_V4
 QJSValue Env::extend(QString const &extension)
 {
     if (isTrace())
@@ -645,7 +493,7 @@ QJSValue Env::extend(QString const &extension)
         qWarning() << "Wrong extension name: '" << extension << "'";
         return QJSValue();
     }
-    parts.last() = QString("libcutes-%1-v4.so").arg(parts.last());
+    parts.last() = QString("libcutes-%1.so").arg(parts.last());
     auto rel_path = parts.join('/');
     auto full_path = findFile(rel_path);
     if (full_path.isEmpty()) {
@@ -661,7 +509,6 @@ QJSValue Env::extend(QString const &extension)
         return QJSValue();
     }
 
-    //QString code("function () { return fn.apply(fn, arguments); }");
     auto fn = reinterpret_cast<cutesRegisterFnType>
         (lib->resolve(cutesRegisterName()));
     if (!fn) {
@@ -670,10 +517,9 @@ QJSValue Env::extend(QString const &extension)
         return QJSValue();
     }
     auto obj = fn(&engine());
-    //libraries_.insert(extension, std::make_pair(lib, obj));
+    libraries_.insert(extension, std::make_pair(lib, obj));
     return getWrapper(obj, "create", true);
 }
-#endif // QJS_ENGINE
 
 void Env::addSearchPath(QString const &path, Position pos)
 {
@@ -730,26 +576,6 @@ QJSValue Env::require(QString const &file_name)
     return include(file_name, false);
 }
 
-#if QJS_ENGINE == QJS_ENGINE_V8
-QJSValue Env::include(QString const &file_name, bool is_reload)
-{
-    QString err_msg;
-    try {
-        return load(file_name, is_reload);
-    } catch (JsError const &e) {
-        err_msg = QString("Exception loading 1: %2").arg(file_name, e.msg);
-    } catch (Error const &e) {
-        err_msg = QString("Exception loading %1: %2").arg(file_name, e.msg);
-    } catch (...) {
-        err_msg = QString("Unspecified error loading %1").arg(file_name);
-    }
-    if (!err_msg.isEmpty()) {
-        using namespace v8;
-        ThrowException(Exception::Error(String::New(err_msg.toUtf8().data())));
-    }
-    return QJSValue();
-}
-#elif QJS_ENGINE == QJS_ENGINE_V4
 QJSValue Env::include(QString const &file_name, bool is_reload)
 {
     QString err_msg;
@@ -769,7 +595,6 @@ QJSValue Env::include(QString const &file_name, bool is_reload)
     }
     return QJSValue();
 }
-#endif // QJS_ENGINE
 
 QJSValue Env::load(QString const &script_name, bool is_reload)
 {

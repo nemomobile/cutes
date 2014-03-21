@@ -1,8 +1,6 @@
 #ifndef _QSEXECUTE_QSENV_HPP_
 #define _QSEXECUTE_QSENV_HPP_
 
-#include "config.hpp"
-
 #include "Actor.hpp"
 
 #include <QObject>
@@ -28,6 +26,7 @@
 // typedef QsExecute::Env QsExecuteEnv;
 // typedef cutes::Module CutesModule;
 
+class QLibrary;
 namespace cutes {
 
 QString errorConverterTry(QString const &);
@@ -172,6 +171,7 @@ private:
     QJSEngine &engine_;
     QJSEngine *module_engine_;
     QJSValue this_;
+    QMap<QString, std::pair<QLibrary*, QJSValue> > libraries_;
     QMap<QString, Module*> modules_;
 
     QJSValue cpp_bridge_fn_;
