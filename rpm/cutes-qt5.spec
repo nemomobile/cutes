@@ -15,6 +15,7 @@ BuildRequires: pkgconfig(Qt5Qml)
 BuildRequires: pkgconfig(Qt5Quick)
 BuildRequires: pkgconfig(Qt5Script)
 BuildRequires: cmake >= 2.8
+BuildRequires: python >= 2.7
 BuildRequires: pkgconfig(tut) >= 0.0.1
 BuildRequires: pkgconfig(cor) >= 0.1.6
 Provides: cutes = %{version}
