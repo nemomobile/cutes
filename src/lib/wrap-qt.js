@@ -1,45 +1,45 @@
-var IS_DEBUG = false;
-
-var dump, trace;
-if (IS_DEBUG) {
-    dump = function(n, o) {
-        print(n, typeof o);
-        for (var m in o) {
-            print("!", m, typeof o[m]);
-        }
-    };
-    trace = print;
-} else {
-    dump = function() {}
-    trace = function() {}
-}
-
-var wrap = function(obj, name)
+// produces wrapper to call object implementation method
+var wrap = function(name)
 {
-    trace("WRAP", obj.cutesClass__, name);
     return function() {
-        var m = obj[name];
-        var o = obj;
-        trace("WRAPPED", typeof m, obj.cutesClass__, name);
-        return m.apply(obj, [].slice.call(arguments));
+        var obj = this.impl__;
+        return obj[name].apply(obj, [].slice.call(arguments));
     }
 };
 
+// used as a tag for "copy ctor"
 var copy_tag = function(obj) { return obj.cutesClass__; };
 
-var wrap_construct = function(module, obj, name, res_type)
+// return function constructing js object wrapping native object,
+// returned from the implementation function returning this native object.
+// Wrapper object is module.res_type
+var wrap_construct = function(module, name, res_type)
 {
-    var m = obj[name];
     return function() {
+        var obj = this.impl__;
         var ctor = module[res_type];
-        return new ctor(copy_tag, m.apply(obj, [].slice.call(arguments)));
+        return new ctor(copy_tag, obj[name].apply(obj, [].slice.call(arguments)));
     }
 };
 
-var wrap_array_construct = function(module, obj, name, res_type)
+// wrapping js object method fn_name becomes method wrapping native
+// object returned by native method fn_name into module.res_type
+// object
+var convert_result = function(module, res_type, fn_name)
 {
-    var m = obj[name];
+    return function(wrapper) {
+        wrapper[fn_name] = wrap_construct(module, fn_name, res_type);
+    };
+};
+
+// return function constructing array of module.res_type js objects
+// each wrapping native object from the array returned by
+// implementation function returning this native object
+var wrap_array_construct = function(module, name, res_type)
+{
     return function() {
+        var obj = this.impl__;
+        var m = obj[name];
         var ctor = module[res_type];
         var data = m.apply(obj, [].slice.call(arguments));
         var res = [];
@@ -49,53 +49,52 @@ var wrap_array_construct = function(module, obj, name, res_type)
     }
 };
 
-var create_ctor = function(lib, cls_name, members) {
-    var name;
-    dump(cls_name, lib);
-    var res = function(tag, obj) {
+// wrapping js object method fn_name becomes method wrapping each
+// member of native object array returned by native method fn_name
+// into array of module.res_type objects
+var convert_array = function(module, res_type, fn_name)
+{
+    return function(wrapper) {
+        wrapper[fn_name] = wrap_array_construct(module, fn_name, res_type);
+    };
+};
+
+// ctor prototype for js wrapper for native object
+var create_proto_ctor = function(lib, cls_name, members) {
+    var info, name;
+    var res = function() {
         var that = this;
-        var impl;
-        if (tag === copy_tag) {
-            impl = obj;
-        } else {
-            impl = lib(cls_name, [].slice.call(arguments));
-        }
-        that.impl__ = impl;
-        dump(cls_name, that);
         for (var i = 0; i < members.length; ++i) {
-            name = members[i];
-            if (typeof name === "string") {
-                name = [name, name];
-            } else if (typeof name === "function") {
-                name(that, impl);
+            info = members[i];
+            if (typeof info === "string") {
+                info = [info, info];
+            } else if (typeof info === "function") {
+                info(that);
                 continue;
             }
 
-            var fn = wrap(impl, name[1]);
-            that[name[0]] = fn;
+            var fn = wrap(info[1]);
+            that[info[0]] = fn;
         }
-        dump("->" + cls_name, that);
     };
+    return res;
+};
+
+// ctor of js wrapper for native object
+var create_ctor = function(lib, cls_name, members) {
+    var res = function(tag, obj) {
+        this.impl__ = ((tag !== copy_tag)
+                       ? lib(cls_name, [].slice.call(arguments))
+                       : obj);
+    };
+    var proto_ctor = create_proto_ctor(lib, cls_name, members);
+    res.prototype = new proto_ctor();
     var cls = lib[cls_name];
     if (cls) {
         for (name in cls)
             res[name] = cls[name];
     }
     return res;
-};
-
-var convert_result = function(module, res_type, fn_name)
-{
-    return function(wrapper, obj) {
-        wrapper[fn_name] = wrap_construct(module, obj, fn_name, res_type);
-    };
-};
-
-var convert_array = function(module, res_type, fn_name)
-{
-    return function(wrapper, obj) {
-        wrapper[fn_name] = wrap_array_construct(module, obj, fn_name, res_type);
-    };
 };
 
 exports = {
