@@ -23,6 +23,7 @@ static char const *error_converter_try = "%1 try {\n";
 
 static char const *error_converter_catch =
     "} catch (e) { \n"
+    "    cutes.trace(['Caught error', Object.prototype.toString.call(e)]);\n"
     "    if (e instanceof Error) throw e;\n"
     "    var res = new Error('Wrapped error: ' + e);\n"
     "    res.isWrapped = true;\n"
@@ -186,11 +187,14 @@ void Env::print(QVariant const &data)
     fprintImpl(stdout, l);
 }
 
-QVariant Env::pass(QVariant const &v)
+void Env::trace(QVariant const &data)
 {
-    qDebug() << v;
-    qDebug() << v.type();
-    return v;
+    if (isTrace()) {
+        auto l = data.toList();
+        if (l.empty())
+            return;
+        fprintImpl(stderr, l);
+    }
 }
 
 
@@ -232,7 +236,7 @@ Env::Env(QObject *parent, QCoreApplication &app, QJSEngine &engine)
     for (auto &path : paths)
         path_.push_back(QDir(path).canonicalPath());
 
-    if (isTrace()) trace() << "Path:" << path_;
+    if (isTrace()) tracer() << "Path:" << path_;
     app.setLibraryPaths(path_);
 
     /// if qmlengine is used it is impossible to modify global object,
@@ -252,7 +256,7 @@ Env::Env(QObject *parent, QCoreApplication &app, QJSEngine &engine)
         auto addWrapperFunction = [this](QString const &name) {
             auto parent = engine_.globalObject();
             if (parent.property(name).isUndefined()) {
-                if (isTrace()) trace() << "Engine: add fn " << name;
+                if (isTrace()) tracer() << "Engine: add fn " << name;
                 parent.setProperty(name, getWrapper(this_, name));
             }
             if (parent.property(name).isUndefined())
@@ -335,7 +339,7 @@ QJSValue Env::getWrapper
     params.push_back(name);
     params.push_back(add_class_members);
     auto res = cpp_bridge_fn_.call(params);
-    if (isTrace()) trace() << "Wrapper: " << name << res.toString();
+    if (isTrace()) tracer() << "Wrapper: " << name << res.toString();
     return res;
 }
 
@@ -501,7 +505,7 @@ QJSValue Env::extend(QString const &extension)
         return QJSValue();
     }
     if (isTrace())
-        qDebug() << "Using " << full_path << " to extend";
+        tracer() << "Using " << full_path << " to extend";
     auto lib = new QLibrary(full_path, this);
     if (!lib->load()) {
         qWarning() << "Can't load library: '" << full_path;
@@ -764,7 +768,7 @@ QJSValue Module::load(QJSEngine &engine)
         dst << input.readLine() << "\n";
     dst << epilog;
 
-    if (isTrace()) trace() << "Load: " << file_name;
+    if (isTrace()) tracer() << "Load: " << file_name;
     auto res = engine.evaluate(contents, file_name, line_nr);
     if (res.isError()) {
         qWarning() << "Error loading " << file_name << ":" << res.toString();

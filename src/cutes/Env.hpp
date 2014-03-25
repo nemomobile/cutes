@@ -144,7 +144,7 @@ public:
     Q_INVOKABLE void setEnv(QString const&, QVariant const&);
     Q_INVOKABLE void fprint(QVariant const &);
     Q_INVOKABLE void print(QVariant const &);
-    Q_INVOKABLE QVariant pass(QVariant const &);
+    Q_INVOKABLE void trace(QVariant const &);
 
     QJSValue module();
     QString os() const;
@@ -287,7 +287,7 @@ private:
 
 bool isTrace();
 
-template <typename ... Args> decltype(qDebug()) trace(Args&&... args) {
+template <typename ... Args> decltype(qDebug()) tracer(Args&&... args) {
     return qDebug(std::forward<Args>(args)...);
 }
 
