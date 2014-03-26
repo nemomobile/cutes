@@ -189,6 +189,8 @@ Env::Env(QObject *parent, QCoreApplication &app, QJSEngine &engine)
     , actor_count_(0)
     , is_waiting_exit_(false)
 {
+    if (isTrace()) tracer() << "New js environment for " << &engine
+                            << " in " << QThread::currentThreadId();
     setObjectName("cutes");
     QQmlEngine::setObjectOwnership(this, QQmlEngine::CppOwnership);
 
@@ -598,12 +600,12 @@ QJSValue Env::include(QString const &file_name, bool is_reload)
     } catch (...) {
         err_msg = QString("Unspecified error loading %1").arg(file_name);
     }
-    if (!err_msg.isEmpty()) {
-        // TODO qt52
-        // using namespace v8;
-        // ThrowException(Exception::Error(String::New(err_msg.toUtf8().data())));
-    }
-    return QJSValue();
+    // TODO Throw Js error
+    QJSValueList params;
+    params.push_back(!err_msg.isEmpty() ? err_msg : "");
+    static const QString code = "(function(){ return function(data) {"
+        "throw new Error(data); }}).call(this)";
+    return callJsLazy(code, "throw_error", throw_fn_, params);
 }
 
 QJSValue Env::load(QString const &script_name, bool is_reload)

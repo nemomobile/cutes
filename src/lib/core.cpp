@@ -20,9 +20,6 @@
 #include <QMutex>
 #include <QDateTime>
 
-//qRegisterMetaType<QJSValueList>();
-Q_DECLARE_METATYPE(QJSValueList)
-
 namespace cutes { namespace js {
 
 

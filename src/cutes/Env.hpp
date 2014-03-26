@@ -176,6 +176,7 @@ private:
 
     QJSValue obj_proto_enhance_;
     QJSValue cpp_bridge_fn_;
+    QJSValue throw_fn_;
     
     QJSValue this_;
     QJSValue global_;
