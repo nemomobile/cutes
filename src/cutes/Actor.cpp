@@ -114,7 +114,7 @@ static endpoint_ptr endpoint(QJSValue const& ep)
         on_progress = ep.property("on_progress");
         if (!(on_reply.isCallable() || on_progress.isCallable()))
             if (isTrace())
-                trace() << "on_reply or on_progress are not callable";
+                tracer() << "on_reply or on_progress are not callable";
     } else if (!ep.isNull()) {
         throw Error(QString("Wrong endpoint? Expecting object, function or null")
                     + ep.toString());
@@ -175,7 +175,7 @@ void Actor::reload()
             return;
         }
         // cwd should be set to the same directory as for main engine
-        auto script = env->current_module();
+        auto script = env->current_module().first;
 
         worker_.reset(new WorkerThread(this, src_, script->fileName()));
     };
@@ -184,7 +184,7 @@ void Actor::reload()
 
 void Actor::setSource(QString const& src)
 {
-    if (isTrace()) trace() << "Actor src:" << src;
+    if (isTrace()) tracer() << "Actor src:" << src;
     if (src == src_)
         return;
 
@@ -316,9 +316,9 @@ void Actor::error(Message *reply)
         return;
     }
     if (isTrace()) {
-        trace() << "Processing actor error"
+        tracer() << "Processing actor error"
                 << reply->data_;
-        trace() << " Error processing function:" << cb.toString();
+        tracer() << " Error processing function:" << cb.toString();
     }
     auto params = QJSValueList();
     // TODO qt52
@@ -406,7 +406,7 @@ void Engine::processResult(QJSValue ret, endpoint_handle ep)
     try {
         if (!ret.isError()) {
             if (isTrace())
-                trace() << "Actor returned" << ret.toString();
+                tracer() << "Actor returned" << ret.toString();
             reply(msgFromValue(ret), ep, Event::Return);
         } else {
             QVariantMap err;

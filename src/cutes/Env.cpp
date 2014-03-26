@@ -1,5 +1,5 @@
 #include "util.hpp"
-//#include <cutes/util.hpp>
+#include <cutes/util.hpp>
 
 #include "Env.hpp"
 #include <QMap>
@@ -14,14 +14,8 @@
 
 #include <unistd.h>
 #include <iostream>
-// Q_DECLARE_METATYPE(QsExecuteEnv*);
-// Q_DECLARE_METATYPE(QsExecuteModule*);
-// Q_DECLARE_METATYPE(CutesModule*);
-
-// Q_DECLARE_METATYPE(QDir);
 
 Q_DECLARE_METATYPE(cutes::Env*);
-//Q_DECLARE_METATYPE(cutes::StringMap);
 
 namespace cutes {
 
@@ -29,6 +23,7 @@ static char const *error_converter_try = "%1 try {\n";
 
 static char const *error_converter_catch =
     "} catch (e) { \n"
+    "    cutes.trace(['Caught error', Object.prototype.toString.call(e)]);\n"
     "    if (e instanceof Error) throw e;\n"
     "    var res = new Error('Wrapped error: ' + e);\n"
     "    res.isWrapped = true;\n"
@@ -46,17 +41,19 @@ QString errorConverterCatch(QString const &epilog)
     return QString(error_converter_catch).arg(epilog);
 }
 
+const char *os_name =
 #ifdef Q_OS_WIN32
-const char *os_name = "windows";
+    "windows"
 #elif defined(Q_OS_LINUX)
-const char *os_name = "linux";
+    "linux"
 #elif defined(Q_OS_MAC)
-const char *os_name = "macos";
+    "macos"
 #elif defined(Q_OS_UNIX)
-const char *os_name = "unix";
+    "unix"
 #else
-const char *os_name = "unknown";
+    "unknown"
 #endif
+    ;
 
 static bool is_trace = false;
 
@@ -124,79 +121,84 @@ Env *loadEnv(QCoreApplication &app, QJSEngine &engine)
     return res;
 }
 
-// static js::VHandle fprintImpl(FILE *f, int first, v8::Arguments const &args)
-// {
-//     QTextStream out(f);
-//     auto engine = js::engine(args);
-//     auto len = args.Length();
-
-//     if (engine && len > first) {
-//         out << toQJSValue(*engine, args[first]).toString();
-//         for (int i = first + 1; i < len; ++i)
-//             out << " " << toQJSValue(*engine, args[i]).toString();
-//         out << '\n';
-//     }
-
-//     return js::VHandle();
-// }
-
-// static js::VHandle jsFPrint(v8::Arguments const &args)
-// {
-//     auto len = args.Length();
-//     if (!len)
-//         return js::VHandle();
-
-//     auto engine = js::engine(args);
-
-//     auto i = toQJSValue(*engine, args[0]).toVariant().toInt();
-//     FILE *f = (i == STDOUT_FILENO
-//                ? stdout : (i == STDERR_FILENO
-//                            ? stderr : nullptr));
-//     return fprintImpl(f, 1, args);
-// }
-
-// static js::VHandle jsPrint(v8::Arguments const &args)
-// {
-//     return fprintImpl(stdout, 0, args);
-// }
-
-// static js::VHandle jsReadline(v8::Arguments const &)
-// {
-//     QTextStream stream(stdin);
-//     return cutes::js::ValueToV8(stream.readLine());
-// }
-
-static void setupEngine(QJSEngine &engine)
+void Env::fprintImpl(FILE *f, QVariantList &l)
 {
-    // if it is created by some ecmascript engine there should be print()
-    // auto v8e = engine.handle();
-    // v8::Context::Scope cscope(v8e->context());
+    if (l.empty())
+        return;
 
-    engine.globalObject().setProperty("process", engine.newObject());
-    // TODO qt52
-    // if (engine.globalObject().property("print").isUndefined())
-    //     js::Set(engine, engine.globalObject(), "print", jsPrint);
+    QTextStream out(f);
 
-    // TODO qt52
-    // js::Set(engine, engine.globalObject(), "fprint", jsFPrint);
-    // js::Set(engine, engine.globalObject(), "readline", jsReadline);
+    out << l.front().toString();
+    l.pop_front();
+    for (auto const &v : l)
+        out << " " << v.toString();
+    out << '\n';
 }
+
+void Env::fprint(QVariant const &data)
+{
+    auto l = data.toList();
+    if (l.empty())
+        return;
+
+    auto out_id = l.front();
+    l.pop_front();
+    FILE *f;
+    if (static_cast<QMetaType::Type>(out_id.type()) == QMetaType::QString) {
+        auto s = out_id.toString();
+        f = (s == "stdout"
+             ? stdout : (s == "stderr"
+                         ? stderr : nullptr));
+    } else if (out_id.canConvert<unsigned>()) {
+        auto i = out_id.toUInt();
+        f = (i == STDOUT_FILENO
+             ? stdout : (i == STDERR_FILENO
+                         ? stderr : nullptr));
+    } else {
+        qWarning() << "Wrong stream id" << out_id;
+        return;
+    }
+    fprintImpl(f, l);
+}
+
+void Env::print(QVariant const &data)
+{
+    auto l = data.toList();
+    if (l.empty())
+        return;
+
+    fprintImpl(stdout, l);
+}
+
+void Env::trace(QVariant const &data)
+{
+    if (isTrace()) {
+        auto l = data.toList();
+        if (l.empty())
+            return;
+        fprintImpl(stderr, l);
+    }
+}
+
 
 Env::Env(QObject *parent, QCoreApplication &app, QJSEngine &engine)
     : QObject(parent)
     , engine_(engine)
-    , module_engine_(nullptr)
+    , this_(engine.newQObject(this))
+    , global_(engine.newObject())
     , actor_count_(0)
     , is_waiting_exit_(false)
 {
-    //qRegisterMetaType<StringMap>("StringMap");
     setObjectName("cutes");
+    QQmlEngine::setObjectOwnership(this, QQmlEngine::CppOwnership);
 
     args_ = app.arguments();
     args_.pop_front(); // remove interpreter name
 
     // to allow safe access to top w/o checking
-    scripts_.push(new Module(this, "", QDir::currentPath()));
+    auto m = new Module(this, "", QDir::currentPath());
+    QQmlEngine::setObjectOwnership(m, QQmlEngine::CppOwnership);
+    scripts_.push(std::make_pair(m, engine_.newQObject(m)));
 
     auto env = std::move(mkEnv());
 
@@ -218,29 +220,36 @@ Env::Env(QObject *parent, QCoreApplication &app, QJSEngine &engine)
     for (auto &path : paths)
         path_.push_back(QDir(path).canonicalPath());
 
-    if (isTrace()) trace() << "Path:" << path_;
+    if (isTrace()) tracer() << "Path:" << path_;
     app.setLibraryPaths(path_);
 
-    /// if qmlengine is used it is impossible to modify global object,
-    /// so cutes is added to qml context
     auto qml_engine = dynamic_cast<QQmlEngine*>(&engine_);
     if (qml_engine) {
+        /// if qmlengine is used it is impossible to modify global object,
+        /// so cutes is added to qml context
         qml_engine->rootContext()->setContextProperty("cutes", this);
-    } else {
-        setupEngine(engine);
-        engine.globalObject().setProperty("cutes", engine.newQObject(this));
-        // engine has non-frozen global object so using the same
-        // engine to load modules
-        module_engine_ = &engine;
     }
+
+    addToObjectPrototype("cutes_global__", global_);
+    auto add_wrapper_to_global = [this](char const *name) {
+        global_.setProperty(name, getWrapper(this_, name));
+        if (global_.property(name).isUndefined())
+            qWarning() << "Unable to add " << name << " to global obj";
+    };
+    std::for_each(global_names_.begin(), global_names_.end(), add_wrapper_to_global);
+    addToObjectPrototype("cutes__", this_);
 }
+
+const std::vector<char const*> Env::global_names_ = {{
+        "print", "fprint"
+    }};
+
 
 Env::~Env()
 {
-    // cutes::js::isolateRelease();
 }
 
-Module *Env::current_module()
+std::pair<Module*, QJSValue> Env::current_module()
 {
     return scripts_.top();
 }
@@ -248,14 +257,12 @@ Module *Env::current_module()
 QJSValue Env::module()
 {
     auto m = current_module();
-    // TODO qt52
-    // QQmlData *ddata = QQmlData::get(m, true);
-    // if (ddata) {
-    //     ddata->indestructible = true;
-    //     ddata->explicitIndestructibleSet = true;
-    // }
+    return m.second;
+}
 
-    return engine().newQObject(m);
+QString Env::getEngineName() const
+{
+    return "qt5";
 }
 
 QJSValue Env::actor()
@@ -278,6 +285,68 @@ void Env::actorReleased()
     if (--actor_count_ == 0 && is_waiting_exit_) {
         QCoreApplication::quit();
     }
+}
+
+QJSValue Env::callJsLazy
+(QString const &code, QString const &name
+ , QJSValue &fn, QJSValueList const &params)
+{
+    if (!fn.isCallable()) {
+        fn = engine().evaluate(code);
+        if (fn.isError()) {
+            qWarning() << "Error trying to evaluate js function"
+                       << fn.toString();
+            return QJSValue();
+        }
+    }
+    auto res = fn.call(params);
+    if (isTrace()) tracer() << "callJsLazy " << name << " result: " << res.toString();
+    if (res.isError())
+        qWarning() << "Error returned by js function" << res.toString();
+    return res;
+}
+
+void Env::addToObjectPrototype(QString const &name, QJSValue const &v)
+{
+    static const QString code =
+        "(function() {\n"
+        "    return function(name, obj) {\n"
+        "        Object.prototype[name] = obj;\n"
+        "    };\n"
+        "}).call(this)\n";
+
+    QJSValueList params;
+    params.push_back(name);
+    params.push_back(v);
+
+    callJsLazy(code, "proto", obj_proto_enhance_, params);
+}
+
+QJSValue Env::getWrapper
+(QJSValue const &obj, QString const &name, bool add_class_members)
+{
+        static const QString code =
+            "(function() { "
+            "return function(obj, name, add_class_members) {"
+            "    var fn = obj[name];"
+            "    var res = function() {"
+            "        return fn.apply(obj, [[].slice.call(arguments)]);"
+            "    };"
+            "    if (add_class_members) {"
+            "        var members = obj.members();"
+            "        for (var m in members) {"
+            "            res[m] = members[m];"
+            "        }"
+            "    }"
+            "    return res;"
+            "}; }).call(this)\n";
+
+    QJSValueList params;
+    params.push_back(obj);
+    params.push_back(name);
+    params.push_back(add_class_members);
+
+    return callJsLazy(code, "bridge", cpp_bridge_fn_, params);
 }
 
 bool Env::shouldWait()
@@ -424,8 +493,10 @@ bool Env::event(QEvent *e)
     return true;
 }
 
-QJSValue Env::extend(QString const& extension)
+QJSValue Env::extend(QString const &extension)
 {
+    if (isTrace())
+        qDebug() << "Extending v4 with " << extension;
     auto parts = extension.split('.');
     auto len = parts.length();
     if (!len) {
@@ -439,21 +510,25 @@ QJSValue Env::extend(QString const& extension)
         qWarning() << "Can't find extension: '" << rel_path << "'";
         return QJSValue();
     }
-    QLibrary lib(full_path);
-    if (!lib.load()) {
-        qWarning() << "Can't load library: '" << full_path << "'";
+    if (isTrace())
+        tracer() << "Using " << full_path << " to extend";
+    auto lib = new QLibrary(full_path, this);
+    if (!lib->load()) {
+        qWarning() << "Can't load library: '" << full_path;
+        qWarning() << "Reason: " << lib->errorString();
         return QJSValue();
     }
 
-    // TODO qt52
-    // auto fn = reinterpret_cast<cutesRegisterFnType>(lib.resolve(cutesRegisterName()));
-    // if (!fn) {
-    //     qWarning() << "Can't resolve symbol " << cutesRegisterName()
-    //                << " in '" << full_path << "'";
-    //     return QJSValue();
-    // }
-    // return fn(&engine());
-    return QJSValue();
+    auto fn = reinterpret_cast<cutesRegisterFnType>
+        (lib->resolve(cutesRegisterName()));
+    if (!fn) {
+        qWarning() << "Can't resolve symbol " << cutesRegisterName()
+                   << " in '" << full_path << "'";
+        return QJSValue();
+    }
+    auto obj = fn(&engine());
+    libraries_.insert(extension, std::make_pair(lib, obj));
+    return getWrapper(obj, "create", true);
 }
 
 void Env::addSearchPath(QString const &path, Position pos)
@@ -466,7 +541,9 @@ void Env::addSearchPath(QString const &path, Position pos)
 
 void Env::pushParentScriptPath(QString const &file_name)
 {
-    scripts_.push(new Module(this, file_name));
+    auto m = new Module(this, file_name);
+    QQmlEngine::setObjectOwnership(m, QQmlEngine::CppOwnership);
+    scripts_.push(std::make_pair(m, engine_.newQObject(m)));
 }
 
 QString Env::findFile(QString const &file_name)
@@ -481,7 +558,7 @@ QString Env::findFile(QString const &file_name)
         return QFileInfo(res).exists();
     };
 
-    auto script = scripts_.top();
+    auto script = scripts_.top().first;
     // first - relative to cwd
     if (mkRelative(QDir(script->cwd())))
         return res;
@@ -498,7 +575,7 @@ QString Env::libPath() const
 {
     QString res;
     QTextStream s(&res);
-    s << QDir(scripts_.top()->cwd()).canonicalPath();
+    s << QDir(scripts_.top().first->cwd()).canonicalPath();
     for (auto &d : path_)
         s << ":" << d;
     return res;
@@ -540,6 +617,7 @@ QJSValue Env::load(QString const &script_name, bool is_reload)
     }
 
     Module *script = new Module(this, file_name);
+    QQmlEngine::setObjectOwnership(script, QQmlEngine::CppOwnership);
 
     file_name = script->fileName();
     auto p = modules_.find(file_name);
@@ -550,23 +628,13 @@ QJSValue Env::load(QString const &script_name, bool is_reload)
 
     auto scope = mk_scope
         ([this, script](){
-            scripts_.push(script);
+            scripts_.push(std::make_pair(script, engine_.newQObject(script)));
         }
         , [this]() {
             scripts_.pop();
         });
 
-    /// qqmlengine is used and to supply "cutes" global to the invoked
-    /// module new engine is invoked in the same thread with
-    /// non-frozen global object
-    if (!module_engine_) {
-        module_engine_ = new QJSEngine(this);
-        setupEngine(*module_engine_);
-        auto self = module_engine_->newQObject(new EnvWrapper(this));
-        module_engine_->globalObject().setProperty("cutes", self);
-
-    }
-    auto res = script->load(*module_engine_);
+    auto res = script->load(engine_);
     if (p != modules_.end()) {
         p.value()->deleteLater();
     }
@@ -669,9 +737,15 @@ QJSValue Module::load(QJSEngine &engine)
         throw Error(QString("Can't open %1").arg(file_name));
 
     const QString prolog = errorConverterTry
-        ("(function() { var module = cutes.module"
+        ("(function() { "
+         "var cutes = Object.cutes__"
+         ", module = cutes.module"
          ", exports = module.exports"
          ", require = module.require"
+         ", print = Object.cutes_global__.print"
+         ", fprint = Object.cutes_global__.fprint"
+         ", require = module.require"
+         ", process = {}"
          ", __filename = module.filename;");
 
     const QString epilog = errorConverterCatch(" return exports; }).call(this)\n");
@@ -694,7 +768,7 @@ QJSValue Module::load(QJSEngine &engine)
         dst << input.readLine() << "\n";
     dst << epilog;
 
-    if (isTrace()) trace() << "Load: " << file_name;
+    if (isTrace()) tracer() << "Load: " << file_name;
     auto res = engine.evaluate(contents, file_name, line_nr);
     if (res.isError()) {
         qWarning() << "Error loading " << file_name << ":" << res.toString();

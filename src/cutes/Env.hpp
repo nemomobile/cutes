@@ -13,6 +13,7 @@
 #include <QDir>
 #include <QStack>
 #include <QDebug>
+#include <QVariantList>
 
 #include <stdexcept>
 
@@ -25,6 +26,7 @@
 // typedef QsExecute::Env QsExecuteEnv;
 // typedef cutes::Module CutesModule;
 
+class QLibrary;
 namespace cutes {
 
 QString errorConverterTry(QString const &);
@@ -118,6 +120,7 @@ class Env : public QObject
     Q_PROPERTY(QString os READ os);
     Q_PROPERTY(QVariantMap env READ env);
     Q_PROPERTY(QStringList path READ path);
+    Q_PROPERTY(QString engine READ getEngineName);
 
 public:
 
@@ -139,11 +142,15 @@ public:
     Q_INVOKABLE void defer(QJSValue const&);
     Q_INVOKABLE void idle();
     Q_INVOKABLE void setEnv(QString const&, QVariant const&);
+    Q_INVOKABLE void fprint(QVariant const &);
+    Q_INVOKABLE void print(QVariant const &);
+    Q_INVOKABLE void trace(QVariant const &);
 
     QJSValue module();
     QString os() const;
     QVariantMap const& env() const;
     QStringList const& path() const;
+    QString getEngineName() const;
 
     bool shouldWait();
     QStringList const& args() const;
@@ -152,23 +159,39 @@ public:
     void pushParentScriptPath(QString const&);
 
     QJSEngine &engine();
-    Module *current_module();
+    std::pair<Module*, QJSValue> current_module();
 private:
     Env(Env const&);
     QString findFile(QString const &);
     QString libPath() const;
+    QJSValue getWrapper(QJSValue const &, QString const &
+                        , bool add_class_members = false);
+    void fprintImpl(FILE *, QVariantList &);
+    void addToObjectPrototype(QString const&, QJSValue const&);
+
+    QJSValue callJsLazy(QString const&, QString const&
+                        , QJSValue &, QJSValueList const &);
 
     QJSEngine &engine_;
-    QJSEngine *module_engine_;
+
+    QJSValue obj_proto_enhance_;
+    QJSValue cpp_bridge_fn_;
+    
+    QJSValue this_;
+    QJSValue global_;
+
+    QMap<QString, std::pair<QLibrary*, QJSValue> > libraries_;
     QMap<QString, Module*> modules_;
 
+    static const std::vector<char const*> global_names_;
+    
     QVariantMap env_;
     QStringList path_;
-    QStack<Module*> scripts_;
+    QStack<std::pair<Module*, QJSValue> > scripts_;
     QStringList args_;
     int actor_count_;
     bool is_waiting_exit_;
-
+                         
 private slots:
     void actorAcquired();
     void actorReleased();
@@ -215,17 +238,17 @@ Env *loadEnv(QCoreApplication &app, QJSEngine &engine, QJSValue global);
 Env *loadEnv(QCoreApplication &app, QJSEngine &engine);
 
 
-template <typename T>
-QJSValue anyToScriptValue(QJSEngine *engine, T* const &in)
-{
-    return engine->newQObject(in);
-}
+// template <typename T>
+// QJSValue anyToScriptValue(QJSEngine *engine, T* const &in)
+// {
+//     return engine->newQObject(in);
+// }
 
-template <typename T>
-void anyFromScriptValue(const QJSValue &object, T* &out)
-{
-    out = qobject_cast<T*>(object.toQObject());
-}
+// template <typename T>
+// void anyFromScriptValue(const QJSValue &object, T* &out)
+// {
+//     out = qobject_cast<T*>(object.toQObject());
+// }
 
 // template <typename T>
 // void anyMetaTypeRegister(QJSEngine *engine)
@@ -274,7 +297,7 @@ private:
 
 bool isTrace();
 
-template <typename ... Args> decltype(qDebug()) trace(Args&&... args) {
+template <typename ... Args> decltype(qDebug()) tracer(Args&&... args) {
     return qDebug(std::forward<Args>(args)...);
 }
 

@@ -1,4 +1,4 @@
-#include <cutes/core.hpp>
+#include <cutes/v8/core.hpp>
 #include <cor/util.hpp>
 #include <QCoreApplication>
 #include <tut/tut.hpp>
