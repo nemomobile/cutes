@@ -91,6 +91,7 @@ var create_ctor = function(lib, cls_name, members) {
     res.prototype = new proto_ctor();
     var cls = lib[cls_name];
     if (cls) {
+        var name;
         for (name in cls)
             res[name] = cls[name];
     }
