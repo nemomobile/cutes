@@ -167,21 +167,31 @@ private:
     QJSValue getWrapper(QJSValue const &, QString const &
                         , bool add_class_members = false);
     void fprintImpl(FILE *, QVariantList &);
+    void addToObjectPrototype(QString const&, QJSValue const&);
+
+    QJSValue callJsLazy(QString const&, QString const&
+                        , QJSValue &, QJSValueList const &);
 
     QJSEngine &engine_;
-    QJSEngine *module_engine_;
+
+    QJSValue obj_proto_enhance_;
+    QJSValue cpp_bridge_fn_;
+    
     QJSValue this_;
+    QJSValue global_;
+
     QMap<QString, std::pair<QLibrary*, QJSValue> > libraries_;
     QMap<QString, Module*> modules_;
 
-    QJSValue cpp_bridge_fn_;
+    static const std::vector<char const*> global_names_;
+    
     QVariantMap env_;
     QStringList path_;
     QStack<std::pair<Module*, QJSValue> > scripts_;
     QStringList args_;
     int actor_count_;
     bool is_waiting_exit_;
-
+                         
 private slots:
     void actorAcquired();
     void actorReleased();

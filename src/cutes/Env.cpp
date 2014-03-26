@@ -121,23 +121,6 @@ Env *loadEnv(QCoreApplication &app, QJSEngine &engine)
     return res;
 }
 
-static void setupEngine(QJSEngine &engine)
-{
-    // if it is created by some ecmascript engine there should be print()
-    // auto v8e = engine.handle();
-    // v8::Context::Scope cscope(v8e->context());
-
-    engine.globalObject().setProperty("process", engine.newObject());
-
-    // TODO qt52
-    // if (engine.globalObject().property("print").isUndefined())
-    //     js::Set(engine, engine.globalObject(), "print", jsPrint);
-
-    // TODO qt52
-    // js::Set(engine, engine.globalObject(), "fprint", jsFPrint);
-    // js::Set(engine, engine.globalObject(), "readline", jsReadline);
-}
-
 void Env::fprintImpl(FILE *f, QVariantList &l)
 {
     if (l.empty())
@@ -201,12 +184,13 @@ void Env::trace(QVariant const &data)
 Env::Env(QObject *parent, QCoreApplication &app, QJSEngine &engine)
     : QObject(parent)
     , engine_(engine)
-    , module_engine_(nullptr)
+    , this_(engine.newQObject(this))
+    , global_(engine.newObject())
     , actor_count_(0)
     , is_waiting_exit_(false)
 {
-    //qRegisterMetaType<StringMap>("StringMap");
     setObjectName("cutes");
+    QQmlEngine::setObjectOwnership(this, QQmlEngine::CppOwnership);
 
     args_ = app.arguments();
     args_.pop_front(); // remove interpreter name
@@ -239,33 +223,26 @@ Env::Env(QObject *parent, QCoreApplication &app, QJSEngine &engine)
     if (isTrace()) tracer() << "Path:" << path_;
     app.setLibraryPaths(path_);
 
-    /// if qmlengine is used it is impossible to modify global object,
-    /// so cutes is added to qml context
     auto qml_engine = dynamic_cast<QQmlEngine*>(&engine_);
     if (qml_engine) {
+        /// if qmlengine is used it is impossible to modify global object,
+        /// so cutes is added to qml context
         qml_engine->rootContext()->setContextProperty("cutes", this);
-    } else {
-        setupEngine(engine);
-        // engine has non-frozen global object so using the same
-        // engine to load modules
-        module_engine_ = &engine;
-        this_ = engine.newQObject(this);
-        QQmlEngine::setObjectOwnership(this, QQmlEngine::CppOwnership);
-        engine.globalObject().setProperty("cutes", this_);
-
-        auto addWrapperFunction = [this](QString const &name) {
-            auto parent = engine_.globalObject();
-            if (parent.property(name).isUndefined()) {
-                if (isTrace()) tracer() << "Engine: add fn " << name;
-                parent.setProperty(name, getWrapper(this_, name));
-            }
-            if (parent.property(name).isUndefined())
-                qWarning() << "Unable to add " << name << " to global obj";
-        };
-        addWrapperFunction("print");
-        addWrapperFunction("fprint");
     }
+
+    addToObjectPrototype("cutes_global__", global_);
+    auto add_wrapper_to_global = [this](char const *name) {
+        global_.setProperty(name, getWrapper(this_, name));
+        if (global_.property(name).isUndefined())
+            qWarning() << "Unable to add " << name << " to global obj";
+    };
+    std::for_each(global_names_.begin(), global_names_.end(), add_wrapper_to_global);
+    addToObjectPrototype("cutes__", this_);
 }
+
+const std::vector<char const*> Env::global_names_ = {{
+        "print", "fprint"
+    }};
 
 
 Env::~Env()
@@ -310,11 +287,45 @@ void Env::actorReleased()
     }
 }
 
+QJSValue Env::callJsLazy
+(QString const &code, QString const &name
+ , QJSValue &fn, QJSValueList const &params)
+{
+    if (!fn.isCallable()) {
+        fn = engine().evaluate(code);
+        if (fn.isError()) {
+            qWarning() << "Error trying to evaluate js function"
+                       << fn.toString();
+            return QJSValue();
+        }
+    }
+    auto res = fn.call(params);
+    if (isTrace()) tracer() << "callJsLazy " << name << " result: " << res.toString();
+    if (res.isError())
+        qWarning() << "Error returned by js function" << res.toString();
+    return res;
+}
+
+void Env::addToObjectPrototype(QString const &name, QJSValue const &v)
+{
+    static const QString code =
+        "(function() {\n"
+        "    return function(name, obj) {\n"
+        "        Object.prototype[name] = obj;\n"
+        "    };\n"
+        "}).call(this)\n";
+
+    QJSValueList params;
+    params.push_back(name);
+    params.push_back(v);
+
+    callJsLazy(code, "proto", obj_proto_enhance_, params);
+}
+
 QJSValue Env::getWrapper
 (QJSValue const &obj, QString const &name, bool add_class_members)
 {
-    if (!cpp_bridge_fn_.isCallable()) {
-        QString code = 
+        static const QString code =
             "(function() { "
             "return function(obj, name, add_class_members) {"
             "    var fn = obj[name];"
@@ -329,18 +340,13 @@ QJSValue Env::getWrapper
             "    }"
             "    return res;"
             "}; }).call(this)\n";
-        cpp_bridge_fn_ = engine().evaluate(code);
-        if (cpp_bridge_fn_.isError())
-            qWarning() << "Error trying to evaluate wrapper"
-                       << cpp_bridge_fn_.toString();
-    }
+
     QJSValueList params;
     params.push_back(obj);
     params.push_back(name);
     params.push_back(add_class_members);
-    auto res = cpp_bridge_fn_.call(params);
-    if (isTrace()) tracer() << "Wrapper: " << name << res.toString();
-    return res;
+
+    return callJsLazy(code, "bridge", cpp_bridge_fn_, params);
 }
 
 bool Env::shouldWait()
@@ -628,19 +634,7 @@ QJSValue Env::load(QString const &script_name, bool is_reload)
             scripts_.pop();
         });
 
-    /// qqmlengine is used and to supply "cutes" global to the invoked
-    /// module new engine is invoked in the same thread with
-    /// non-frozen global object
-    if (!module_engine_) {
-        module_engine_ = new QJSEngine(this);
-        setupEngine(*module_engine_);
-        auto wrapper = new EnvWrapper(this);
-        QQmlEngine::setObjectOwnership(wrapper, QQmlEngine::CppOwnership);
-        auto self = module_engine_->newQObject(wrapper);
-        module_engine_->globalObject().setProperty("cutes", self);
-
-    }
-    auto res = script->load(*module_engine_);
+    auto res = script->load(engine_);
     if (p != modules_.end()) {
         p.value()->deleteLater();
     }
@@ -743,9 +737,15 @@ QJSValue Module::load(QJSEngine &engine)
         throw Error(QString("Can't open %1").arg(file_name));
 
     const QString prolog = errorConverterTry
-        ("(function() { var module = cutes.module"
+        ("(function() { "
+         "var cutes = Object.cutes__"
+         ", module = cutes.module"
          ", exports = module.exports"
          ", require = module.require"
+         ", print = Object.cutes_global__.print"
+         ", fprint = Object.cutes_global__.fprint"
+         ", require = module.require"
+         ", process = {}"
          ", __filename = module.filename;");
 
     const QString epilog = errorConverterCatch(" return exports; }).call(this)\n");
