@@ -95,10 +95,11 @@ static QVariant msgFromValue
     return QVariant();
 }
 
-static QVariant msgFromValue(QJSValue const &v
-                             , JSValueConvert convert = JSValueConvert::Deep)
+static QVariant msgFromValue
+(QJSValue const &v, JSValueConvert convert = JSValueConvert::Deep)
 {
-    return msgFromValue(v, convert, 0);
+    auto res = msgFromValue(v, convert, 0);
+    return res;
 }
 
 static endpoint_ptr endpoint(QJSValue const& ep)
@@ -169,7 +170,15 @@ void Actor::reload()
             << " Not qml engine and missing initialization?";
             return;
         }
-        auto env = contextProperty<Env>(*engine_, "cutes");
+        auto get_obj_prop = [this]() -> Env* {
+            auto jsv = engine_->evaluate("(function() { return Object.prototype.cutes__; }).call(this)");
+            if (jsv.isError()) {
+                qWarning() << "Object.prototype.cutes__ is " << jsv.toString();
+                return nullptr;
+            }
+            return jsv.toVariant().value<Env*>();
+        };
+        auto env = get_obj_prop();
         if (!env) {
             qWarning() << "No env set in context?";
             return;
@@ -297,13 +306,12 @@ void Actor::progress(Message *msg)
     callback(msg, msg->endpoint_->on_progress_);
 }
 
-void Actor::callback(Message */*msg*/, QJSValue& cb)
+void Actor::callback(Message *msg, QJSValue& cb)
 {
     if (!cb.isCallable())
         return;
     auto params = QJSValueList();
-    // TODO qt52
-    // params.push_back(cutes::toQJSValue(*engine_, msg->data_));
+    params.push_back(engine_->toScriptValue(msg->data_));
     cb.callWithInstance(cb, params);
 }
 
@@ -320,12 +328,12 @@ void Actor::error(Message *reply)
                 << reply->data_;
         tracer() << " Error processing function:" << cb.toString();
     }
-    auto params = QJSValueList();
-    // TODO qt52
-    // auto err = engine_
-    //     ? cutes::toQJSValue(*engine_, reply->data_)
-    //     : cutes::toQJSValue(reply->data_);
-    // params.push_back(err);
+    QJSValueList params;
+    if (engine_) {
+        params.push_back(engine_->toScriptValue(reply->data_));
+    } else {
+        qWarning() << "!engine_";
+    }
     cb.callWithInstance(cb, params);
 }
 
@@ -365,13 +373,14 @@ void Engine::load(Load *msg)
         auto script_env = loadEnv(*QCoreApplication::instance(), *engine_);
         script_env->pushParentScriptPath(msg->top_script_);
         handler_ = script_env->load(msg->src_, false);
-        if (!(handler_.isCallable() || handler_.isObject())) {
-            qWarning() << "Not a function or object but "
+        if (isTrace()) tracer() << msg->src_ << ": loaded " << handler_.toString();
+        if (handler_.isError()) {
+            qWarning() << "Error while loading " << msg->src_
+                       << ":" << handler_.toString();
+            toActor(new LoadError(msg->src_));
+        } else if (!(handler_.isCallable() || handler_.isObject())) {
+            qWarning() << msg->src_ << ": not a function or object but "
                        << handler_.toString();
-            if (handler_.isError()) {
-                qWarning() << "Exception while loading:" << handler_.toString();
-                toActor(new LoadError(msg->src_));
-            }
         }
     } catch (Error const &e) {
         qWarning() << "Failed to eval:" << msg->src_;
@@ -403,6 +412,7 @@ void WorkerThread::run()
 
 void Engine::processResult(QJSValue ret, endpoint_handle ep)
 {
+    if (isTrace()) tracer() << "Actor result:" << ret.toString();
     try {
         if (!ret.isError()) {
             if (isTrace())
@@ -440,8 +450,12 @@ QJSValue Engine::callConvertError(QJSValue const &fn
                                   , QJSValue const &instance
                                   , QJSValueList const &params)
 {
+    if (isTrace()) tracer() << "Call: " << fn.toString();
     if (convert_error_.isUndefined()) {
-        auto code = errorConverterTry("var res = function(fn, obj) {")
+        QString prelude =
+            "var cutes = Object.cutes__;"
+            "var res = function(fn, obj) {";
+        auto code = errorConverterTry(prelude)
             + "return fn.apply(obj, [].slice.call(arguments, 2));"
             + errorConverterCatch("}; res;");
         if (!engine_) {
@@ -474,8 +488,7 @@ void Engine::processMessage(Message *msg)
 
     if (handler_.isCallable()) {
         QJSValueList params;
-        // TODO qt52
-        // params.push_back(cutes::toQJSValue(*engine_, msg->data_));
+        params.push_back(engine_->toScriptValue(msg->data_));
         params.push_back(engine_->newQObject
                          (new MessageContext(this, reply_ep)));
         ret = callConvertError(handler_, handler_, params);
@@ -503,8 +516,7 @@ void Engine::processRequest(Request *req)
     if (method.isCallable()) {
         MessageContext *ctx = new MessageContext(this, reply_ep);
         QJSValueList params;
-        // TODO qt52
-        // params.push_back(cutes::toQJSValue(*engine_, req->data_));
+        params.push_back(engine_->toScriptValue(req->data_));
         params.push_back(engine_->newQObject(ctx));
         ret = callConvertError(method, handler_, params);
         ctx->disable();
