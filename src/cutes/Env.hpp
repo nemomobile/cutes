@@ -155,6 +155,7 @@ public:
     bool shouldWait();
     QStringList const& args() const;
     QJSValue load(QString const &, bool is_reload);
+    QJSValue eval(QString const &);
     void addSearchPath(QString const &, Position);
     void pushParentScriptPath(QString const&);
 
@@ -191,6 +192,7 @@ private:
     QStack<std::pair<Module*, QJSValue> > scripts_;
     QStringList args_;
     int actor_count_;
+    bool is_eval_;
     bool is_waiting_exit_;
                          
 private slots:

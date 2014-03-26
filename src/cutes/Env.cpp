@@ -31,6 +31,17 @@ static char const *error_converter_catch =
     "    throw res;\n"
     "}; %1\n";
 
+static char const *std_vars_ =
+    "var cutes = Object.cutes__"
+    ", module = cutes.module"
+    ", exports = module.exports"
+    ", require = module.require"
+    ", print = Object.cutes_global__.print"
+    ", fprint = Object.cutes_global__.fprint"
+    ", require = module.require"
+    ", process = {}"
+    ", __filename = module.filename;";
+
 QString errorConverterTry(QString const &prolog)
 {
     return QString(error_converter_try).arg(prolog);
@@ -187,6 +198,7 @@ Env::Env(QObject *parent, QCoreApplication &app, QJSEngine &engine)
     , this_(engine.newQObject(this))
     , global_(engine.newObject())
     , actor_count_(0)
+    , is_eval_(false)
     , is_waiting_exit_(false)
 {
     if (isTrace()) tracer() << "New js environment for " << &engine
@@ -274,7 +286,8 @@ QJSValue Env::actor()
             this, SLOT(actorAcquired()));
     connect(actor, SIGNAL(released()),
             this, SLOT(actorReleased()));
-    return engine_.newQObject(actor);//, QJSEngine::ScriptOwnership);
+    QQmlEngine::setObjectOwnership(actor, QQmlEngine::CppOwnership);
+    return engine_.newQObject(actor);
 }
 
 void Env::actorAcquired()
@@ -362,7 +375,14 @@ bool Env::shouldWait()
 
 void Env::exit(int rc)
 {
-    QCoreApplication::instance()->exit(rc);
+    if (isTrace()) tracer() << "exit(" << rc << ")";
+    auto app = QCoreApplication::instance();
+    if (app) {
+        Actor::quitAll();
+        app->exit(rc);
+    } else {
+        qWarning() << "No QCoreApplication instance";
+    }
 }
 
 class EnvEvent : public QEvent
@@ -644,6 +664,16 @@ QJSValue Env::load(QString const &script_name, bool is_reload)
     return res;
 }
 
+QJSValue Env::eval(QString const &line)
+{
+    if (!is_eval_) {
+        auto s = engine_.evaluate(std_vars_);
+        if (s.isError())
+            qWarning() << "Can't evaluate std vars: " << s.toString();
+        is_eval_ = true;
+    }
+    return engine_.evaluate(line);
+}
 
 QString Env::os() const
 {
@@ -738,19 +768,10 @@ QJSValue Module::load(QJSEngine &engine)
     if (!file.open(QFile::ReadOnly))
         throw Error(QString("Can't open %1").arg(file_name));
 
-    const QString prolog = errorConverterTry
-        ("(function() { "
-         "var cutes = Object.cutes__"
-         ", module = cutes.module"
-         ", exports = module.exports"
-         ", require = module.require"
-         ", print = Object.cutes_global__.print"
-         ", fprint = Object.cutes_global__.fprint"
-         ", require = module.require"
-         ", process = {}"
-         ", __filename = module.filename;");
+    static const QString naked_prolog(QString("(function() { %1").arg(std_vars_));
+    static const QString prolog = errorConverterTry(naked_prolog);
 
-    const QString epilog = errorConverterCatch(" return exports; }).call(this)\n");
+    static const QString epilog = errorConverterCatch(" return exports; }).call(this)\n");
     QString contents;
     contents.reserve(file.size() + prolog.size() + epilog.size());
 
