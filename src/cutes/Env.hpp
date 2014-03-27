@@ -147,7 +147,9 @@ public:
     Q_INVOKABLE void trace(QVariant const &);
     Q_INVOKABLE QJSValue eval(QString const &);
     Q_INVOKABLE QJSValue globals() const;
-    Q_INVOKABLE QJSValue mkVariadic(QJSValue const &, QJSValue const &);
+    Q_INVOKABLE QJSValue mkVariadic(QJSValue const &
+                                    , QJSValue const &
+                                    , QJSValue const &);
 
     QJSValue module();
     QString os() const;
@@ -170,6 +172,10 @@ private:
     void fprintImpl(FILE *, QVariantList &);
     void addToObjectPrototype(QString const&, QJSValue const&);
 
+    Q_INVOKABLE QJSValue mkVariadicImpl(QJSValue const &
+                                        , QJSValue const &members = QJSValue()
+                                        , QJSValue const &obj = QJSValue()
+                                    );
     QJSValue callJsLazy(QString const&, QString const&
                         , QJSValue &, QJSValueList const &);
 

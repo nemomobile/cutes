@@ -250,7 +250,7 @@ Env::Env(QObject *parent, QCoreApplication &app, QJSEngine &engine)
     addToObjectPrototype("cutes_global__", global_);
     auto add_wrapper_to_global = [this](char const *name) {
         global_.setProperty
-        (name, mkVariadic(this_.property(name), QJSValue()));
+        (name, mkVariadicImpl(this_.property(name)));
         if (global_.property(name).isUndefined())
             qWarning() << "Unable to add " << name << " to global obj";
     };
@@ -355,11 +355,13 @@ void Env::addToObjectPrototype(QString const &name, QJSValue const &v)
  *
  * @return resulting variadic function
  */
-QJSValue Env::mkVariadic(QJSValue const &fn, QJSValue const &members)
+QJSValue Env::mkVariadicImpl(QJSValue const &fn
+                             , QJSValue const &members
+                             , QJSValue const &obj)
 {
         static const QString code =
             "(function() { "
-            "return function(fn, members) {"
+            "return function(fn, members, obj) {"
             "    var res = function() {"
             "        return fn.apply(obj, [[].slice.call(arguments)]);"
             "    };"
@@ -374,7 +376,16 @@ QJSValue Env::mkVariadic(QJSValue const &fn, QJSValue const &members)
     QJSValueList params;
     params.push_back(fn);
     params.push_back(members);
+    params.push_back(obj);
     return callJsLazy(code, "bridge", cpp_bridge_fn_, params);
+}
+
+/// javascript wrapper for mkVariadicImpl
+QJSValue Env::mkVariadic(QJSValue const &fn
+                         , QJSValue const &members
+                         , QJSValue const &obj)
+{
+    return mkVariadicImpl(fn, members, obj);
 }
 
 bool Env::shouldWait()
@@ -563,7 +574,7 @@ QJSValue Env::extend(QString const &extension)
     }
     auto obj = fn(&engine());
     libraries_.insert(extension, std::make_pair(lib, obj));
-    return mkVariadic(obj.property("create"), obj.property("members"));
+    return mkVariadicImpl(obj.property("create"), obj.property("members"));
 }
 
 void Env::addSearchPath(QString const &path, Position pos)
