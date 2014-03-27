@@ -147,6 +147,7 @@ public:
     Q_INVOKABLE void trace(QVariant const &);
     Q_INVOKABLE QJSValue eval(QString const &);
     Q_INVOKABLE QJSValue globals() const;
+    Q_INVOKABLE QJSValue mkVariadic(QJSValue const &, QJSValue const &);
 
     QJSValue module();
     QString os() const;
@@ -166,8 +167,6 @@ private:
     Env(Env const&);
     QString findFile(QString const &);
     QString libPath() const;
-    QJSValue getWrapper(QJSValue const &, QString const &
-                        , bool add_class_members = false);
     void fprintImpl(FILE *, QVariantList &);
     void addToObjectPrototype(QString const&, QJSValue const&);
 

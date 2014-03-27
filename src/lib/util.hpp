@@ -205,6 +205,7 @@ typedef std::function<QJSValue (QJSEngine &, QVariantList const &)> obj_ctor_typ
 class ObjectFactory : public QObject
 {
     Q_OBJECT
+    Q_PROPERTY(QVariantMap members READ getMembers)
 public:
     ObjectFactory(QJSEngine *e)
         : engine_(e)
@@ -213,7 +214,7 @@ public:
     }
 
     Q_INVOKABLE QJSValue create(QVariant const &);
-    Q_INVOKABLE QVariantMap members();
+    Q_INVOKABLE QVariantMap const & getMembers();
 private:
 
     void init();

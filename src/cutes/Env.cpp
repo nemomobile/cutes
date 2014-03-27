@@ -245,9 +245,12 @@ Env::Env(QObject *parent, QCoreApplication &app, QJSEngine &engine)
         qml_engine->rootContext()->setContextProperty("cutes", this);
     }
 
+    // workaround to frozen global object in qml engine: enhance
+    // object prototype with cutes-specific objects
     addToObjectPrototype("cutes_global__", global_);
     auto add_wrapper_to_global = [this](char const *name) {
-        global_.setProperty(name, getWrapper(this_, name));
+        global_.setProperty
+        (name, mkVariadic(this_.property(name), QJSValue()));
         if (global_.property(name).isUndefined())
             qWarning() << "Unable to add " << name << " to global obj";
     };
@@ -338,18 +341,29 @@ void Env::addToObjectPrototype(QString const &name, QJSValue const &v)
     callJsLazy(code, "proto", obj_proto_enhance_, params);
 }
 
-QJSValue Env::getWrapper
-(QJSValue const &obj, QString const &name, bool add_class_members)
+/**
+ * convert function fn accepting array as the argument to the function
+ * accepting variable number of arguments. This is done because I do
+ * not see a way how to implement native js function accepting
+ * variable argument list w/o using private headers.
+ *
+ * Also members object members will be added as resulting function
+ * members (to resemble class members).
+ *
+ * @param fn function to be wrapped
+ * @param members members to be added to the resulting function
+ *
+ * @return resulting variadic function
+ */
+QJSValue Env::mkVariadic(QJSValue const &fn, QJSValue const &members)
 {
         static const QString code =
             "(function() { "
-            "return function(obj, name, add_class_members) {"
-            "    var fn = obj[name];"
+            "return function(fn, members) {"
             "    var res = function() {"
             "        return fn.apply(obj, [[].slice.call(arguments)]);"
             "    };"
-            "    if (add_class_members) {"
-            "        var members = obj.members();"
+            "    if (members) {"
             "        for (var m in members) {"
             "            res[m] = members[m];"
             "        }"
@@ -358,10 +372,8 @@ QJSValue Env::getWrapper
             "}; }).call(this)\n";
 
     QJSValueList params;
-    params.push_back(obj);
-    params.push_back(name);
-    params.push_back(add_class_members);
-
+    params.push_back(fn);
+    params.push_back(members);
     return callJsLazy(code, "bridge", cpp_bridge_fn_, params);
 }
 
@@ -551,7 +563,7 @@ QJSValue Env::extend(QString const &extension)
     }
     auto obj = fn(&engine());
     libraries_.insert(extension, std::make_pair(lib, obj));
-    return getWrapper(obj, "create", true);
+    return mkVariadic(obj.property("create"), obj.property("members"));
 }
 
 void Env::addSearchPath(QString const &path, Position pos)

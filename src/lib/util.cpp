@@ -2,7 +2,7 @@
 
 namespace cutes { namespace js {
 
-QVariantMap ObjectFactory::members()
+QVariantMap const & ObjectFactory::getMembers()
 {
     return members_;
 }
