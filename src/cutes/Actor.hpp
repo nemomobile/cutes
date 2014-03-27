@@ -41,6 +41,7 @@
 #include <QSharedPointer>
 
 #include <memory>
+#include <set>
 
 namespace cutes
 {
@@ -115,7 +116,7 @@ private:
     QJSValue convert_error_;
 };
 
-class WorkerThread : protected QThread
+class WorkerThread : public QThread
 {
     Q_OBJECT;
 public:
@@ -148,6 +149,8 @@ public:
     Q_INVOKABLE void wait();
     Q_INVOKABLE void reload();
 
+    static void quitAll();
+
 protected:
 
     virtual bool event(QEvent *);
@@ -177,6 +180,9 @@ private:
     QScopedPointer<WorkerThread> worker_;
     QMap<Endpoint*, endpoint_ptr> endpoints_;
     long cookie_;
+
+    static QMutex actors_mutex_;
+    static std::set<Actor*> actors_;
 };
 
 class QmlActor : public Actor

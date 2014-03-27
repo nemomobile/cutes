@@ -37,6 +37,7 @@
 #include <QMap>
 #include <QDateTime>
 #include <QJSValueIterator>
+#include <mutex>
 
 namespace cutes {
 
@@ -46,6 +47,20 @@ enum class JSValueConvert
 {
     Deep, Shallow
 };
+
+QMutex Actor::actors_mutex_;
+std::set<Actor*> Actor::actors_;
+
+void Actor::quitAll()
+{
+    std::lock_guard<QMutex> lock(actors_mutex_);
+    for (auto *actor : actors_) {
+        if (isTrace()) tracer() << "Quit actor " << actor;
+        actor->worker_->quit();
+        actor->worker_->wait();
+        if (isTrace()) tracer() << "Quited actor " << actor;
+    }
+}
 
 
 static QVariant msgFromValue
@@ -128,10 +143,14 @@ Actor::Actor(QJSEngine *engine)
     , unreplied_count_(0)
     , cookie_(0)
 {
+    std::lock_guard<QMutex> lock(actors_mutex_);
+    actors_.insert(this);
 }
 
 Actor::~Actor()
 {
+    std::lock_guard<QMutex> lock(actors_mutex_);
+    actors_.erase(this);
 }
 
 QString Actor::source() const
