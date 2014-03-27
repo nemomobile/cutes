@@ -24,6 +24,13 @@ Obsoletes: cutes < 0.7.10
 %description
 QtScript environment and "interpreter"
 
+%package devel
+Summary: Development support for cutes extensions
+Group: System Environment/Libraries
+Requires: %{name} = %{version}-%{release}
+%description devel
+%{summary}
+
 %define qt_importdir %{_libdir}/qt5/qml
 %define jslibdir %{_datadir}/cutes
 
@@ -50,3 +57,11 @@ rm -rf %{buildroot}
 %{qt_importdir}/Mer/Cutes/qmldir
 %{_mandir}/man1/cutes.1.gz
 %{jslibdir}/*.js
+
+%files devel
+%defattr(-,root,root,-)
+%{_libdir}/pkgconfig/*.pc
+%dir %{_includedir}/cutes
+%{_includedir}/cutes/*.hpp
+%{_libdir}/cutes/bin/preprocess_bridge.py
+

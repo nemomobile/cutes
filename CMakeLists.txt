@@ -22,6 +22,9 @@ ELSE()
 ENDIF()
 SET(DST_LIB lib${LIB_SUFFIX})
 
+configure_file(cutes.pc.in cutes.pc @ONLY)
+install(FILES cutes.pc DESTINATION ${DST_LIB}/pkgconfig)
+
 set(CUTES_LIB_PATH "${prefix}/share/cutes")
 
 if(${prefix} STREQUAL "/usr")
@@ -60,6 +63,14 @@ set(CMAKE_CXX_FLAGS
 #the mangling of 'va_list' has changed in GCC 4.4
 set(CMAKE_CXX_FLAGS
   "${CMAKE_CXX_FLAGS} -Wno-psabi")
+
+install(
+  DIRECTORY include/cutes
+  DESTINATION include
+  FILES_MATCHING
+  PATTERN "*.hpp"
+  PATTERN "*.h"
+)
 
 add_subdirectory("src")
 add_subdirectory("doc")
