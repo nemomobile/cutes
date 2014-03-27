@@ -6,8 +6,6 @@
  * @copyright LGPL 2.1 http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
  *
  */
-#include "util.hpp"
-
 #include <QProcess>
 #include <QFile>
 #include <QDir>
@@ -16,6 +14,9 @@
 #include <QMetaType>
 #include <QMutex>
 #include <QDateTime>
+
+#include <cutes/util.hpp>
+#include <cor/util.hpp>
 
 namespace cutes { namespace js {
 

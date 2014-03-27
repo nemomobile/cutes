@@ -1,4 +1,5 @@
 set(CMAKE_AUTOMOC TRUE)
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 MACRO(GENERATE_BRIDGE _name)
   set(_tgt ${_name}.cpp)
@@ -16,16 +17,16 @@ MACRO(GENERATE_BRIDGE _name)
 ENDMACRO(GENERATE_BRIDGE)
 
 generate_bridge(core)
-add_library(cutes-core SHARED core.cpp util.hpp util.cpp core.moc)
+add_library(cutes-core SHARED core.cpp core.moc)
+qt5_use_modules(cutes-core Core Qml)
 
 target_link_libraries(cutes-core
-  ${Qt5Core_LIBRARIES}
-  ${Qt5Qml_LIBRARIES}
+  cutes-qt5
   -ldl
 )
 
-add_executable(test_linking test_linking.cpp)
-target_link_libraries(test_linking cutes-core)
+add_executable(test_core_linking test_linking.cpp)
+target_link_libraries(test_core_linking cutes-core cutes-qt5)
 
 install(TARGETS cutes-core DESTINATION ${DST_LIB}/qt5/cutes/qt)
 install(FILES qtcore.js DESTINATION share/cutes)

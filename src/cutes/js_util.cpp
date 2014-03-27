@@ -1,4 +1,6 @@
-#include "util.hpp"
+#include <QMetaEnum>
+
+#include <cutes/util.hpp>
 
 namespace cutes { namespace js {
 

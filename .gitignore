@@ -6,6 +6,7 @@ cmake_install.cmake
 Makefile
 cscope*
 *.so
+*.so.*
 *.a
 moc_*
 doc/cutes.1.gz
@@ -13,3 +14,5 @@ doc/cutes.1.gz
 install_manifest.txt
 doc/doxygen
 *.moc
+*.*_parameters
+\#*\#

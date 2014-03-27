@@ -22,10 +22,7 @@ add_definitions(
 
 add_definitions(-DQT_SHARED)
 
-set(CMAKE_AUTOMOC TRUE)
-
-add_subdirectory(lib)
-
 add_subdirectory(cutes)
+add_subdirectory(lib)
 
 # TODO tests?

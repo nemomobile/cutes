@@ -7,10 +7,12 @@ set(CMAKE_AUTOMOC TRUE)
 
 add_definitions(-DQT_SHARED)
 
-set(SRC main.cpp QmlAdapter.cpp)
-set(LIBSRC Env.cpp Actor.cpp ActorEvents.cpp)
+qt5_wrap_cpp(UTIL_MOC_SRC ${CUTES_INCLUDES_DIR}/cutes/util.hpp)
 
-qt5_wrap_cpp(MOC_SRC ${HDRS} plugin-qt5.hpp)
+set(SRC main.cpp QmlAdapter.cpp)
+set(LIBSRC Env.cpp Actor.cpp ActorEvents.cpp  ${UTIL_MOC_SRC} js_util.cpp)
+
+qt5_generate_moc(MOC_SRC ${HDRS} plugin-qt5.hpp)
 
 add_library(${PLUGIN_NAME} MODULE ${MOC_SRC})
 add_library(${LIBNAME} SHARED ${LIBSRC})
@@ -25,15 +27,10 @@ target_link_libraries(${PLUGIN_NAME}
   ${LIBNAME}
 )
 
-target_link_libraries(${LIBNAME}
-  ${Qt5Core_LIBRARIES}
-  ${Qt5Qml_LIBRARIES}
-  ${Qt5Quick_LIBRARIES}
-  )
+qt5_use_modules(${LIBNAME} Core Qml Quick)
+qt5_use_modules(${NAME} Core Gui Widgets)
 
 target_link_libraries(${NAME}
-  ${Qt5Gui_LIBRARIES}
-  ${Qt5Widgets_LIBRARIES}
   ${LIBNAME}
   )
 
