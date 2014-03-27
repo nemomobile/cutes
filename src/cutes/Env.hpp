@@ -145,6 +145,8 @@ public:
     Q_INVOKABLE void fprint(QVariant const &);
     Q_INVOKABLE void print(QVariant const &);
     Q_INVOKABLE void trace(QVariant const &);
+    Q_INVOKABLE QJSValue eval(QString const &);
+    Q_INVOKABLE QJSValue globals() const;
 
     QJSValue module();
     QString os() const;
@@ -155,7 +157,6 @@ public:
     bool shouldWait();
     QStringList const& args() const;
     QJSValue load(QString const &, bool is_reload);
-    QJSValue eval(QString const &);
     void addSearchPath(QString const &, Position);
     void pushParentScriptPath(QString const&);
 

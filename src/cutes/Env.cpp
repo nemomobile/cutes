@@ -32,13 +32,14 @@ static char const *error_converter_catch =
     "}; %1\n";
 
 static char const *std_vars_ =
-    "var cutes = Object.cutes__"
-    ", module = cutes.module"
-    ", exports = module.exports"
+    "var cutes = Object.cutes__;"
+    "var module = cutes.module"
     ", require = module.require"
+    ", exports = module.exports"
     ", print = Object.cutes_global__.print"
     ", fprint = Object.cutes_global__.fprint"
     ", require = module.require"
+    ", globals = cutes.globals"
     ", process = {}"
     ", __filename = module.filename;";
 
@@ -673,6 +674,11 @@ QJSValue Env::eval(QString const &line)
         is_eval_ = true;
     }
     return engine_.evaluate(line);
+}
+
+QJSValue Env::globals() const
+{
+    return engine_.globalObject();
 }
 
 QString Env::os() const
