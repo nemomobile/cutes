@@ -3,6 +3,10 @@ cmake_minimum_required(VERSION 2.8)
 
 set(NAME cutes)
 
+IF(NOT DEFINED CUTES_VERSION)
+MESSAGE(FATAL_ERROR "Define CUTES_VERSION")
+ENDIF(NOT DEFINED CUTES_VERSION)
+
 set(prefix ${CMAKE_INSTALL_PREFIX})
 
 option(ENABLE_MULTIARCH "enable support for multi-arch distros (lib64)" OFF)

@@ -16,6 +16,11 @@ add_library(${PLUGIN_NAME} MODULE ${MOC_SRC})
 add_library(${LIBNAME} SHARED ${LIBSRC})
 add_executable(${NAME} ${SRC})
 
+set_target_properties(${LIBNAME} PROPERTIES
+  SOVERSION 0
+  VERSION ${CUTES_VERSION}
+  )
+
 target_link_libraries(${PLUGIN_NAME}
   ${LIBNAME}
 )
@@ -34,6 +39,5 @@ target_link_libraries(${NAME}
 
 install(TARGETS ${PLUGIN_NAME} DESTINATION lib${LIB_SUFFIX}/qt5/qml/${QMLPKG})
 install(FILES qmldir DESTINATION lib${LIB_SUFFIX}/qt5/qml/${QMLPKG})
-
-install(TARGETS ${NAME} DESTINATION bin)
 install(TARGETS ${LIBNAME} DESTINATION lib${LIB_SUFFIX})
+install(TARGETS ${NAME} DESTINATION bin)

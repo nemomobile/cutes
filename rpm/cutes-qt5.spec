@@ -31,7 +31,7 @@ QtScript environment and "interpreter"
 %setup -q -n %{name}-%{version}
 
 %build
-%cmake -DUSEQT=5
+%cmake -DUSEQT=5 -DCUTES_VERSION=%{version}
 make %{?jobs:-j%jobs}
 
 %install
