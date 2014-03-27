@@ -50,6 +50,7 @@ int executeScript(int argc, char *argv[])
                     qDebug() << v.toString();
             }
         } while (!line.isNull());
+        out << endl;
         return rc;
     }
 
