@@ -1,3 +1,10 @@
+/**
+ * @file Env.cpp
+ * @brief Cutes environment implementation
+ * @author (C) 2012-2014 Jolla Ltd. Denis Zalevskiy <denis.zalevskiy@jollamobile.com>
+ * @copyright LGPL 2.1 http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
+ */
+
 #include "util.hpp"
 #include <cutes/util.hpp>
 
@@ -845,23 +852,6 @@ QJSValue Module::load(QJSEngine &engine)
     is_loaded_ = true;
     return exports();
 }
-
-QString asString(QJSValue v)
-{
-    if (!v.isObject())
-        return v.toString();
-
-    QString res;
-    QTextStream out(&res);
-    QJSValueIterator it(v);
-    while (it.hasNext()) {
-        it.next();
-        out << it.name() << ": " << it.value().toString() << ", ";
-    }
-    out.flush();
-    return res;
-}
-
 
 QJSValue EnvWrapper::include(QString const& fname, bool is_reload)
 {

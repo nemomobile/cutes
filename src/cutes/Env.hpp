@@ -1,5 +1,12 @@
 #ifndef _QSEXECUTE_QSENV_HPP_
 #define _QSEXECUTE_QSENV_HPP_
+/**
+ * @file Env.hpp
+ * @brief Cutes environment private declarations
+ * @author (C) 2012-2014 Jolla Ltd. Denis Zalevskiy <denis.zalevskiy@jollamobile.com>
+ * @copyright LGPL 2.1 http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
+ */
+
 
 #include "Actor.hpp"
 
@@ -246,64 +253,6 @@ private:
 
 Env *loadEnv(QCoreApplication &app, QJSEngine &engine, QJSValue global);
 Env *loadEnv(QCoreApplication &app, QJSEngine &engine);
-
-
-// template <typename T>
-// QJSValue anyToScriptValue(QJSEngine *engine, T* const &in)
-// {
-//     return engine->newQObject(in);
-// }
-
-// template <typename T>
-// void anyFromScriptValue(const QJSValue &object, T* &out)
-// {
-//     out = qobject_cast<T*>(object.toQObject());
-// }
-
-// template <typename T>
-// void anyMetaTypeRegister(QJSEngine *engine)
-// {
-//     qScriptRegisterMetaType
-//         (engine, anyToScriptValue<T>, anyFromScriptValue<T>);
-// }
-
-QString asString(QJSValue);
-
-
-/**
- * just a wrapper supplied to the engine used to run modules (if
- * qmlengine is used). It uses pimpl idiom forwarding calls to Env and
- * it is owned by module engine
- *
- */
-class EnvWrapper : public QObject
-{
-    Q_OBJECT;
-
-    Q_PROPERTY(QJSValue module READ module);
-    Q_PROPERTY(QString os READ os);
-    Q_PROPERTY(QVariantMap env READ env);
-    Q_PROPERTY(QStringList path READ path);
-
-public:
-
-    EnvWrapper(Env* env) : QObject(env), env_(env) {}
-
-    Q_INVOKABLE QJSValue include(QString const&, bool is_reload = false);
-    Q_INVOKABLE QJSValue extend(QString const&);
-    Q_INVOKABLE QJSValue actor();
-    Q_INVOKABLE void exit(int);
-    Q_INVOKABLE void defer(QJSValue const&);
-    Q_INVOKABLE void idle();
-
-    QJSValue module();
-    QString os() const;
-    QVariantMap const& env() const;
-    QStringList const& path() const;
-
-private:
-    Env *env_;
-};
 
 bool isTrace();
 
