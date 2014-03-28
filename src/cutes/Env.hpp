@@ -162,6 +162,7 @@ public:
     QJSValue load(QString const &, bool is_reload);
     void addSearchPath(QString const &, Position);
     void pushParentScriptPath(QString const&);
+    bool addGlobal(QString const &, QJSValue const &);
 
     QJSEngine &engine();
     std::pair<Module*, QJSValue> current_module();

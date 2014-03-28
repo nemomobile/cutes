@@ -283,6 +283,19 @@ QString Env::getEngineName() const
     return "qt5";
 }
 
+bool Env::addGlobal(QString const &name, QJSValue const &value)
+{
+    auto qml_engine = dynamic_cast<QQmlEngine*>(&engine_);
+    if (qml_engine) {
+        // TODO try to understand the best way to do it
+        qDebug() << "Can't add global " << name
+                 << " to QQmlEngine: global object is frozen";
+        return false;
+    }
+    engine_.globalObject().setProperty(name, value);
+    return true;
+}
+
 QJSValue Env::actor()
 {
     auto actor = new StdActor(&engine_);
