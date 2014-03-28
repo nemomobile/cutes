@@ -26,7 +26,7 @@ QtScript environment and "interpreter"
 
 %package devel
 Summary: Development support for cutes extensions
-Group: System Environment/Libraries
+Group: Development/Libraries
 Requires: %{name} = %{version}-%{release}
 %description devel
 %{summary}
@@ -51,7 +51,7 @@ rm -rf %{buildroot}
 %files
 %defattr(-,root,root,-)
 %{_bindir}/cutes
-%{_libdir}/libcutes-qt5.so*
+%{_libdir}/libcutes-qt5.so.*
 %{_libdir}/qt5/cutes/qt/libcutes-core.so
 %{qt_importdir}/Mer/Cutes/libcutesqml.so
 %{qt_importdir}/Mer/Cutes/qmldir
@@ -61,7 +61,11 @@ rm -rf %{buildroot}
 %files devel
 %defattr(-,root,root,-)
 %{_libdir}/pkgconfig/*.pc
+%{_libdir}/libcutes-qt5.so
 %dir %{_includedir}/cutes
 %{_includedir}/cutes/*.hpp
 %{_libdir}/cutes/bin/preprocess_bridge.py
 
+%post -p /sbin/ldconfig
+
+%postun -p /sbin/ldconfig
