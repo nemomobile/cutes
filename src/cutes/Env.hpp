@@ -9,6 +9,7 @@
 
 
 #include "Actor.hpp"
+#include <cutes/env.hpp>
 
 #include <QObject>
 #include <QString>
@@ -24,22 +25,13 @@
 
 #include <stdexcept>
 
-// workaround for stupid moc namespaces handling
-// namespace cutes {
-// class Module;
-// class Env;
-// }
-
-// typedef QsExecute::Env QsExecuteEnv;
-// typedef cutes::Module CutesModule;
-
 class QLibrary;
 namespace cutes {
 
 QString errorConverterTry(QString const &);
 QString errorConverterCatch(QString const &);
 
-class Module;
+class ModuleImpl;
 class Env;
 
 typedef QMap<QString, QString> StringMap;
@@ -53,73 +45,7 @@ public:
     QString msg;
 };
 
-class JsError : public Error
-{
-public:
-    JsError(Env *env, QString const &file);
-private:
-    static QString errorMessage(Env *env, QString const &file);
-};
-
-// class Agent : public QJSEngineAgent
-// {
-// public:
-//     Agent(Env *);
-
-//     virtual void exceptionThrow
-//     (qint64 scriptId, const QJSValue & exception, bool hasHandler);
-
-// private:
-//     Env *env_;
-// };
-
-// class Global : public QObject
-// {
-//     Q_OBJECT;
-//
-//     Q_PROPERTY(QsExecuteModule * module READ module);
-//     Q_PROPERTY(QObject * qtscript READ qtscript);
-//     Q_PROPERTY(QJSValue exports READ exports WRITE setExports);
-
-// public:
-
-//     Global(QCoreApplication &, QJSEngine &, QJSValue &);
-//     virtual ~Global() {}
-
-//     QJSValue exports() const;
-//     void setExports(QJSValue);
-
-//     QObject * qtscript() const;
-//     Module * module() const;
-
-//     Env *env() const;
-// private:
-//     Global(Global const&);
-//     Env *env_;
-// };
-
-// typedef std::pair<unsigned long, QJSValue> Deferred;
-
-// class EventQueue : public QObject
-// {
-//     Q_OBJECT;
-// public:
-//     EventQueue(unsigned long);
-
-//     unsigned long enqueue(QJSValue const &);
-//     bool remove(unsigned long);
-//     QJSValue callNext();
-//     bool empty() const;
-//     bool clear();
-//     bool callAll();
-// private:
-//     unsigned long serial_;
-//     unsigned long max_len_;
-//     unsigned long len_;
-//     std::list<Deferred> events_;
-// };
-
-class Env : public QObject
+class EnvImpl : public QObject
 {
     Q_OBJECT;
 
@@ -129,15 +55,11 @@ class Env : public QObject
     Q_PROPERTY(QStringList path READ path);
     Q_PROPERTY(QString engine READ getEngineName);
 
+    typedef Env::Position Position;
 public:
 
-    enum Position {
-        Front,
-        Back
-    };
-
-    Env(QObject *, QCoreApplication &, QJSEngine &);
-    virtual ~Env();
+    EnvImpl(QObject *, QCoreApplication &, QJSEngine &);
+    virtual ~EnvImpl();
 
     virtual bool event(QEvent *);
 
@@ -172,18 +94,20 @@ public:
     bool addGlobal(QString const &, QJSValue const &);
 
     QJSEngine &engine();
-    std::pair<Module*, QJSValue> current_module();
+    Module* currentModule();
 private:
-    Env(Env const&);
+    static EnvImpl * create(QObject *, QCoreApplication *, QJSEngine *);
+    friend class Env;
+
+    EnvImpl(EnvImpl const&);
     QString findFile(QString const &);
     QString libPath() const;
-    void fprintImpl(FILE *, QVariantList &);
+    void fprintImpl(FILE *, QVariantList const &);
     void addToObjectPrototype(QString const&, QJSValue const&);
 
-    Q_INVOKABLE QJSValue mkVariadicImpl(QJSValue const &
-                                        , QJSValue const &members = QJSValue()
-                                        , QJSValue const &obj = QJSValue()
-                                    );
+    QJSValue mkVariadicImpl(QJSValue const &
+                            , QJSValue const &members = QJSValue()
+                            , QJSValue const &obj = QJSValue());
     QJSValue callJsLazy(QString const&, QString const&
                         , QJSValue &, QJSValueList const &);
 
@@ -226,8 +150,8 @@ class Module : public QObject
     Q_PROPERTY(QJSValue exports READ exports WRITE setExports);
 
 public:
-    Module(Env *parent, QString const&);
-    Module(Env *parent, QString const&, QString const&);
+    Module(EnvImpl *parent, QString const&);
+    Module(EnvImpl *parent, QString const&, QString const&);
     virtual ~Module() {}
 
     Q_INVOKABLE QJSValue require(QString const&);
@@ -241,18 +165,15 @@ public:
 
     QJSValue load(QJSEngine &);
 
-    QJSValue result_;
+    //QJSValue result_;
 private:
-    Env* env() { return static_cast<Env*>(parent()); }
-    Env const* env() const { return static_cast<Env const*>(parent()); }
+    EnvImpl* env() { return static_cast<EnvImpl*>(parent()); }
+    EnvImpl const* env() const { return static_cast<EnvImpl const*>(parent()); }
     QFileInfo info_;
     QJSValue exports_;
     bool is_loaded_;
     QString cwd_;
 };
-
-Env *loadEnv(QCoreApplication &app, QJSEngine &engine, QJSValue global);
-Env *loadEnv(QCoreApplication &app, QJSEngine &engine);
 
 bool isTrace();
 

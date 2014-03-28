@@ -203,7 +203,7 @@ void Actor::reload()
             return;
         }
         // cwd should be set to the same directory as for main engine
-        auto script = env->current_module().first;
+        auto script = env->getImpl()->currentModule();
 
         worker_.reset(new WorkerThread(this, src_, script->fileName()));
     };
@@ -389,7 +389,8 @@ void Engine::load(Load *msg)
 {
     engine_.reset(new QJSEngine(this));
     try {
-        auto script_env = loadEnv(*QCoreApplication::instance(), *engine_);
+        auto script_env = new EnvImpl
+            (engine_.data(), *QCoreApplication::instance(), *engine_);
         script_env->pushParentScriptPath(msg->top_script_);
         handler_ = script_env->load(msg->src_, false);
         if (isTrace()) tracer() << msg->src_ << ": loaded " << handler_.toString();

@@ -1,0 +1,9 @@
+prefix=@prefix@
+libdir=${prefix}/lib@LIB_SUFFIX@
+includedir=${prefix}/include
+
+Name: cutes
+Description: cutes execution environment
+Version: @CUTES_VERSION@
+Libs: -lcutes-qt5 -L${libdir}
+Cflags: -I${includedir}

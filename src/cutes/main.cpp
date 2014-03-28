@@ -31,7 +31,7 @@ int executeScript(int argc, char *argv[])
     auto parser = parseCmdLine(app);
 
     QJSEngine engine;
-    auto script_env = loadEnv(app, engine);
+    auto script_env = new Env(&engine, &app, &engine);
     int rc = EXIT_SUCCESS;
 
     auto args = parser->positionalArguments();

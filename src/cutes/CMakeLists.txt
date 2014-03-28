@@ -7,10 +7,14 @@ set(CMAKE_AUTOMOC TRUE)
 
 add_definitions(-DQT_SHARED)
 
-qt5_wrap_cpp(UTIL_MOC_SRC ${CUTES_INCLUDES_DIR}/cutes/util.hpp)
+qt5_wrap_cpp(GLOBAL_MOC_SRC
+  ${CUTES_INCLUDES_DIR}/cutes/util.hpp
+  ${CUTES_INCLUDES_DIR}/cutes/env.hpp
+  )
 
 set(SRC main.cpp QmlAdapter.cpp)
-set(LIBSRC Env.cpp Actor.cpp ActorEvents.cpp  ${UTIL_MOC_SRC} js_util.cpp)
+set(LIBSRC Env.cpp EnvImpl.cpp Actor.cpp ActorEvents.cpp
+  ${GLOBAL_MOC_SRC} js_util.cpp)
 
 qt5_generate_moc(MOC_SRC ${HDRS} plugin-qt5.hpp)
 
