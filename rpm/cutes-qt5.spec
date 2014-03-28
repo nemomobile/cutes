@@ -51,7 +51,7 @@ rm -rf %{buildroot}
 %files
 %defattr(-,root,root,-)
 %{_bindir}/cutes
-%{_libdir}/libcutes-qt5.so
+%{_libdir}/libcutes-qt5.so*
 %{_libdir}/qt5/cutes/qt/libcutes-core.so
 %{qt_importdir}/Mer/Cutes/libcutesqml.so
 %{qt_importdir}/Mer/Cutes/qmldir
