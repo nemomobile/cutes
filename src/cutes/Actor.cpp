@@ -189,15 +189,7 @@ void Actor::reload()
             << " Not qml engine and missing initialization?";
             return;
         }
-        auto get_obj_prop = [this]() -> EnvImpl* {
-            auto jsv = engine_->evaluate("(function() { return Object.prototype.cutes__; }).call(this)");
-            if (jsv.isError()) {
-                qWarning() << "Object.prototype.cutes__ is " << jsv.toString();
-                return nullptr;
-            }
-            return jsv.toVariant().value<EnvImpl*>();
-        };
-        auto env = get_obj_prop();
+        auto env = contextProperty<EnvImpl>(*engine_, "cutes");
         if (!env) {
             qWarning() << "No env set in context?";
             return;
