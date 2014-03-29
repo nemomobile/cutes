@@ -6,7 +6,8 @@ namespace cutes {
 Env::Env(QObject *parent, QCoreApplication *app, QJSEngine *eng)
     : QObject(parent)
     , impl_(EnvImpl::create(this, app, eng))
-{}
+{
+}
 
 Env::Env(Env &&from)
     : impl_(from.impl_)
@@ -16,11 +17,6 @@ Env::Env(Env &&from)
 
 Env::~Env()
 {
-}
-
-bool Env::event(QEvent *e)
-{
-    return impl_ ? impl_->event(e) : false;
 }
 
 QJSValue Env::require(QString const &name)

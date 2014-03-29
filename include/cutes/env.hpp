@@ -39,8 +39,6 @@ public:
     Env(Env const&) =delete;
     Env operator =(Env const&) =delete;
 
-    virtual bool event(QEvent *);
-
     QJSValue include(QString const&, bool is_reload);
     QJSValue require(QString const&);
     QJSValue extend(QString const&);
