@@ -30,7 +30,6 @@ static char const *error_converter_try = "%1 try {\n";
 
 static char const *error_converter_catch =
     "} catch (e) { \n"
-    "    cutes.trace(['Caught error', Object.prototype.toString.call(e)]);\n"
     "    if (e instanceof Error) throw e;\n"
     "    var res = new Error('Wrapped error: ' + e);\n"
     "    res.isWrapped = true;\n"
@@ -39,12 +38,9 @@ static char const *error_converter_catch =
     "}; %1\n";
 
 static char const *std_vars_ =
-    "var cutes = Object.cutes__;"
     "var module = cutes.module"
     ", require = module.require"
     ", exports = module.exports"
-    ", print = Object.cutes_global__.print"
-    ", fprint = Object.cutes_global__.fprint"
     ", require = module.require"
     ", globals = cutes.globals"
     ", process = {}"
@@ -85,6 +81,56 @@ Error::Error(QString const &s)
     : std::runtime_error(s.toStdString()),
       msg(s)
 { }
+
+class Globals
+{
+public:
+    Globals(EnvImpl *e) : env_(e)
+    {}
+
+    void init();
+    QString asParamNames() const;
+    void pushBack(QJSValueList &) const;
+    void setProperties(QJSValue &) const;
+private:
+    EnvImpl *env_;
+    static const std::vector<char const*> names_;
+    QMap<QString, QJSValue> globals_;
+};
+
+const std::vector<char const*> Globals::names_ = {{
+        "print", "fprint"
+    }};
+
+void Globals::init()
+{
+    auto js_env = env_->this_;
+    auto add_wrapper_to_global = [this, &js_env](char const *name) {
+        auto prop = js_env.property(name);
+        globals_.insert(name, env_->mkVariadicImpl(prop));
+    };
+    globals_.insert("cutes", js_env);
+    std::for_each(names_.begin(), names_.end(), add_wrapper_to_global);
+}
+
+QString Globals::asParamNames() const
+{
+    QStringList keys(globals_.keys());
+    return keys.join(", ");
+}
+
+void Globals::pushBack(QJSValueList &tgt) const
+{
+    for(auto it = globals_.begin(); it != globals_.end(); ++it)
+        tgt.push_back(it.value());
+}
+
+void Globals::setProperties(QJSValue &tgt) const
+{
+    for(auto it = globals_.begin(); it != globals_.end(); ++it)
+        tgt.setProperty(it.key(), it.value());
+}
+
 
 /**
  * convert system environment from "name=value" to map
@@ -168,7 +214,7 @@ EnvImpl::EnvImpl(QObject *parent, QCoreApplication &app, QJSEngine &engine)
     : QObject(parent)
     , engine_(engine)
     , this_(engine.newQObject(this))
-    , global_(engine.newObject())
+    , globals_(new Globals(this))
     , actor_count_(0)
     , is_eval_(false)
     , is_waiting_exit_(false)
@@ -216,25 +262,14 @@ EnvImpl::EnvImpl(QObject *parent, QCoreApplication &app, QJSEngine &engine)
         if (isTrace()) tracer() << qml_engine->rootContext() <<  " Set cutes to "
                                 << this_.toString() << " for " << this;
         qml_engine->rootContext()->setContextProperty("cutes", this);
+    } else {
+        auto c = engine_.globalObject().property("cutes");
+        if (c.isUndefined())
+            engine_.globalObject().setProperty("cutes", this_);
     }
 
-    // workaround to frozen global object in qml engine: enhance
-    // object prototype with cutes-specific objects
-    addToObjectPrototype("cutes_global__", global_);
-    auto add_wrapper_to_global = [this](char const *name) {
-        global_.setProperty
-        (name, mkVariadicImpl(this_.property(name)));
-        if (global_.property(name).isUndefined())
-            qWarning() << "Unable to add " << name << " to global obj";
-    };
-    std::for_each(global_names_.begin(), global_names_.end(), add_wrapper_to_global);
-    addToObjectPrototype("cutes__", this_);
+    globals_->init();
 }
-
-const std::vector<char const*> EnvImpl::global_names_ = {{
-        "print", "fprint"
-    }};
-
 
 EnvImpl::~EnvImpl()
 {
@@ -664,7 +699,7 @@ QJSValue EnvImpl::load(QString const &script_name, bool is_reload)
             scripts_.pop();
         });
 
-    auto res = script->load(engine_);
+    auto res = script->load();
     if (p != modules_.end()) {
         p.value()->deleteLater();
     }
@@ -675,6 +710,8 @@ QJSValue EnvImpl::load(QString const &script_name, bool is_reload)
 QJSValue EnvImpl::eval(QString const &line)
 {
     if (!is_eval_) {
+        auto global = engine_.globalObject();
+        globals_->setProperties(global);
         auto s = engine_.evaluate(std_vars_);
         if (s.isError())
             qWarning() << "Can't evaluate std vars: " << s.toString();
@@ -774,44 +811,60 @@ QString Module::fileName() const
     return info_.canonicalFilePath();
 }
 
-QJSValue Module::load(QJSEngine &engine)
+QJSValue EnvImpl::executeModule(QTextStream &input
+                                , QString const& file_name
+                                , size_t reserve_size)
 {
-    auto file_name = fileName();
-    QFile file(file_name);
-    if (!file.open(QFile::ReadOnly))
-        throw Error(QString("Can't open %1").arg(file_name));
+    static const QString prologFmt("(function(%1) { %2");
+    const QString prolog = errorConverterTry
+        (prologFmt.arg(globals_->asParamNames(), std_vars_));
 
-    static const QString naked_prolog(QString("(function() { %1").arg(std_vars_));
-    static const QString prolog = errorConverterTry(naked_prolog);
-
-    static const QString epilog = errorConverterCatch(" return exports; }).call(this)\n");
+    static const QString epilog = errorConverterCatch(" return exports; })\n");
     QString contents;
-    contents.reserve(file.size() + prolog.size() + epilog.size());
+    contents.reserve(reserve_size + prolog.size() + epilog.size());
 
     int line_nr = 1;
-
     QTextStream dst(&contents);
-    QTextStream input(&file);
-
     dst << prolog;
     QString first = input.readLine();
     if (!first.startsWith("#!")) {
         dst << first << "\n";
         line_nr = 0;
     }
-
     while (!input.atEnd())
         dst << input.readLine() << "\n";
     dst << epilog;
 
-    if (isTrace()) tracer() << "Load: " << file_name;
-    auto res = engine.evaluate(contents, file_name, line_nr);
+    auto res = engine_.evaluate(contents, file_name, line_nr);
     if (res.isError()) {
         qWarning() << "Error loading " << file_name << ":" << res.toString();
         if (res.hasProperty("stack"))
             qWarning() << "Stack:" << res.property("stack").toString();
         return res;
     }
+
+    QJSValueList params;
+    globals_->pushBack(params);
+    res = res.call(params);
+    if (res.isError()) {
+        qWarning() << "Error evaluating " << file_name << ":" << res.toString();
+        if (res.hasProperty("stack"))
+            qWarning() << "Stack:" << res.property("stack").toString();
+    }
+
+    return res;
+}
+
+QJSValue Module::load()
+{
+    auto file_name = fileName();
+    if (isTrace()) tracer() << "Load: " << file_name;
+    QFile file(file_name);
+    if (!file.open(QFile::ReadOnly))
+        throw Error(QString("Can't open %1").arg(file_name));
+
+    QTextStream input(&file);
+    auto res = env()->executeModule(input, file_name, file.size());
     setExports(res);
     is_loaded_ = true;
     return exports();

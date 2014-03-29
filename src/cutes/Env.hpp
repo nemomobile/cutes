@@ -45,6 +45,8 @@ public:
     QString msg;
 };
 
+class Globals;
+
 class EnvImpl : public QObject
 {
     Q_OBJECT;
@@ -95,6 +97,7 @@ public:
 
     QJSEngine &engine();
     Module* currentModule();
+    QJSValue executeModule(QTextStream &, QString const&, size_t);
 private:
     static EnvImpl * create(QObject *, QCoreApplication *, QJSEngine *);
     friend class Env;
@@ -118,13 +121,12 @@ private:
     QJSValue throw_fn_;
     
     QJSValue this_;
-    QJSValue global_;
+    std::unique_ptr<Globals> globals_;
+    friend class Globals;
 
     QMap<QString, std::pair<QLibrary*, QJSValue> > libraries_;
     QMap<QString, Module*> modules_;
 
-    static const std::vector<char const*> global_names_;
-    
     QVariantMap env_;
     QStringList path_;
     QStack<std::pair<Module*, QJSValue> > scripts_;
@@ -163,7 +165,7 @@ public:
     QJSValue exports() const;
     void setExports(QJSValue);
 
-    QJSValue load(QJSEngine &);
+    QJSValue load();
 
     //QJSValue result_;
 private:
