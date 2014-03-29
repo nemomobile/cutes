@@ -663,6 +663,7 @@ QUrl Adapter::qml() const
 
 void Adapter::setQml(QUrl const& url)
 {
+    if (isTrace()) tracer() << "Base url " << url;
     qml_ = url;
     auto env = getEnv();
     if (!env) {

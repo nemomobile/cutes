@@ -600,6 +600,7 @@ QJSValue EnvImpl::extend(QString const &extension)
 
 void EnvImpl::addSearchPath(QString const &path, Position pos)
 {
+    if (isTrace()) tracer() << "Add search path " << path;
     if (pos == Env::Front)
         path_.push_front(path);
     else
@@ -615,6 +616,7 @@ void EnvImpl::pushParentScriptPath(QString const &file_name)
 
 QString EnvImpl::findFile(QString const &file_name)
 {
+    if (isTrace()) tracer() << "Find " << file_name;
     if (QFileInfo(file_name).isAbsolute())
         return file_name;
 
@@ -631,10 +633,11 @@ QString EnvImpl::findFile(QString const &file_name)
         return res;
 
     // search in path
-    for (auto &d : path_)
+    for (auto &d : path_) {
+        if (isTrace()) tracer() << "Find in " << d;
         if (mkRelative(d))
             return res;
-
+    }
     return QString();
 }
 
