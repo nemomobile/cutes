@@ -36,6 +36,8 @@ qt5_use_modules(${NAME} Core Gui Widgets)
 
 target_link_libraries(${NAME}
   ${LIBNAME}
+  ${COR_LIBRARIES}
+  -ldl
   )
 
 install(TARGETS ${PLUGIN_NAME} DESTINATION lib${LIB_SUFFIX}/qt5/qml/${QMLPKG})

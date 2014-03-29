@@ -2,40 +2,44 @@
 
 #include <QApplication>
 #include <QDebug>
-#include <QCommandLineParser>
+#include <QQmlApplicationEngine>
 
 #include <cor/util.hpp>
+#include <cor/options.hpp>
 #include "Env.hpp"
 #include "QmlAdapter.hpp"
 
 namespace cutes {
 
-static int usage(int, char *argv[])
+typedef cor::OptParse<std::string> argv_parser_type;
+static argv_parser_type parser({{'h', "help"}, {'c', "cli"}},
+                               {{"help", "help"}, {"cli", "cli"}});
+struct CmdLine {
+    CmdLine(int argc, char *argv[]) : argc_(argc), argv_(argv) {}
+    mutable int argc_;
+    mutable char **argv_;
+    argv_parser_type::map_type opts;
+    std::vector<char const*> args;
+};
+
+static int usage(int rc)
 {
-    qDebug() << argv[0] << " <script_name>";
-    return 0;
+    parser.show_help(std::cerr, "cutes"
+                     , " [options] <js_or_qml_script_name>\n"
+                     "\twhere [options] are:\n");
+    return rc;
 }
 
-std::unique_ptr<QCommandLineParser> parseCmdLine(QCoreApplication &app)
+int executeScript(CmdLine const &cmd_line)
 {
-    auto res = cor::make_unique<QCommandLineParser>();
-    res->addHelpOption();
-    res->addPositionalArgument("source", "Source file (js or qml)");
-    res->process(app);
-    return res;
-}
-
-int executeScript(int argc, char *argv[])
-{
-    QCoreApplication app(argc, argv);
-    auto parser = parseCmdLine(app);
+    QCoreApplication app(cmd_line.argc_, cmd_line.argv_);
 
     QJSEngine engine;
     auto script_env = new Env(&engine, &app, &engine);
     int rc = EXIT_SUCCESS;
 
-    auto args = parser->positionalArguments();
-    if (!args.size()) {
+    if (cmd_line.args.size() < 2) {
+        if (isTrace()) tracer() << "Run repl";
         QTextStream in(stdin);
         QTextStream out(stdout);
         QString line;
@@ -54,7 +58,8 @@ int executeScript(int argc, char *argv[])
         return rc;
     }
 
-    QString script_file(args[0]);
+    QString script_file(cmd_line.args[1]);
+    if (isTrace()) tracer() << "Execute script " << script_file;
     try {
         auto res = script_env->load(script_file, false);
         if (res.isError())
@@ -68,15 +73,23 @@ int executeScript(int argc, char *argv[])
         ? app.exec() : rc;
 }
 
-int executeDeclarative(int argc, char *argv[])
+int executeQmlCli(CmdLine const &cmd_line)
 {
-    QApplication app(argc, argv);
-    if (app.arguments().size() < 2)
-        return usage(argc, argv);
-    QString script_file(app.arguments().at(1));
+    QCoreApplication app(cmd_line.argc_, cmd_line.argv_);
+    QString script_path(cmd_line.args.at(1));
+    if (isTrace()) tracer() << "Execute qml cli " << script_path;
+    QQmlApplicationEngine engine(script_path);
+    return app.exec();
+}
+
+int executeDeclarative(CmdLine const &cmd_line)
+{
+    QApplication app(cmd_line.argc_, cmd_line.argv_);
+    QString script_file(cmd_line.args.at(1));
+    if (isTrace()) tracer() << "Execute qml " << script_file;
 
     QDeclarativeView view;
-    QObject::connect(view.engine(), &QQmlEngine::quit, &app, &QCoreApplication::quit);
+    QObject::connect(view.engine(), SIGNAL(quit()), &app, SLOT(quit()));
     setupDeclarative(app, view, QFileInfo(script_file).absoluteFilePath());
     view.setSource(QUrl::fromLocalFile(script_file));
 
@@ -97,14 +110,19 @@ int executeDeclarative(int argc, char *argv[])
 int main(int argc, char *argv[])
 {
     using namespace cutes;
-    QString script_file;
-    if (argc == 1)
-        return executeScript(argc, argv);
+    CmdLine cmd_line(argc, argv);
+    parser.parse(argc, argv, cmd_line.opts, cmd_line.args);
+    if (cmd_line.opts.count("help"))
+        return usage(0);
 
-    if (argc >= 2) {
-        script_file = argv[1];
-        return (QFileInfo(script_file).suffix() == "qml")
-            ? executeDeclarative(argc, argv)
-            : executeScript(argc, argv);
-    }
+    if (cmd_line.args.size() == 1)
+        return executeScript(cmd_line);
+
+    QString script_file(cmd_line.args.at(1));
+
+    return (QFileInfo(script_file).suffix() == "qml")
+        ? (cmd_line.opts.count("cli")
+           ? executeQmlCli(cmd_line)
+           : executeDeclarative(cmd_line))
+        : executeScript(cmd_line);
 }
