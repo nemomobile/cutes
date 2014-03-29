@@ -16,7 +16,7 @@ set(SRC main.cpp QmlAdapter.cpp)
 set(LIBSRC Env.cpp EnvImpl.cpp Actor.cpp ActorEvents.cpp
   ${GLOBAL_MOC_SRC} js_util.cpp)
 
-qt5_generate_moc(MOC_SRC ${HDRS} plugin-qt5.hpp)
+qt5_wrap_cpp(MOC_SRC plugin-qt5.hpp)
 
 add_library(${PLUGIN_NAME} MODULE ${MOC_SRC})
 add_library(${LIBNAME} SHARED ${LIBSRC})

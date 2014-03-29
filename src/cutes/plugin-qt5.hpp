@@ -18,7 +18,9 @@ class Plugin : public QQmlExtensionPlugin
 public:
     void initializeEngine(QQmlEngine *engine, const char *)
     {
-        loadEnv(*QCoreApplication::instance(), *engine);
+        auto app = QCoreApplication::instance();
+        if (app)
+            new EnvImpl(app, *app, *engine);
     }
 
     void registerTypes(char const* uri) {
