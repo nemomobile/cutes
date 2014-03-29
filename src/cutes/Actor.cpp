@@ -189,13 +189,13 @@ void Actor::reload()
             << " Not qml engine and missing initialization?";
             return;
         }
-        auto get_obj_prop = [this]() -> Env* {
+        auto get_obj_prop = [this]() -> EnvImpl* {
             auto jsv = engine_->evaluate("(function() { return Object.prototype.cutes__; }).call(this)");
             if (jsv.isError()) {
                 qWarning() << "Object.prototype.cutes__ is " << jsv.toString();
                 return nullptr;
             }
-            return jsv.toVariant().value<Env*>();
+            return jsv.toVariant().value<EnvImpl*>();
         };
         auto env = get_obj_prop();
         if (!env) {
@@ -203,7 +203,7 @@ void Actor::reload()
             return;
         }
         // cwd should be set to the same directory as for main engine
-        auto script = env->getImpl()->currentModule();
+        auto script = env->currentModule();
 
         worker_.reset(new WorkerThread(this, src_, script->fileName()));
     };
@@ -680,7 +680,7 @@ void Adapter::setQml(QUrl const& url)
     env->pushParentScriptPath(url.path());
 }
 
-Env * Adapter::getEnv() const
+EnvImpl * Adapter::getEnv() const
 {
     auto engine = qmlEngine(this);
 
@@ -688,7 +688,9 @@ Env * Adapter::getEnv() const
         qWarning() << "Adapter.engine is null!";
         return nullptr;
     }
-    auto env = engine->rootContext()->contextProperty("cutes").value<Env*>();
+    auto prop = engine->rootContext()->contextProperty("cutes");
+    if (isTrace()) tracer() << engine->rootContext() << " Get adapter env: " << prop.toString();
+    auto env = prop.value<EnvImpl*>();
     return env;
 }
 

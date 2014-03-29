@@ -22,7 +22,7 @@
 #include <unistd.h>
 #include <iostream>
 
-Q_DECLARE_METATYPE(cutes::Env*);
+Q_DECLARE_METATYPE(cutes::EnvImpl*);
 
 namespace cutes {
 
@@ -213,6 +213,8 @@ EnvImpl::EnvImpl(QObject *parent, QCoreApplication &app, QJSEngine &engine)
     if (qml_engine) {
         /// if qmlengine is used it is impossible to modify global object,
         /// so cutes is added to qml context
+        if (isTrace()) tracer() << qml_engine->rootContext() <<  " Set cutes to "
+                                << this_.toString() << " for " << this;
         qml_engine->rootContext()->setContextProperty("cutes", this);
     }
 

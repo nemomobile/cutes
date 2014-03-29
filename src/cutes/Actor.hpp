@@ -208,19 +208,19 @@ public:
     virtual ~StdActor() {}
 };
 
-class Env;
+class EnvImpl;
 class Adapter : public QObject
 {
     Q_OBJECT;
     Q_PROPERTY(QUrl qml READ qml WRITE setQml);
-    Q_PROPERTY(Env* env READ getEnv);
+    Q_PROPERTY(EnvImpl* env READ getEnv);
 public:
     Adapter() {}
     virtual ~Adapter() {}
 
     QUrl qml() const;
     void setQml(QUrl const&);
-    Q_INVOKABLE Env *getEnv() const;
+    Q_INVOKABLE EnvImpl *getEnv() const;
 
 private:
     QUrl qml_;
