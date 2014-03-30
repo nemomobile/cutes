@@ -6,6 +6,10 @@ current_class = None
 added_classes = {}
 cpp_impl_methods = []
 
+collected_data = []
+pending_data = []
+namespace_name = None
+pending_after_namespace = []
 
 enum_format = '''
     Q_ENUMS({name})
@@ -80,6 +84,9 @@ struct JsTraits<{impl}>
 }};
 '''
 
+meta_format = '''Q_DECLARE_METATYPE({name}*);
+'''
+
 cpp_intro_format = '''// -----------------------------------------------------------------------------
 // THIS IS AUTOMATICALLY GENERATED FILE! DO NOT EDIT IT DIRECTLY!
 // Original source file is {name}.cpp.in
@@ -130,12 +137,33 @@ def cpp_intro(name):
 
 def cpp_impl():
     global cpp_impl_methods
+    collect_pending_data()
     res = '\n'.join(cpp_impl_methods)
     cpp_impl_methods = []
     return res
 
+def collect_pending_data():
+    global pending_data, collected_data
+    if len(pending_data):
+        collected_data.extend(pending_data)
+        pending_data = []
+
+def namespace(ns):
+    global namespace_name
+    namespace_name = ns
+    collect_pending_data()
+
+def before_def_out_namespace():
+    global pending_data, pending_after_namespace
+    pending_data.extend(pending_after_namespace)
+    pending_after_namespace = []
+
 def aclass(name, impl):
-    global current_class, class_members
+    global current_class, class_members, aclass_format, namespace_name
+
+    pending_after_namespace.append(
+        meta_format.format(name = '::'.join([namespace_name, name])))
+
     current_class = name
     added_classes[name] = []
     return traits_format.format(name = name, impl = impl)
@@ -228,8 +256,11 @@ with open(sys.argv[1], 'r') as infile:
             else:
                 out = l
             if not out is None:
-                outfile.write(out)
+                pending_data.append(out)
 
+collect_pending_data()
+with open(sys.argv[2], 'w') as outfile:
+    [outfile.write(x) for x in collected_data]
 current_class = None
 
 js_intro = '''// -----------------------------------------------------------------------------
@@ -255,7 +286,7 @@ var rename = function(from, to) {
     return [to, from];
 };
 '''
- 
+
 js_format = '''
 exports.{name} = ctor("{name}",
     [{members}]);

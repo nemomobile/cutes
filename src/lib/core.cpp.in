@@ -18,6 +18,7 @@
 #include <cutes/util.hpp>
 #include <cor/util.hpp>
 
+// @namespace("cutes::js")
 namespace cutes { namespace js {
 
 // @aclass("ByteArray", "QByteArray")
@@ -239,6 +240,11 @@ class Mutex : public JsObject<Mutex, QMutex>
 
 Mutex::base_type::ctors_type Mutex::ctors_;
 
+}}
+
+// @before_def_out_namespace()
+
+namespace cutes { namespace js {
 // @cpp_impl()
 
 void ObjectFactory::init()
