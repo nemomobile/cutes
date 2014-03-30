@@ -21,6 +21,8 @@
 // @namespace("cutes::js")
 namespace cutes { namespace js {
 
+// @before_decl()
+
 // @aclass("ByteArray", "QByteArray")
 class ByteArray : public JsObject<ByteArray, QByteArray>
 {

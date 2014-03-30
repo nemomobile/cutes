@@ -66,17 +66,16 @@ proxy_obj_p0_impl_format = '''
 }}'''
 
 get_cutes_obj_format = '''
-    Q_INVOKABLE QJSValue {name}({src_decl_params}){const};'''
+    Q_INVOKABLE {type}* {name}({src_decl_params}){const};'''
 
 get_cutes_obj_impl_format = '''
-QJSValue {cls}::{name}({src_params}){const}
+{type}* {cls}::{name}({src_params}){const}
 {{
-    return convert<QJSValue>({type}(engine_, impl_->{name}({dst_params})));
+    return new {type}(engine_, impl_->{name}({dst_params}));
 }}
 '''
 
 traits_format = '''
-class {name};
 template <>
 struct JsTraits<{impl}>
 {{
@@ -85,6 +84,9 @@ struct JsTraits<{impl}>
 '''
 
 meta_format = '''Q_DECLARE_METATYPE({name}*);
+'''
+
+class_fwd_format = '''class {name};
 '''
 
 cpp_intro_format = '''// -----------------------------------------------------------------------------
@@ -121,6 +123,11 @@ def format_params(params):
         i += 1
     return (', '.join(src), ', '.join(dst), ', '.join(src_decl))
 
+def collect_pending_data():
+    global pending_data, collected_data
+    if len(pending_data):
+        collected_data.extend(pending_data)
+        pending_data = []
 
 def format_all(src, **kwargs):
     global current_class
@@ -142,15 +149,11 @@ def cpp_impl():
     cpp_impl_methods = []
     return res
 
-def collect_pending_data():
-    global pending_data, collected_data
-    if len(pending_data):
-        collected_data.extend(pending_data)
-        pending_data = []
-
 def namespace(ns):
     global namespace_name
     namespace_name = ns
+
+def before_decl():
     collect_pending_data()
 
 def before_def_out_namespace():
@@ -159,8 +162,8 @@ def before_def_out_namespace():
     pending_after_namespace = []
 
 def aclass(name, impl):
-    global current_class, class_members, aclass_format, namespace_name
-
+    global current_class, class_members, aclass_format, namespace_name, collected_data
+    collected_data.append(class_fwd_format.format(name = name))
     pending_after_namespace.append(
         meta_format.format(name = '::'.join([namespace_name, name])))
 
