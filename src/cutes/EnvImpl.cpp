@@ -225,7 +225,8 @@ EnvImpl::EnvImpl(QObject *parent, QCoreApplication &app, QJSEngine &engine)
     QQmlEngine::setObjectOwnership(this, QQmlEngine::CppOwnership);
 
     args_ = app.arguments();
-    args_.pop_front(); // remove interpreter name
+    if (args_.size())
+        args_.pop_front(); // remove interpreter name
 
     // to allow safe access to top w/o checking
     auto m = new Module(this, "", QDir::currentPath());
