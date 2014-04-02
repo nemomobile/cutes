@@ -66,12 +66,12 @@ proxy_obj_p0_impl_format = '''
 }}'''
 
 get_cutes_obj_format = '''
-    Q_INVOKABLE {type}* {name}({src_decl_params}){const};'''
+    Q_INVOKABLE QJSValue {name}({src_decl_params}){const};'''
 
 get_cutes_obj_impl_format = '''
-{type}* {cls}::{name}({src_params}){const}
+QJSValue {cls}::{name}({src_params}){const}
 {{
-    return new {type}(engine_, impl_->{name}({dst_params}));
+    return convert<QJSValue>({type}(engine_, impl_->{name}({dst_params})));
 }}
 '''
 
