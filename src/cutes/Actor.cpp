@@ -139,7 +139,8 @@ static endpoint_ptr endpoint(QJSValue const& ep)
 }
 
 Actor::Actor(QJSEngine *engine)
-    : engine_(engine)
+    : QObject(engine)
+    , engine_(engine)
     , unreplied_count_(0)
     , cookie_(0)
 {
