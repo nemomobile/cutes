@@ -185,6 +185,21 @@ template <typename ... Args> decltype(qDebug()) tracer(Args&&... args) {
     return qDebug(std::forward<Args>(args)...);
 }
 
+enum class JSValueConvert
+{
+    Deep, Shallow
+};
+
+enum class JSValueConvertOptions
+{
+    NoError, AllowError
+};
+
+QVariant msgFromValue
+(QJSValue const &
+ , JSValueConvert convert = JSValueConvert::Deep
+ , JSValueConvertOptions options = JSValueConvertOptions::NoError);
+
 
 } // namespace
 

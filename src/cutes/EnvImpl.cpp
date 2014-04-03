@@ -154,7 +154,8 @@ void EnvImpl::fprintVariant(QTextStream &out, QVariant const &v)
 {
     auto t = (QMetaType::Type)v.type();
     auto printMapItem = [&out, this](QVariantMap::const_iterator it) {
-        fprintVariant(out, it.key());
+        auto key = it.key();
+        fprintVariant(out, QVariant(!key.isEmpty() ? key : QString("?")));
         out << ": ";
         fprintVariant(out, it.value());
     };
@@ -167,8 +168,8 @@ void EnvImpl::fprintVariant(QTextStream &out, QVariant const &v)
         auto m = v.toMap();
         auto it = m.begin();
         if (it != m.end())
-            printMapItem(it);
-        for (++it; it != m.end(); ++it) {
+            printMapItem(it++);
+        for (; it != m.end(); ++it) {
             out << ", ";
             printMapItem(it);
         }
@@ -896,9 +897,18 @@ QJSValue EnvImpl::executeModule(QTextStream &input
     globals_->pushBack(params);
     res = res.call(params);
     if (res.isError()) {
-        qWarning() << "Error evaluating " << file_name << ":" << res.toString();
-        if (res.hasProperty("stack"))
-            qWarning() << "Stack:" << res.property("stack").toString();
+        if (isTrace()) tracer() << "Caught error " << res.toString();
+        QVariant msg = res.toString();
+        if (res.isQObject() || res.isObject()) {
+            QTextStream out(stderr);
+            auto v = msgFromValue(res, JSValueConvert::Deep
+                                  , JSValueConvertOptions::AllowError);
+            out << "Exception evaluating " << file_name << ": ";
+            fprintVariant(out, v);
+            out << endl;
+        } else {
+            qWarning() << "Error evaluating " << file_name << ":" << res.toString();
+        }
     }
 
     return res;

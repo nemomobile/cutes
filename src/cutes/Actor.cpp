@@ -43,11 +43,6 @@ namespace cutes {
 
 #define MAX_MSG_DEPTH 50
 
-enum class JSValueConvert
-{
-    Deep, Shallow
-};
-
 QMutex Actor::actors_mutex_;
 std::set<Actor*> Actor::actors_;
 
@@ -64,7 +59,10 @@ void Actor::quitAll()
 
 
 static QVariant msgFromValue
-(QJSValue const &v, JSValueConvert convert, size_t depth)
+(QJSValue const &v
+ , JSValueConvert convert
+ , JSValueConvertOptions options
+ , size_t depth)
 {
     if (depth > MAX_MSG_DEPTH)
         throw Error("Reached max msg depth encoding QJSValue. Is there a cycle?");
@@ -86,11 +84,11 @@ static QVariant msgFromValue
         QVariantList res;
         auto len = v.property("length").toUInt();
         for (decltype(len) i = 0; i < len; ++i) {
-            auto value = msgFromValue(v.property(i), convert, depth + 1);
+            auto value = msgFromValue(v.property(i), convert, options, depth + 1);
             res.push_back(value);
         }
         return res;
-    } else if (v.isError()) {
+    } else if (v.isError() && options == JSValueConvertOptions::NoError) {
         throw Error(QString("Can't convert error") + v.toString());
     } else if (v.isObject()) {
         QVariantMap res;
@@ -101,7 +99,7 @@ static QVariant msgFromValue
                 && !v.hasOwnProperty(it.name()))
                 continue;
 
-            auto value = msgFromValue(it.value(), convert, depth + 1);
+            auto value = msgFromValue(it.value(), convert, options, depth + 1);
             if (value.isValid())
                 res[it.name()] = value;
         }
@@ -110,10 +108,10 @@ static QVariant msgFromValue
     return QVariant();
 }
 
-static QVariant msgFromValue
-(QJSValue const &v, JSValueConvert convert = JSValueConvert::Deep)
+QVariant msgFromValue
+(QJSValue const &v, JSValueConvert convert, JSValueConvertOptions options)
 {
-    auto res = msgFromValue(v, convert, 0);
+    auto res = msgFromValue(v, convert, options, 0);
     return res;
 }
 
