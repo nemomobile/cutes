@@ -370,23 +370,35 @@ void EnvImpl::actorAcquired()
 void EnvImpl::actorReleased()
 {
     if (--actor_count_ == 0 && is_waiting_exit_) {
+        if (isTrace()) tracer() << "Quit from waiting application";
         QCoreApplication::quit();
     }
 }
 
+QJSValue EnvImpl::evaluateLazy(QString const &code, QString const &, QJSValue &fn)
+{
+    if (fn.isUndefined()) {
+        auto res = engine().evaluate(code);
+        if (res.isError()) {
+            qWarning() << "Error trying to evaluate js function"
+                       << res.toString();
+            return fn;
+        }
+        fn = res;
+    }
+    return fn;
+}
+
 QJSValue EnvImpl::callJsLazy
 (QString const &code, QString const &name
- , QJSValue &fn, QJSValueList const &params)
+ , QJSValue &refval, QJSValueList const &params)
 {
-    if (!fn.isCallable()) {
-        fn = engine().evaluate(code);
-        if (fn.isError()) {
-            qWarning() << "Error trying to evaluate js function"
-                       << fn.toString();
-            return QJSValue();
-        }
-    }
-    auto res = fn.call(params);
+    QJSValue res;
+    QJSValue fn = evaluateLazy(code, name, refval);
+    if (!fn.isCallable())
+        return res;
+
+    res = fn.call(params);
     if (isTrace()) tracer() << "callJsLazy " << name << " result: " << res.toString();
     if (res.isError())
         qWarning() << "Error returned by js function" << res.toString();
@@ -407,6 +419,19 @@ void EnvImpl::addToObjectPrototype(QString const &name, QJSValue const &v)
     params.push_back(v);
 
     callJsLazy(code, "proto", obj_proto_enhance_, params);
+}
+
+QJSValue EnvImpl::throwJsError(QString const &msg)
+{
+    static const QString code = "(function(){ return function(data) {"
+        "throw new Error(data); }}).call(this)";
+    auto fn =  evaluateLazy(code, "throw_error", throw_fn_);
+    if (!fn.isCallable())
+        return QJSValue();
+
+    QJSValueList params;
+    params.push_back(msg);
+    return fn.callAsConstructor(params);
 }
 
 /**
@@ -462,6 +487,7 @@ bool EnvImpl::shouldWait()
     if (actor_count_) {
         is_waiting_exit_ = true;
     }
+    if (isTrace()) tracer() << "shouldWait: " << is_waiting_exit_;
     return is_waiting_exit_;
 }
 
@@ -714,11 +740,7 @@ QJSValue EnvImpl::include(QString const &file_name, bool is_reload)
         err_msg = QString("Unspecified error loading %1").arg(file_name);
     }
     // TODO Throw Js error
-    QJSValueList params;
-    params.push_back(!err_msg.isEmpty() ? err_msg : "");
-    static const QString code = "(function(){ return function(data) {"
-        "throw new Error(data); }}).call(this)";
-    return callJsLazy(code, "throw_error", throw_fn_, params);
+    return throwJsError(!err_msg.isEmpty() ? err_msg : "");
 }
 
 QJSValue EnvImpl::load(QString const &script_name, bool is_reload)

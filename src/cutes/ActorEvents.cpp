@@ -18,25 +18,23 @@ Endpoint::Endpoint(QJSValue const& on_reply
     , on_progress_(on_progress)
 {}
 
-Load::Load(QString const &src, QString const& top_script)
+Load::Load(QString const &src, QString const& top_script
+           , std::unique_ptr<ActorHolder> holder)
     : Event(Event::LoadScript)
     ,  src_(src)
     , top_script_(top_script)
+    , actor_holder_(std::move(holder))
 {}
 
 Load::~Load() {}
 
-LoadError::LoadError(QString const &src)
+LoadError::LoadError(QVariant const &info, std::unique_ptr<ActorHolder> holder)
     : Event(Event::LoadException)
-    ,  src_(src)
+    , info_(info)
+    , actor_holder_(std::move(holder))
 {}
 
 LoadError::~LoadError() {}
-
-EngineException::EngineException(QJSEngine const&, QJSValue const& err)
-    : Event(Event::LoadException)
-    , exception_(err.toVariant())
-{}
 
 Message::Message(QVariant const& data, endpoint_handle ep
                  , Event::Type type)

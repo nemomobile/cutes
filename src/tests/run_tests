@@ -1,0 +1,79 @@
+#!/bin/bash
+
+ARGS=$(getopt -o p:v --long "system,debug" -- "$@");
+eval set -- "$ARGS";
+
+EXEC=cutes
+VERBOSE=false
+
+while true; do
+    case "$1" in
+        -p)
+            EXEC=$2
+            shift 2;
+            ;;
+        -v)
+            echo "Verbose"
+            VERBOSE=true
+            shift 1;
+            ;;
+        --)
+            shift;
+            ;;
+        *)
+            break;
+            ;;
+    esac
+done
+
+EXEC=`which $EXEC`
+export LD_LIBRARY_PATH="`dirname $EXEC`:$LD_LIBRARY_PATH"
+if $VERBOSE; then
+    echo "Executable is $EXEC"
+    echo "LD_LIBRARY_PATH $LD_LIBRARY_PATH"
+fi
+
+function check_res {
+    if [ $# -ne 3 ]; then
+        echo "Unexpected params: $@"
+    fi
+    cmd=$1
+    expected=$2
+    test=$3
+    if $VERBOSE; then
+        echo "Executing TEST $cmd"
+        data=`$cmd`
+    else
+        `$cmd &>/dev/null`
+    fi
+    res=$?
+    if [ $res -ne $expected ]; then
+        echo "Error executing test $test. Got $res instead of $expected"
+        exit $res
+    fi
+}
+
+EXIT_FAILURE=1
+
+# check exiting with error if non-existing files are supplied
+cmd="cutes non_existing.qml"
+check_res "$cmd" $EXIT_FAILURE "Loading non-existing qml"
+cmd="cutes non_existing.js"
+check_res "$cmd" $EXIT_FAILURE "Loading non-existing js"
+cmd="cutes -cli non_existing.qml"
+check_res "$cmd" $EXIT_FAILURE "Loading non-existing qml in cli mode"
+
+cmd="cutes empty.js"
+check_res "$cmd" 0 "Loading empty js"
+
+cmd="cutes bad.js"
+check_res "$cmd" $EXIT_FAILURE "Loading bad js"
+
+cmd="cutes load_actor_bad.js"
+check_res "$cmd" $EXIT_FAILURE "load_actor_bad"
+
+cmd="cutes globals.js"
+check_res "$cmd" 0 "globals"
+
+cmd="cutes load_actor_globals.js"
+check_res "$cmd" 0 "load_actor_globals"

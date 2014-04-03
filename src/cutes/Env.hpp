@@ -98,6 +98,8 @@ public:
     QJSEngine &engine();
     Module* currentModule();
     QJSValue executeModule(QTextStream &, QString const&, size_t);
+    QJSValue throwJsError(QString const&);
+
 private:
     static EnvImpl * create(QObject *, QCoreApplication *, QJSEngine *);
     friend class Env;
@@ -113,6 +115,8 @@ private:
     QJSValue mkVariadicImpl(QJSValue const &
                             , QJSValue const &members = QJSValue()
                             , QJSValue const &obj = QJSValue());
+    QJSValue evaluateLazy(QString const&, QString const&
+                          , QJSValue &);
     QJSValue callJsLazy(QString const&, QString const&
                         , QJSValue &, QJSValueList const &);
 

@@ -196,7 +196,7 @@ void Actor::reload()
         // cwd should be set to the same directory as for main engine
         auto script = env->currentModule();
 
-        worker_.reset(new WorkerThread(this, src_, script->fileName()));
+        worker_.reset(new WorkerThread(this, src_, script->fileName(), cor::make_unique<ActorHolder>(this)));
     };
     execute(fn);
 }
@@ -359,25 +359,29 @@ Event::Event(Event::Type t)
 Event::~Event() {}
 
 WorkerThread::WorkerThread
-(Actor *actor, QString const &src, QString const& top_script)
+(Actor *actor, QString const &src, QString const& top_script, std::unique_ptr<ActorHolder> holder)
     : QThread(nullptr)
     , actor_(actor)
 {
-    mutex_.lock();
+    std::lock_guard<QMutex> lock(mutex_);
     start();
     cond_.wait(&mutex_);
-    QCoreApplication::postEvent(engine_.data(), new Load(src, top_script));
+    QCoreApplication::postEvent(engine_.data(), new Load(src, top_script, std::move(holder)));
     connect(engine_.data(), SIGNAL(onQuit()), this, SLOT(quit()));
-    mutex_.unlock();
 }
 
 void Engine::toActor(Event *ev)
 {
+    if (isTrace()) tracer() << "toActor" << actor_ << ": " << ev;
     QCoreApplication::postEvent(actor_, ev);
 }
 
 void Engine::load(Load *msg)
 {
+    if (!msg)
+        throw Error("Logical error: !msg");
+
+    if (isTrace()) tracer() << "Loading actor code from " << msg->src_;
     engine_.reset(new QJSEngine(this));
     try {
         auto script_env = new EnvImpl
@@ -388,7 +392,9 @@ void Engine::load(Load *msg)
         if (handler_.isError()) {
             qWarning() << "Error while loading " << msg->src_
                        << ":" << handler_.toString();
-            toActor(new LoadError(msg->src_));
+            auto info = msgFromValue(handler_, JSValueConvert::Deep
+                                     , JSValueConvertOptions::AllowError);
+            toActor(new LoadError(info, std::move(msg->actor_holder_)));
         } else if (!(handler_.isCallable() || handler_.isObject())) {
             qWarning() << msg->src_ << ": not a function or object but "
                        << handler_.toString();
@@ -396,7 +402,7 @@ void Engine::load(Load *msg)
     } catch (Error const &e) {
         qWarning() << "Failed to eval:" << msg->src_;
         qWarning() << e.msg;
-        // TODO toActor(new EngineException(*engine_));
+            toActor(new LoadError(e.msg, std::move(msg->actor_holder_)));
     }
 }
 
@@ -411,13 +417,13 @@ WorkerThread::~WorkerThread()
 
 void WorkerThread::run()
 {
+    engine_.reset(new Engine(actor_));
     auto on_exit = cor::on_scope_exit([this]() {
             engine_.reset();
         });
-    engine_.reset(new Engine(actor_));
-    mutex_.lock();
+    std::unique_lock<QMutex> lock(mutex_);
     cond_.wakeAll();
-    mutex_.unlock();
+    lock.unlock();
     exec();
 }
 
@@ -575,7 +581,7 @@ bool Engine::event(QEvent *e)
 
 bool Actor::event(QEvent *e)
 {
-    EngineException *ex;
+    LoadError *ex;
     bool res, is_release = false;
     switch (static_cast<Event::Type>(e->type())) {
     case (Event::Progress):
@@ -588,8 +594,9 @@ bool Actor::event(QEvent *e)
         res = true;
         break;
     case (Event::LoadException):
-        ex = static_cast<EngineException*>(e);
-        emit error(ex->exception_);
+        if (isTrace()) tracer() << "LoadException";
+        ex = static_cast<LoadError*>(e);
+        emit error(ex->info_);
         res = true;
         break;
     case (Event::Error):

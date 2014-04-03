@@ -116,11 +116,14 @@ private:
     QJSValue convert_error_;
 };
 
+class ActorHolder;
+
 class WorkerThread : public QThread
 {
     Q_OBJECT;
 public:
-    WorkerThread(Actor *, QString const &, QString const &);
+    WorkerThread(Actor *, QString const &, QString const &
+                 , std::unique_ptr<ActorHolder>);
     virtual ~WorkerThread();
 
     void run();
@@ -156,7 +159,7 @@ protected:
     virtual bool event(QEvent *);
 
 signals:
-    void error(QVariant const& error);
+    void error(QVariant const&);
     void acquired();
     void released();
 
@@ -170,8 +173,8 @@ protected:
     mutable QJSEngine *engine_;
 private:
 
+    friend class ActorHolder;
     void acquire();
-    void release();
     void callback(Message*, QJSValue&);
     void execute(std::function<void()>);
     endpoint_handle endpoint_new(QJSValue);
@@ -183,6 +186,25 @@ private:
 
     static QMutex actors_mutex_;
     static std::set<Actor*> actors_;
+
+private slots:
+    void release();
+};
+
+class ActorHolder
+{
+public:
+    ActorHolder(Actor *a)
+        : actor_(a)
+    {
+        actor_->acquire();
+    }
+    ~ActorHolder()
+    {
+        QMetaObject::invokeMethod(actor_, "release", Qt::QueuedConnection);
+    }
+private:
+    Actor *actor_;
 };
 
 class QmlActor : public Actor

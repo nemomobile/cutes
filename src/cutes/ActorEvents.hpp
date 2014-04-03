@@ -49,20 +49,22 @@ public:
 class Load : public Event
 {
 public:
-    Load(QString const&, QString const&);
+    Load(QString const&, QString const&, std::unique_ptr<ActorHolder>);
     virtual ~Load();
 
     QString src_;
     QString top_script_;
+    std::unique_ptr<ActorHolder> actor_holder_;
 };
 
 class LoadError : public Event
 {
 public:
-    LoadError(QString const&);
+    LoadError(QVariant const&, std::unique_ptr<ActorHolder>);
     virtual ~LoadError();
 
-    QString src_;
+    QVariant info_;
+    std::unique_ptr<ActorHolder> actor_holder_;
 };
 
 class EndpointRemove : public Event
@@ -106,15 +108,6 @@ public:
 private:
     Engine *engine_;
     endpoint_handle endpoint_;
-};
-
-class EngineException : public Event
-{
-public:
-    EngineException(QJSEngine const&, QJSValue const&);
-    virtual ~EngineException() {}
-
-    QVariant exception_;
 };
 
 }

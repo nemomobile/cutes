@@ -122,7 +122,7 @@ int main(int argc, char *argv[])
     QFileInfo info(script_file);
     if (!info.isFile()) {
         qWarning() << "There is no " << script_file << ", exiting";
-        return -1;
+        return EXIT_FAILURE;
     }
 
     return (QFileInfo(script_file).suffix() == "qml")
