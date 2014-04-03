@@ -105,7 +105,9 @@ private:
     EnvImpl(EnvImpl const&);
     QString findFile(QString const &);
     QString libPath() const;
-    void fprintImpl(FILE *, QVariantList const &);
+    void fprintInternal(QTextStream &, QVariantList const &, QString const &);
+    void fprintVariant(QTextStream &, QVariant const &);
+    void fprintImpl(QTextStream &out, QVariantList const &);
     void addToObjectPrototype(QString const&, QJSValue const&);
 
     QJSValue mkVariadicImpl(QJSValue const &

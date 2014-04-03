@@ -150,17 +150,59 @@ static QVariantMap mkEnv()
     return res;
 }
 
-void EnvImpl::fprintImpl(FILE *f, QVariantList const &l)
+void EnvImpl::fprintVariant(QTextStream &out, QVariant const &v)
+{
+    auto t = (QMetaType::Type)v.type();
+    auto printMapItem = [&out, this](QVariantMap::const_iterator it) {
+        fprintVariant(out, it.key());
+        out << ": ";
+        fprintVariant(out, it.value());
+    };
+    switch (t) {
+    case QMetaType::QString:
+        out << '"' << v.toString() << '"';
+        break;
+    case QMetaType::QVariantMap: {
+        out << "{";
+        auto m = v.toMap();
+        auto it = m.begin();
+        if (it != m.end())
+            printMapItem(it);
+        for (++it; it != m.end(); ++it) {
+            out << ", ";
+            printMapItem(it);
+        }
+        out << "}";
+        break;
+    }
+    case QMetaType::QVariantList:
+        out << "[";
+        fprintInternal(out, v.toList(), ", ");
+        out << "]";
+        break;
+    default:
+        out << v.toString();
+        break;
+    }
+}
+
+void EnvImpl::fprintInternal(QTextStream &out, QVariantList const &l
+                             , QString const &delim)
 {
     if (l.empty())
         return;
 
-    QTextStream out(f);
-
     auto it = l.begin();
-    out << (it++)->toString();
-    for (; it != l.end(); ++it)
-        out << " " << it->toString();
+    fprintVariant(out, *it++);
+    for (; it != l.end(); ++it) {
+        out << delim;
+        fprintVariant(out, *it);
+    }
+}
+
+void EnvImpl::fprintImpl(QTextStream &out, QVariantList const &l)
+{
+    fprintInternal(out, l, " ");
     out << '\n';
 }
 
@@ -187,7 +229,8 @@ void EnvImpl::fprint(QVariant const &data)
         qWarning() << "Wrong stream id" << out_id;
         return;
     }
-    fprintImpl(f, l);
+    QTextStream out(f);
+    fprintImpl(out, l);
 }
 
 void EnvImpl::print(QVariant const &data)
@@ -196,7 +239,8 @@ void EnvImpl::print(QVariant const &data)
     if (l.empty())
         return;
 
-    fprintImpl(stdout, l);
+    QTextStream out(stdout);
+    fprintImpl(out, l);
 }
 
 void EnvImpl::trace(QVariant const &data)
@@ -205,7 +249,8 @@ void EnvImpl::trace(QVariant const &data)
         auto l = data.toList();
         if (l.empty())
             return;
-        fprintImpl(stderr, l);
+        QTextStream out(stderr);
+        fprintImpl(out, l);
     }
 }
 
