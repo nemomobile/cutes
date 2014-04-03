@@ -119,6 +119,11 @@ int main(int argc, char *argv[])
         return executeScript(cmd_line);
 
     QString script_file(cmd_line.args.at(1));
+    QFileInfo info(script_file);
+    if (!info.isFile()) {
+        qWarning() << "There is no " << script_file << ", exiting";
+        return -1;
+    }
 
     return (QFileInfo(script_file).suffix() == "qml")
         ? (cmd_line.opts.count("cli")
