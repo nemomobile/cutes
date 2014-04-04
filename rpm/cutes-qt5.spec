@@ -31,6 +31,14 @@ Requires: %{name} = %{version}-%{release}
 %description devel
 %{summary}
 
+%package tests
+Summary:    Tests for cutes
+License:    GPLv2.1
+Group:      System Environment/Libraries
+Requires:   %{name} = %{version}-%{release}
+%description tests
+%summary
+
 %define qt_importdir %{_libdir}/qt5/qml
 %define jslibdir %{_datadir}/cutes
 
@@ -65,6 +73,10 @@ rm -rf %{buildroot}
 %dir %{_includedir}/cutes
 %{_includedir}/cutes/*.hpp
 %{_libdir}/cutes/bin/preprocess_bridge.py
+
+%files tests
+%defattr(-,root,root,-)
+/opt/tests/cutes/*
 
 %post -p /sbin/ldconfig
 

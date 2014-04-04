@@ -6,10 +6,11 @@ eval set -- "$ARGS";
 EXEC=cutes
 VERBOSE=false
 USE_CUTES_PATH=
+TAG="<T>"
 
 function trace {
     if $VERBOSE; then
-        echo $@
+        echo $TAG $@
     fi
 }
 
@@ -24,7 +25,7 @@ while true; do
             shift 2;
             ;;
         -v)
-            echo "Verbose"
+            echo "$TAG Verbose"
             VERBOSE=true
             shift 1;
             ;;
@@ -54,13 +55,13 @@ fi
 
 function check_res {
     if [ $# -ne 3 ]; then
-        echo "Unexpected params: $@"
+        echo "$TAG Unexpected params: $@"
     fi
     cmd=$1
     expected=$2
     test=$3
+    trace "Executing TEST $cmd"
     if $VERBOSE; then
-        echo "Executing TEST $cmd"
         data=`$cmd`
         res=$?
         echo "$data"
@@ -69,7 +70,7 @@ function check_res {
         res=$?
     fi
     if [ $res -ne $expected ]; then
-        echo "Error executing test $test. Got $res instead of $expected"
+        echo "$TAG Error executing test $test. Got $res instead of $expected"
         exit $res
     fi
 }

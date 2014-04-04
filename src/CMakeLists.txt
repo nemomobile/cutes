@@ -24,5 +24,6 @@ add_definitions(-DQT_SHARED)
 
 add_subdirectory(cutes)
 add_subdirectory(lib)
+add_subdirectory(tests)
 
 # TODO tests?
