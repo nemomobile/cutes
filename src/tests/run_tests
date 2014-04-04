@@ -1,20 +1,36 @@
 #!/bin/bash
 
-ARGS=$(getopt -o p:v --long "system,debug" -- "$@");
+ARGS=$(getopt -o x:p:vl -- "$@");
 eval set -- "$ARGS";
 
 EXEC=cutes
 VERBOSE=false
+USE_CUTES_PATH=
+
+function trace {
+    if $VERBOSE; then
+        echo $@
+    fi
+}
 
 while true; do
     case "$1" in
-        -p)
+        -x)
             EXEC=$2
+            shift 2;
+            ;;
+        -p)
+            USE_CUTES_PATH=$2
             shift 2;
             ;;
         -v)
             echo "Verbose"
             VERBOSE=true
+            shift 1;
+            ;;
+        -l)
+            EXEC=../cutes/cutes
+            USE_CUTES_PATH=../lib:./
             shift 1;
             ;;
         --)
@@ -28,9 +44,12 @@ done
 
 EXEC=`which $EXEC`
 export LD_LIBRARY_PATH="`dirname $EXEC`:$LD_LIBRARY_PATH"
-if $VERBOSE; then
-    echo "Executable is $EXEC"
-    echo "LD_LIBRARY_PATH $LD_LIBRARY_PATH"
+trace "Executable is $EXEC"
+trace "LD_LIBRARY_PATH $LD_LIBRARY_PATH"
+
+if [ "x$USE_CUTES_PATH" != "x" ]; then
+    export CUTES_LIBRARY_PATH=$USE_CUTES_PATH
+    trace "Using CUTES_LIBRARY_PATH: $CUTES_LIBRARY_PATH"
 fi
 
 function check_res {
@@ -43,10 +62,12 @@ function check_res {
     if $VERBOSE; then
         echo "Executing TEST $cmd"
         data=`$cmd`
+        res=$?
+        echo "$data"
     else
         `$cmd &>/dev/null`
+        res=$?
     fi
-    res=$?
     if [ $res -ne $expected ]; then
         echo "Error executing test $test. Got $res instead of $expected"
         exit $res

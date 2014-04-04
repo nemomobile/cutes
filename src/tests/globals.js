@@ -7,3 +7,7 @@ require
 exports
 process
 __filename
+exports = function(msg, ctx) {
+    return [msg, "END"];
+};
+
