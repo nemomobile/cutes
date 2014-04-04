@@ -1,5 +1,9 @@
 var a = cutes.actor();
-a.source="bad.js";
+if (module.args.length !== 2) {
+    fprint("stderr", "Need actor file name");
+    cutes.exit(0);
+}
+a.source=module.args[1];
 if (a === undefined)
     throw "Actor is not loaded";
 var is_error = false;

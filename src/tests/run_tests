@@ -53,10 +53,14 @@ if [ "x$USE_CUTES_PATH" != "x" ]; then
     trace "Using CUTES_LIBRARY_PATH: $CUTES_LIBRARY_PATH"
 fi
 
+COUNT=0
+FAILED_COUNT=0
+FAILED=""
 function check_res {
     if [ $# -ne 3 ]; then
         echo "$TAG Unexpected params: $@"
     fi
+    ((COUNT++))
     cmd=$1
     expected=$2
     test=$3
@@ -70,8 +74,10 @@ function check_res {
         res=$?
     fi
     if [ $res -ne $expected ]; then
-        echo "$TAG Error executing test $test. Got $res instead of $expected"
-        exit $res
+        echo "$TAG TEST IS FAILED: $test. Got $res instead of $expected"
+        ((FAILED_COUNT++))
+        FAILED+=" $test"
+        #exit $res
     fi
 }
 
@@ -91,11 +97,22 @@ check_res "$cmd" 0 "Loading empty js"
 cmd="cutes bad.js"
 check_res "$cmd" $EXIT_FAILURE "Loading bad js"
 
-cmd="cutes load_actor_bad.js"
+cmd="cutes load_actor_bad.js bad.js"
 check_res "$cmd" $EXIT_FAILURE "load_actor_bad"
 
 cmd="cutes globals.js"
-check_res "$cmd" 0 "globals"
+check_res "$cmd" 13 "globals"
 
 cmd="cutes load_actor_globals.js"
 check_res "$cmd" 0 "load_actor_globals"
+
+cmd="cutes throws.js"
+check_res "$cmd" $EXIT_FAILURE "throws"
+
+cmd="cutes load_actor_bad.js throws.js"
+check_res "$cmd" $EXIT_FAILURE "load_actor_throws"
+
+echo "$TAG RESULTS: (OK $COUNT) (FAILED $FAILED_COUNT)"
+if [ $FAILED_COUNT -ne 0 ]; then
+    echo "$TAG FAILED: ($FAILED)"
+fi

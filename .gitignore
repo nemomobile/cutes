@@ -16,3 +16,4 @@ doc/doxygen
 *.moc
 *.*_parameters
 \#*\#
+src/tests/tests.xml
