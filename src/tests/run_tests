@@ -76,7 +76,7 @@ function check_res {
     if [ $res -ne $expected ]; then
         echo "$TAG TEST IS FAILED: $test. Got $res instead of $expected"
         ((FAILED_COUNT++))
-        FAILED+=" $test"
+        FAILED+=" \"$test\""
         #exit $res
     fi
 }
@@ -101,7 +101,7 @@ cmd="cutes load_actor_bad.js bad.js"
 check_res "$cmd" $EXIT_FAILURE "load_actor_bad"
 
 cmd="cutes globals.js"
-check_res "$cmd" 13 "globals"
+check_res "$cmd" 0 "globals"
 
 cmd="cutes load_actor_globals.js"
 check_res "$cmd" 0 "load_actor_globals"
