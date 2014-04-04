@@ -398,11 +398,13 @@ void Engine::load(Load *msg)
         } else if (!(handler_.isCallable() || handler_.isObject())) {
             qWarning() << msg->src_ << ": not a function or object but "
                        << handler_.toString();
+        } else {
+            toActor(new Load(std::move(*msg)));
         }
     } catch (Error const &e) {
         qWarning() << "Failed to eval:" << msg->src_;
         qWarning() << e.msg;
-            toActor(new LoadError(e.msg, std::move(msg->actor_holder_)));
+        toActor(new LoadError(e.msg, std::move(msg->actor_holder_)));
     }
 }
 
@@ -610,6 +612,9 @@ bool Actor::event(QEvent *e)
         res = true;
         break;
     }
+    case (Event::LoadScript):
+        emit loaded();
+        return true;
     default:
         res = QObject::event(e);
         break;

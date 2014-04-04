@@ -26,6 +26,13 @@ Load::Load(QString const &src, QString const& top_script
     , actor_holder_(std::move(holder))
 {}
 
+Load::Load(Load &&src)
+    : Event(Event::LoadScript)
+    ,  src_(src.src_)
+    , top_script_(src.top_script_)
+    , actor_holder_(std::move(src.actor_holder_))
+{}
+
 Load::~Load() {}
 
 LoadError::LoadError(QVariant const &info, std::unique_ptr<ActorHolder> holder)

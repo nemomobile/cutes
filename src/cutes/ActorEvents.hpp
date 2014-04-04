@@ -50,6 +50,7 @@ class Load : public Event
 {
 public:
     Load(QString const&, QString const&, std::unique_ptr<ActorHolder>);
+    Load(Load &&);
     virtual ~Load();
 
     QString src_;

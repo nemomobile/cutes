@@ -162,6 +162,7 @@ signals:
     void error(QVariant const&);
     void acquired();
     void released();
+    void loaded();
 
 protected:
     QString src_;
