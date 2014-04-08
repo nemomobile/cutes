@@ -17,3 +17,4 @@ doc/doxygen
 *.*_parameters
 \#*\#
 src/tests/tests.xml
+src/tests/execute_qml

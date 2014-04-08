@@ -1,5 +1,9 @@
 set(TESTS_DIR /opt/tests/cutes)
 
+set(CMAKE_AUTOMOC TRUE)
+add_executable(execute_qml execute_qml.cpp)
+qt5_use_modules(execute_qml Core Qml)
+
 add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND})
 enable_testing()
 add_test(test ./run_tests -l)
