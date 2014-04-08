@@ -32,7 +32,7 @@ target_link_libraries(${PLUGIN_NAME}
 )
 
 qt5_use_modules(${LIBNAME} Core Qml Quick)
-qt5_use_modules(${NAME} Core Gui Widgets)
+qt5_use_modules(${NAME} Core Gui)
 
 target_link_libraries(${NAME}
   ${LIBNAME}

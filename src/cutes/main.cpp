@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include <QApplication>
+#include <QGuiApplication>
 #include <QDebug>
 #include <QQmlApplicationEngine>
 
@@ -84,7 +84,7 @@ int executeQmlCli(CmdLine const &cmd_line)
 
 int executeDeclarative(CmdLine const &cmd_line)
 {
-    QApplication app(cmd_line.argc_, cmd_line.argv_);
+    QGuiApplication app(cmd_line.argc_, cmd_line.argv_);
     QString script_file(cmd_line.args.at(1));
     if (isTrace()) tracer() << "Execute qml " << script_file;
 
