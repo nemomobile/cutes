@@ -282,23 +282,22 @@ EnvImpl::EnvImpl(QObject *parent, QCoreApplication &app, QJSEngine &engine)
 
     auto env = std::move(mkEnv());
 
-    auto env_paths = env["CUTES_LIBRARY_PATH"];
+    auto env_paths = env["CUTES_LIBRARY_PATH"].toString();
     is_trace = env["CUTES_TRACE"].toBool();
     // remove empty paths
-    auto paths = std::move
-        (filter
-         (env_paths.toString().split(":"), [](QString const &v) {
-             return v.size() > 0;
-         }));
+    if (isTrace()) tracer() << "Got path from env CUTES_LIB_PATH:" << env_paths;
+    auto paths = env_paths.split(":", QString::SkipEmptyParts);
 
     auto plugin_path = QString(DQUOTESTR(CUTES_LIB_PATH));
+    if (isTrace()) tracer() << "Got path from cmd line:" << plugin_path;
     for (auto path : plugin_path.split(":", QString::SkipEmptyParts))
-        if (QDir(path).exists())
             paths.push_back(path);
 
     env_ = std::move(env);
-    for (auto &path : paths)
-        path_.push_back(QDir(path).canonicalPath());
+    for (auto &path : paths) {
+        auto d = QDir(path);
+        addSearchPath(d.canonicalPath(), Env::Back);
+    }
 
     if (isTrace()) tracer() << "Path:" << path_;
     app.setLibraryPaths(path_);
@@ -674,6 +673,8 @@ QJSValue EnvImpl::extend(QString const &extension)
 
 void EnvImpl::addSearchPath(QString const &path, Position pos)
 {
+    if (!path.size())
+        return;
     if (isTrace()) tracer() << "Add search path " << path;
     if (pos == Env::Front)
         path_.push_front(path);
@@ -696,6 +697,8 @@ QString EnvImpl::findFile(QString const &file_name)
     QString res;
 
     auto mkRelative = [&res, &file_name](QDir const& dir) {
+        if (!dir.exists())
+            return false;
         res = dir.filePath(file_name);
         return QFileInfo(res).exists();
     };
