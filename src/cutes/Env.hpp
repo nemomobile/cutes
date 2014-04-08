@@ -143,11 +143,14 @@ private:
     QScopedPointer<QTimer> interval_timer_;
     int actor_count_;
     bool is_eval_;
+    bool is_event_loop_running_;
     bool is_waiting_exit_;
                          
 private slots:
     void actorAcquired();
     void actorReleased();
+    void exitImpl(int);
+    void eventLoopRunning();
 };
 
 class Module : public QObject

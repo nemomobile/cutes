@@ -266,6 +266,7 @@ EnvImpl::EnvImpl(QObject *parent, QCoreApplication &app, QJSEngine &engine)
     , globals_(new Globals(this))
     , actor_count_(0)
     , is_eval_(false)
+    , is_event_loop_running_(false)
     , is_waiting_exit_(false)
 {
     if (isTrace()) tracer() << "New js environment for " << &engine
@@ -317,6 +318,7 @@ EnvImpl::EnvImpl(QObject *parent, QCoreApplication &app, QJSEngine &engine)
     }
 
     globals_->init();
+    QMetaObject::invokeMethod(this, "eventLoopRunning", Qt::QueuedConnection);
 }
 
 EnvImpl::~EnvImpl()
@@ -492,15 +494,37 @@ bool EnvImpl::shouldWait()
     return is_waiting_exit_;
 }
 
+void EnvImpl::eventLoopRunning()
+{
+    is_event_loop_running_ = true;
+}
+
 void EnvImpl::exit(int rc)
+{
+    Actor::quitAll();
+    auto app = QCoreApplication::instance();
+    if (!(app && is_event_loop_running_)) {
+        if (isTrace()) tracer() << "No event loop, exiting" << app;
+        ::exit(rc);
+    } else {
+        // do using event loop to avoid stucking if it is not yet run
+        if (isTrace()) tracer() << "queue exit(" << rc << ")";
+        QMetaObject::invokeMethod(this, "exitImpl", Qt::QueuedConnection
+                                  , Q_ARG(int, rc));
+    }
+}
+
+void EnvImpl::exitImpl(int rc)
 {
     if (isTrace()) tracer() << "exit(" << rc << ")";
     auto app = QCoreApplication::instance();
     if (app) {
-        Actor::quitAll();
         app->exit(rc);
     } else {
         qWarning() << "No QCoreApplication instance";
+        ::exit(rc);
+    }
+}
 
 void EnvImpl::setInterval(QJSValue fn, int ms)
 {
