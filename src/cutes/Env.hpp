@@ -70,7 +70,7 @@ public:
     Q_INVOKABLE QJSValue extend(QString const&);
     Q_INVOKABLE QJSValue actor();
     Q_INVOKABLE void exit(int);
-    Q_INVOKABLE void defer(QJSValue const&);
+    Q_INVOKABLE void defer(QJSValue);
     Q_INVOKABLE void idle();
     Q_INVOKABLE void setEnv(QString const&, QVariant const&);
     Q_INVOKABLE void fprint(QVariant const &);
@@ -78,10 +78,10 @@ public:
     Q_INVOKABLE void trace(QVariant const &);
     Q_INVOKABLE QJSValue eval(QString const &);
     Q_INVOKABLE QJSValue globals() const;
-    Q_INVOKABLE QJSValue mkVariadic(QJSValue const &
-                                    , QJSValue const &
-                                    , QJSValue const &);
 
+    QJSValue mkVariadic(QJSValue const &
+                        , QJSValue const &
+                        , QJSValue const &);
     QJSValue module();
     QString os() const;
     QVariantMap const& env() const;

@@ -606,7 +606,7 @@ private:
 
 /// defer function execution until event loop processes next event,
 /// processing can be enforced by calling EnvImpl::idle()
-void EnvImpl::defer(QJSValue const& fn)
+void EnvImpl::defer(QJSValue fn)
 {
     if (!fn.isCallable()) {
         QString err("Can defer only function, got %1");
