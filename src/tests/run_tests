@@ -1,12 +1,19 @@
 #!/bin/bash
 
-ARGS=$(getopt -o x:p:vl -- "$@");
+ARGS=$(getopt -o m:x:p:vlf:Ld: -- "$@");
 eval set -- "$ARGS";
 
 EXEC=cutes
+EXEC_QML=./execute_qml
 VERBOSE=false
 USE_CUTES_PATH=
 TAG="<T>"
+CMAKE=cmake
+WORK_PATH=`mktemp -d`
+DEL_WORK_PATH=true
+FILTER=
+ONLY_LIST=false
+SILENT_INSTALL=true
 
 function trace {
     if $VERBOSE; then
@@ -14,10 +21,39 @@ function trace {
     fi
 }
 
+function setup_local {
+    echo "Setup local"
+    pushd ../../ && \
+        ${CMAKE} -DCUTES_VERSION=0.9.8.1 \
+        -DCMAKE_INSTALL_PREFIX:PATH=/usr . && \
+        (($SILENT_INSTALL && make install DESTDIR=${WORK_PATH} >/dev/null) || make install DESTDIR=${WORK_PATH}) && \
+        popd
+
+    export CUTES_LIBRARY_PATH=${WORK_PATH}/usr/share/cutes:${WORK_PATH}/usr/lib/cutes
+    export EXEC=${WORK_PATH}/usr/bin/cutes
+    export QML2_IMPORT_PATH=${WORK_PATH}/usr/lib/qt5/qml:${QML2_IMPORT_PATH}
+    export LD_LIBRARY_PATH="${WORK_PATH}/usr/lib:$LD_LIBRARY_PATH"
+}
+
+IS_LOCAL=false
+
 while true; do
     case "$1" in
+        -f)
+            FILTER=$2
+            shift 2;
+            ;;
         -x)
             EXEC=$2
+            shift 2;
+            ;;
+        -m)
+            CMAKE=$2
+            shift 2;
+            ;;
+        -d)
+            WORK_PATH=$2
+            DEL_WORK_PATH=false
             shift 2;
             ;;
         -p)
@@ -30,8 +66,11 @@ while true; do
             shift 1;
             ;;
         -l)
-            EXEC=../cutes/cutes
-            USE_CUTES_PATH=../lib:./
+            IS_LOCAL=true
+            shift 1;
+            ;;
+        -L)
+            ONLY_LIST=true
             shift 1;
             ;;
         --)
@@ -43,6 +82,10 @@ while true; do
     esac
 done
 
+if $IS_LOCAL; then
+    setup_local
+fi
+
 EXEC=`which $EXEC`
 export LD_LIBRARY_PATH="`dirname $EXEC`:$LD_LIBRARY_PATH"
 trace "Executable is $EXEC"
@@ -53,31 +96,43 @@ if [ "x$USE_CUTES_PATH" != "x" ]; then
     trace "Using CUTES_LIBRARY_PATH: $CUTES_LIBRARY_PATH"
 fi
 
-COUNT=0
+SUCCEEDED_COUNT=0
 FAILED_COUNT=0
 FAILED=""
+SUCCEEDED=""
+
 function check_res {
     if [ $# -ne 3 ]; then
         echo "$TAG Unexpected params: $@"
     fi
-    ((COUNT++))
     cmd=$1
     expected=$2
     test=$3
+
+    if $ONLY_LIST; then
+        SUCCEEDED+=" $test"
+        return 0
+    fi
+
+    if [ "x$FILTER" != "x" ]; then
+        if [ $test != $FILTER ]; then
+            return 0
+        fi
+    fi
     trace "Executing TEST $cmd"
     if $VERBOSE; then
-        data=`$cmd`
+        $cmd
         res=$?
-        echo "$data"
     else
         `$cmd &>/dev/null`
         res=$?
     fi
-    if [ $res -ne $expected ]; then
+    if [ $res -eq $expected ]; then
+        ((SUCCEEDED_COUNT++))
+    else
         echo "$TAG TEST IS FAILED: $test. Got $res instead of $expected"
         ((FAILED_COUNT++))
-        FAILED+=" \"$test\""
-        #exit $res
+        FAILED+=" $test"
     fi
 }
 
@@ -85,34 +140,65 @@ EXIT_FAILURE=1
 
 # check exiting with error if non-existing files are supplied
 cmd="cutes non_existing.qml"
-check_res "$cmd" $EXIT_FAILURE "Loading non-existing qml"
+check_res "$cmd" $EXIT_FAILURE "load-non-existing-qml"
 cmd="cutes non_existing.js"
-check_res "$cmd" $EXIT_FAILURE "Loading non-existing js"
+check_res "$cmd" $EXIT_FAILURE "load-non-existing-js"
 cmd="cutes -cli non_existing.qml"
-check_res "$cmd" $EXIT_FAILURE "Loading non-existing qml in cli mode"
+check_res "$cmd" $EXIT_FAILURE "load-non-existing-qml-cli-mode"
 
 cmd="cutes empty.js"
-check_res "$cmd" 0 "Loading empty js"
+check_res "$cmd" 0 "load-empty-js"
 
 cmd="cutes bad.js"
-check_res "$cmd" $EXIT_FAILURE "Loading bad js"
+check_res "$cmd" $EXIT_FAILURE "loading-bad-js"
 
 cmd="cutes load_actor_bad.js bad.js"
-check_res "$cmd" $EXIT_FAILURE "load_actor_bad"
+check_res "$cmd" $EXIT_FAILURE "load-actor-bad"
 
 cmd="cutes globals.js"
-check_res "$cmd" 0 "globals"
+check_res "$cmd" 0 "js-globals"
+
+cmd="cutes exit.js"
+check_res "$cmd" 0 "js-exit"
 
 cmd="cutes load_actor_globals.js"
-check_res "$cmd" 0 "load_actor_globals"
+check_res "$cmd" 0 "load-actor-globals"
 
 cmd="cutes throws.js"
-check_res "$cmd" $EXIT_FAILURE "throws"
+check_res "$cmd" $EXIT_FAILURE "js-throws"
 
 cmd="cutes load_actor_bad.js throws.js"
-check_res "$cmd" $EXIT_FAILURE "load_actor_throws"
+check_res "$cmd" $EXIT_FAILURE "load-actor-throws"
 
-echo "$TAG RESULTS: (OK $COUNT) (FAILED $FAILED_COUNT)"
-if [ $FAILED_COUNT -ne 0 ]; then
-    echo "$TAG FAILED: ($FAILED)"
+cmd="cutes use-qtcore.js"
+check_res "$cmd" 0 "require-qtcore"
+
+cmd="cutes -cli simple_qml_adapter.qml"
+check_res "$cmd" 0 "cutes-qml-use-cutes-adapter"
+
+cmd="cutes -cli qml_adapter_use_cutes.qml"
+check_res "$cmd" 0 "cutes-qml-use-adapter-cutes"
+
+cmd="$EXEC_QML simple_qml_adapter.qml"
+check_res "$cmd" 0 "qml-use-cutes-adapter"
+
+cmd="$EXEC_QML qml_adapter_use_cutes.qml"
+check_res "$cmd" 0 "qml-use-adapter-cutes"
+
+cmd="$EXEC_QML basic_actor.qml"
+check_res "$cmd" 0 "qml-use-actor"
+
+if $DEL_WORK_PATH; then
+    rm -rf $WORK_PATH
 fi
+
+if $ONLY_LIST; then
+    echo "Available: $SUCCEEDED"
+else
+    echo "$TAG RESULTS: (OK $SUCCEEDED_COUNT) (FAILED $FAILED_COUNT)"
+    if [ $FAILED_COUNT -ne 0 ]; then
+        echo "$TAG FAILED: ($FAILED)"
+    fi
+fi
+exit $FAILED_COUNT
+
