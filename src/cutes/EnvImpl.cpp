@@ -276,8 +276,7 @@ EnvImpl::EnvImpl(QObject *parent, QCoreApplication &app, QJSEngine &engine)
 
     // to allow safe access to top w/o checking
     auto m = new Module(this, "", QDir::currentPath());
-    QQmlEngine::setObjectOwnership(m, QQmlEngine::CppOwnership);
-    scripts_.push(std::make_pair(m, engine_.newQObject(m)));
+    pushModule(m);
 
     auto env = std::move(mkEnv());
 
@@ -683,8 +682,7 @@ void EnvImpl::addSearchPath(QString const &path, Position pos)
 void EnvImpl::pushParentScriptPath(QString const &file_name)
 {
     auto m = new Module(this, file_name);
-    QQmlEngine::setObjectOwnership(m, QQmlEngine::CppOwnership);
-    scripts_.push(std::make_pair(m, engine_.newQObject(m)));
+    pushModule(m);
 }
 
 QString EnvImpl::findFile(QString const &file_name)
@@ -765,7 +763,7 @@ QJSValue EnvImpl::load(QString const &script_name, bool is_reload)
 
     auto scope = mk_scope
         ([this, script](){
-            scripts_.push(std::make_pair(script, engine_.newQObject(script)));
+            pushModule(script);
         }
         , [this]() {
             scripts_.pop();
@@ -777,6 +775,12 @@ QJSValue EnvImpl::load(QString const &script_name, bool is_reload)
     }
     modules_[file_name] = script;
     return res;
+}
+
+void EnvImpl::pushModule(Module *m)
+{
+    QQmlEngine::setObjectOwnership(m, QQmlEngine::CppOwnership);
+    scripts_.push(std::make_pair(m, engine_.newQObject(m)));
 }
 
 QJSValue EnvImpl::eval(QString const &line)

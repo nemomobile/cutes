@@ -119,7 +119,7 @@ private:
                           , QJSValue &);
     QJSValue callJsLazy(QString const&, QString const&
                         , QJSValue &, QJSValueList const &);
-
+    void pushModule(Module *);
     QJSEngine &engine_;
 
     QJSValue obj_proto_enhance_;
