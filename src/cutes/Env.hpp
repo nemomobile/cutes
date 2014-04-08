@@ -26,6 +26,8 @@
 #include <stdexcept>
 
 class QLibrary;
+class QTimer;
+
 namespace cutes {
 
 QString errorConverterTry(QString const &);
@@ -78,6 +80,7 @@ public:
     Q_INVOKABLE void trace(QVariant const &);
     Q_INVOKABLE QJSValue eval(QString const &);
     Q_INVOKABLE QJSValue globals() const;
+    Q_INVOKABLE void setInterval(QJSValue, int);
 
     QJSValue mkVariadic(QJSValue const &
                         , QJSValue const &
@@ -137,6 +140,7 @@ private:
     QStringList path_;
     QStack<std::pair<Module*, QJSValue> > scripts_;
     QStringList args_;
+    QScopedPointer<QTimer> interval_timer_;
     int actor_count_;
     bool is_eval_;
     bool is_waiting_exit_;

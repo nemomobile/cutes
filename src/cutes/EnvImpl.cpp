@@ -20,6 +20,7 @@
 #include <QLibrary>
 #include <QJSValueIterator>
 #include <QQmlContext>
+#include <QTimer>
 
 #include <unistd.h>
 #include <iostream>
@@ -500,7 +501,17 @@ void EnvImpl::exit(int rc)
         app->exit(rc);
     } else {
         qWarning() << "No QCoreApplication instance";
+
+void EnvImpl::setInterval(QJSValue fn, int ms)
+{
+    if (!interval_timer_) {
+        interval_timer_.reset(new QTimer(this));
+        interval_timer_->setSingleShot(true);
     }
+    interval_timer_->setInterval(ms);
+    QCoreApplication::connect(interval_timer_.data(), &QTimer::timeout
+                              , [fn]() { auto f = fn; f.call(); });
+    interval_timer_->start();
 }
 
 class EnvEvent : public QEvent
