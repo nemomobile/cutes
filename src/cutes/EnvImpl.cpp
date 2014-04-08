@@ -5,6 +5,8 @@
  * @copyright LGPL 2.1 http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html
  */
 
+#include "QmlAdapter.hpp"
+
 #include "util.hpp"
 #include <cutes/util.hpp>
 
@@ -961,6 +963,47 @@ EnvImpl * EnvImpl::create(QObject *env, QCoreApplication *app, QJSEngine *eng)
         throw Error("Wrong app or engine was passed to Env ctor");
 
     return new EnvImpl(env, *app, *eng);
+}
+
+
+QUrl Adapter::qml() const
+{
+    return qml_;
+}
+
+void Adapter::setQml(QUrl const& url)
+{
+    if (isTrace()) tracer() << "Base url " << url;
+    qml_ = url;
+    auto env = getEnv();
+    if (!env) {
+        qWarning() << "Adapter:Env is null!";
+        return;
+    }
+    env->pushParentScriptPath(url.path());
+}
+
+Adapter::Adapter()
+{
+    qRegisterMetaType<EnvImpl*>("EnvImpl");
+}
+
+QVariant Adapter::getEnvObj() const
+{
+    auto engine = qmlEngine(this);
+
+    if (!engine) {
+        qWarning() << "Adapter.engine is null!";
+        return QVariant();
+    }
+    auto prop = engine->rootContext()->contextProperty("cutes");
+    if (isTrace()) tracer() << engine->rootContext() << " Get adapter env: " << prop.toString();
+    return prop;
+}
+
+EnvImpl * Adapter::getEnv() const
+{
+    return getEnvObj().value<EnvImpl*>();
 }
 
 }

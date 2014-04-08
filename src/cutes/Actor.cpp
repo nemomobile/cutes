@@ -667,36 +667,4 @@ void Engine::error(QVariant const &data, endpoint_handle ep)
 }
 
 
-QUrl Adapter::qml() const
-{
-    return qml_;
-}
-
-void Adapter::setQml(QUrl const& url)
-{
-    if (isTrace()) tracer() << "Base url " << url;
-    qml_ = url;
-    auto env = getEnv();
-    if (!env) {
-        qWarning() << "Adapter:Env is null!";
-        return;
-    }
-    env->pushParentScriptPath(url.path());
-}
-
-EnvImpl * Adapter::getEnv() const
-{
-    auto engine = qmlEngine(this);
-
-    if (!engine) {
-        qWarning() << "Adapter.engine is null!";
-        return nullptr;
-    }
-    auto prop = engine->rootContext()->contextProperty("cutes");
-    if (isTrace()) tracer() << engine->rootContext() << " Get adapter env: " << prop.toString();
-    auto env = prop.value<EnvImpl*>();
-    return env;
-}
-
-
 }
