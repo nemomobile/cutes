@@ -10,6 +10,7 @@
 
 #include "Actor.hpp"
 #include <cutes/env.hpp>
+#include <cutes/util.hpp>
 
 #include <QObject>
 #include <QString>
@@ -48,6 +49,16 @@ public:
 };
 
 class Globals;
+class Extension;
+
+class Extensions
+{
+public:
+    QSharedPointer<Extension> get(QString const &path);
+private:
+    QMutex mutex_;
+    QMap<QString, QWeakPointer<Extension> > libraries_;
+};
 
 class EnvImpl : public QObject
 {
@@ -123,17 +134,19 @@ private:
     QJSValue callJsLazy(QString const&, QString const&
                         , QJSValue &, QJSValueList const &);
     void pushModule(Module *);
+
+    static Extensions libraries_;
     QJSEngine &engine_;
 
     QJSValue obj_proto_enhance_;
     QJSValue cpp_bridge_fn_;
     QJSValue throw_fn_;
-    
+
     QJSValue this_;
     std::unique_ptr<Globals> globals_;
     friend class Globals;
 
-    QMap<QString, std::pair<QLibrary*, QJSValue> > libraries_;
+    QMap<QString, std::pair<QSharedPointer<Extension>, QJSValue> > factories_;
     QMap<QString, Module*> modules_;
 
     QVariantMap env_;
@@ -145,7 +158,7 @@ private:
     bool is_eval_;
     bool is_event_loop_running_;
     bool is_waiting_exit_;
-                         
+
 private slots:
     void actorAcquired();
     void actorReleased();

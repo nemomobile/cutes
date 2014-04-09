@@ -24,10 +24,22 @@
 
 #include <unistd.h>
 #include <iostream>
+#include <mutex>
 
 Q_DECLARE_METATYPE(cutes::EnvImpl*);
 
 namespace cutes {
+
+class Extension
+{
+public:
+    Extension(QString const &path);
+    ~Extension();
+    inline cutesRegisterFnType get() { return fn_; }
+private:
+    QLibrary lib_;
+    cutesRegisterFnType fn_;
+};
 
 static char const *error_converter_try = "%1 try {\n";
 
@@ -668,6 +680,53 @@ bool EnvImpl::event(QEvent *e)
     return true;
 }
 
+Extension::Extension(QString const &path)
+    : lib_(path)
+    , fn_(nullptr)
+{
+    if (lib_.load()) {
+        fn_ = reinterpret_cast<cutesRegisterFnType>
+            (lib_.resolve(cutesRegisterName()));
+        if (!fn_)
+            qWarning() << "Can't resolve symbol " << cutesRegisterName()
+                       << " in '" << lib_.fileName() << "'";
+    } else {
+        qWarning() << "Can't load library: '" << path;
+        qWarning() << "Reason: " << lib_.errorString();
+    }
+}
+
+Extension::~Extension()
+{
+    if (isTrace()) tracer() << "~Extension" << lib_.fileName();
+}
+
+Extensions EnvImpl::libraries_;
+
+QSharedPointer<Extension> Extensions::get(QString const &path)
+{
+    auto load = [](QString const &path) {
+        return QSharedPointer<Extension>::create(path);
+    };
+
+    std::lock_guard<QMutex> lock(mutex_);
+    auto it = libraries_.find(path);
+    QSharedPointer<Extension> res;
+    if (it != libraries_.end()) {
+        auto weak = it.value();
+        res = weak;
+        if (res)
+            return res;
+        res = load(path);
+        it.value() = res;
+    } else {
+        res = load(path);
+        if (res)
+            libraries_.insert(path, res.toWeakRef());
+    }
+    return res;
+}
+
 QJSValue EnvImpl::extend(QString const &extension)
 {
     if (isTrace())
@@ -687,22 +746,16 @@ QJSValue EnvImpl::extend(QString const &extension)
     }
     if (isTrace())
         tracer() << "Using " << full_path << " to extend";
-    auto lib = new QLibrary(full_path, this);
-    if (!lib->load()) {
-        qWarning() << "Can't load library: '" << full_path;
-        qWarning() << "Reason: " << lib->errorString();
+    auto lib = libraries_.get(full_path);
+    if (!lib)
         return QJSValue();
-    }
 
-    auto fn = reinterpret_cast<cutesRegisterFnType>
-        (lib->resolve(cutesRegisterName()));
-    if (!fn) {
-        qWarning() << "Can't resolve symbol " << cutesRegisterName()
-                   << " in '" << full_path << "'";
+    auto fn = lib->get();
+    if (!fn)
         return QJSValue();
-    }
+
     auto obj = fn(&engine());
-    libraries_.insert(extension, std::make_pair(lib, obj));
+    factories_.insert(extension, std::make_pair(lib, obj));
     return mkVariadicImpl(obj.property("create"), obj.property("members"));
 }
 
