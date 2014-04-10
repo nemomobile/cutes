@@ -92,6 +92,7 @@ public:
     Q_INVOKABLE QJSValue eval(QString const &);
     Q_INVOKABLE QJSValue globals() const;
     Q_INVOKABLE void setInterval(QJSValue, int);
+    Q_INVOKABLE void gc();
 
     QJSValue mkVariadic(QJSValue const &
                         , QJSValue const &

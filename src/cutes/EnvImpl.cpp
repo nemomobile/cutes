@@ -550,6 +550,11 @@ void EnvImpl::setInterval(QJSValue fn, int ms)
     interval_timer_->start();
 }
 
+void EnvImpl::gc()
+{
+    engine_.collectGarbage();
+}
+
 class EnvEvent : public QEvent
 {
 public:
