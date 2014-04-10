@@ -29,10 +29,10 @@ function setup_local {
         (($SILENT_INSTALL && make install DESTDIR=${WORK_PATH} >/dev/null) || make install DESTDIR=${WORK_PATH}) && \
         popd
 
-    export CUTES_LIBRARY_PATH=${WORK_PATH}/usr/share/cutes:${WORK_PATH}/usr/lib/cutes
+    export CUTES_LIBRARY_PATH=${WORK_PATH}/usr/share/cutes:${WORK_PATH}/usr/@DST_LIB@/qt5/cutes
     export EXEC=${WORK_PATH}/usr/bin/cutes
-    export QML2_IMPORT_PATH=${WORK_PATH}/usr/lib/qt5/qml:${QML2_IMPORT_PATH}
-    export LD_LIBRARY_PATH="${WORK_PATH}/usr/lib:$LD_LIBRARY_PATH"
+    export QML2_IMPORT_PATH=${WORK_PATH}/usr/@DST_LIB@/qt5/qml:${QML2_IMPORT_PATH}
+    export LD_LIBRARY_PATH="${WORK_PATH}/usr/@DST_LIB@:$LD_LIBRARY_PATH"
 }
 
 IS_LOCAL=false
@@ -82,19 +82,20 @@ while true; do
     esac
 done
 
-if $IS_LOCAL; then
-    setup_local
-fi
-
 EXEC=`which $EXEC`
 export LD_LIBRARY_PATH="`dirname $EXEC`:$LD_LIBRARY_PATH"
-trace "Executable is $EXEC"
-trace "LD_LIBRARY_PATH $LD_LIBRARY_PATH"
-
 if [ "x$USE_CUTES_PATH" != "x" ]; then
     export CUTES_LIBRARY_PATH=$USE_CUTES_PATH
     trace "Using CUTES_LIBRARY_PATH: $CUTES_LIBRARY_PATH"
 fi
+
+if $IS_LOCAL; then
+    setup_local
+fi
+
+trace "Executable is $EXEC"
+trace "LD_LIBRARY_PATH $LD_LIBRARY_PATH"
+trace "QML2_IMPORT_PATH ${QML2_IMPORT_PATH}"
 
 SUCCEEDED_COUNT=0
 FAILED_COUNT=0
@@ -187,6 +188,12 @@ check_res "$cmd" 0 "qml-use-adapter-cutes"
 
 cmd="$EXEC_QML basic_actor.qml"
 check_res "$cmd" 0 "qml-use-actor"
+
+cmd="$EXEC_QML actor_extend.qml"
+check_res "$cmd" 0 "qml-actor-extend-qml-extend"
+
+cmd="$EXEC_QML test_bridge.qml"
+check_res "$cmd" 0 "qml-test-actor-bridge"
 
 if $DEL_WORK_PATH; then
     rm -rf $WORK_PATH

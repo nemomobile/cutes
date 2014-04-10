@@ -4,6 +4,8 @@ set(CMAKE_AUTOMOC TRUE)
 add_executable(execute_qml execute_qml.cpp)
 qt5_use_modules(execute_qml Core Qml)
 
+configure_file(run_tests.in run_tests @ONLY)
+
 add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND})
 enable_testing()
 add_test(test ./run_tests -l)
