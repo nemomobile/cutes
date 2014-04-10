@@ -39,11 +39,14 @@ class Endpoint : public QObject
 {
     Q_OBJECT;
 public:
-    Endpoint(QJSValue const&, QJSValue const&, QJSValue const&);
+    Endpoint(QJSValue const&, QJSValue const&, QJSValue const&
+             , std::unique_ptr<ActorHolder>);
+    ~Endpoint();
 
     QJSValue on_reply_;
     QJSValue on_error_;
     QJSValue on_progress_;
+    std::unique_ptr<ActorHolder> actor_holder_;
 };
 
 class Load : public Event
@@ -99,14 +102,32 @@ public:
 class MessageContext : public QObject
 {
     Q_OBJECT;
+
+    struct Handle {
+        void operator ()(MessageContext *self)
+        {
+            self->disable();
+            self->deleteLater();
+        }
+    };
+
+    typedef std::unique_ptr<MessageContext, Handle> handle_type;
 public:
-    MessageContext(Engine *, endpoint_handle);
     virtual ~MessageContext();
 
     Q_INVOKABLE void reply(QJSValue);
 
     void disable();
+
+    static handle_type create(Engine *e, endpoint_handle reply_ep)
+    {
+        handle_type res(new MessageContext(e, reply_ep));
+        QQmlEngine::setObjectOwnership(res.get(), QQmlEngine::CppOwnership);
+        return res;
+    }
+
 private:
+    MessageContext(Engine *, endpoint_handle);
     Engine *engine_;
     endpoint_handle endpoint_;
 };

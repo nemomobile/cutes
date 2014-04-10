@@ -12,11 +12,18 @@ namespace cutes {
 
 Endpoint::Endpoint(QJSValue const& on_reply
                    , QJSValue const& on_error
-                   , QJSValue const& on_progress)
+                   , QJSValue const& on_progress
+                   , std::unique_ptr<ActorHolder> h)
     : on_reply_(on_reply)
     , on_error_(on_error)
     , on_progress_(on_progress)
-{}
+    , actor_holder_(std::move(h))
+{
+}
+
+Endpoint::~Endpoint()
+{
+}
 
 Load::Load(QString const &src, QString const& top_script
            , std::unique_ptr<ActorHolder> holder)

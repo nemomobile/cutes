@@ -115,7 +115,8 @@ QVariant msgFromValue
     return res;
 }
 
-static endpoint_ptr endpoint(QJSValue const& ep)
+static endpoint_ptr endpoint(QJSValue const& ep
+                             , std::unique_ptr<ActorHolder> holder)
 {
     QJSValue on_reply, on_error, on_progress;
     if (ep.isCallable()) {
@@ -133,7 +134,8 @@ static endpoint_ptr endpoint(QJSValue const& ep)
         throw Error(QString("Wrong endpoint? Expecting object, function or null")
                     + ep.toString());
     }
-    return endpoint_ptr(new Endpoint(on_reply, on_error, on_progress));
+    return endpoint_ptr(new Endpoint(on_reply, on_error, on_progress
+                                     , std::move(holder)));
 }
 
 Actor::Actor(QJSEngine *engine)
@@ -280,18 +282,17 @@ void Actor::release()
 
 endpoint_handle Actor::endpoint_new(QJSValue cb)
 {
-        auto ep = endpoint(cb);
-        endpoints_.insert(ep.data(), ep);
-        endpoint_handle h(ep.data(), [this](Endpoint *p) {
-                QCoreApplication::postEvent(this, new EndpointRemove(p));
-            });
-        return h;
+    auto ep = endpoint(cb, cor::make_unique<ActorHolder>(this));
+    endpoints_.insert(ep.data(), ep);
+    endpoint_handle h(ep.data(), [this](Endpoint *p) {
+            QCoreApplication::postEvent(this, new EndpointRemove(p));
+        });
+    return h;
 }
 
 void Actor::send(QJSValue const &msg, QJSValue cb)
 {
     auto fn = [&]() {
-        acquire();
         worker()->send
         (new Message(msgFromValue(msg), endpoint_new(cb), Event::Message));
     };
@@ -301,7 +302,6 @@ void Actor::send(QJSValue const &msg, QJSValue cb)
 void Actor::request(QString const &method, QJSValue msg, QJSValue cb)
 {
     auto fn = [&]() {
-        acquire();
         worker_->send(new Request(method, msgFromValue(msg)
                                   , endpoint_new(cb), Event::Request));
     };
@@ -508,10 +508,10 @@ void Engine::processMessage(Message *msg)
         });
 
     if (handler_.isCallable()) {
+        auto ctx = MessageContext::create(this, reply_ep);
         QJSValueList params;
         params.push_back(engine_->toScriptValue(msg->data_));
-        params.push_back(engine_->newQObject
-                         (new MessageContext(this, reply_ep)));
+        params.push_back(engine_->newQObject(ctx.get()));
         ret = callConvertError(handler_, handler_, params);
     } else if (!(handler_.isNull() && handler_.isUndefined())) {
         qWarning() << "Handler is not a function but "
@@ -535,13 +535,11 @@ void Engine::processRequest(Request *req)
 
     auto method = handler_.property(req->method_name_);
     if (method.isCallable()) {
-        MessageContext *ctx = new MessageContext(this, reply_ep);
+        auto ctx = MessageContext::create(this, reply_ep);
         QJSValueList params;
         params.push_back(engine_->toScriptValue(req->data_));
-        params.push_back(engine_->newQObject(ctx));
+        params.push_back(engine_->newQObject(ctx.get()));
         ret = callConvertError(method, handler_, params);
-        ctx->disable();
-        ctx->deleteLater();
     } else if (method.isUndefined() || method.isNull()) {
         qWarning() << "Actor does not have method" << req->method_name_;
     } else {
@@ -586,14 +584,13 @@ bool Engine::event(QEvent *e)
 bool Actor::event(QEvent *e)
 {
     LoadError *ex;
-    bool res, is_release = false;
+    bool res;
     switch (static_cast<Event::Type>(e->type())) {
     case (Event::Progress):
         progress(static_cast<Message*>(e));
         res = true;
         break;
     case (Event::Return):
-        is_release = true;
         reply(static_cast<Message*>(e));
         res = true;
         break;
@@ -604,7 +601,6 @@ bool Actor::event(QEvent *e)
         res = true;
         break;
     case (Event::Error):
-        is_release = true;
         error(static_cast<Message*>(e));
         res = true;
         break;
@@ -621,8 +617,6 @@ bool Actor::event(QEvent *e)
         res = QObject::event(e);
         break;
     }
-    if (is_release)
-        release();
     return res;
 }
 
