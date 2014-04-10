@@ -142,6 +142,7 @@ Actor::Actor(QJSEngine *engine)
     , unreplied_count_(0)
     , cookie_(0)
 {
+    if (isTrace()) tracer() << " New actor" << this;
     std::lock_guard<QMutex> lock(actors_mutex_);
     actors_.insert(this);
 }
@@ -359,7 +360,8 @@ Event::Event(Event::Type t)
 Event::~Event() {}
 
 WorkerThread::WorkerThread
-(Actor *actor, QString const &src, QString const& top_script, std::unique_ptr<ActorHolder> holder)
+(Actor *actor, QString const &src, QString const& top_script
+ , std::unique_ptr<ActorHolder> holder)
     : QThread(nullptr)
     , actor_(actor)
 {
@@ -638,12 +640,16 @@ void MessageContext::disable()
 
 void Actor::wait()
 {
-    if (!unreplied_count_)
+    if (isTrace()) tracer() << "wait";
+    if (!unreplied_count_) {
+        if (isTrace()) tracer() << "returned already";
         return;
+    }
 
     QEventLoop loop;
     QObject::connect(this, SIGNAL(released()), &loop, SLOT(quit()));
     loop.exec();
+    if (isTrace()) tracer() << "actor replied";
 }
 
 void MessageContext::reply(QJSValue data)

@@ -320,8 +320,9 @@ EnvImpl::EnvImpl(QObject *parent, QCoreApplication &app, QJSEngine &engine)
     if (qml_engine) {
         /// if qmlengine is used it is impossible to modify global object,
         /// so cutes is added to qml context
-        if (isTrace()) tracer() << qml_engine->rootContext() <<  " Set cutes to "
-                                << this_.toString() << " for " << this;
+        if (isTrace())
+            tracer() << qml_engine->rootContext() <<  " Set cutes to "
+                     << this_.toString() << " for " << this;
         qml_engine->rootContext()->setContextProperty("cutes", this);
     } else {
         auto c = engine_.globalObject().property("cutes");
@@ -784,8 +785,10 @@ void EnvImpl::pushParentScriptPath(QString const &file_name)
 QString EnvImpl::findFile(QString const &file_name)
 {
     if (isTrace()) tracer() << "Find " << file_name;
-    if (QFileInfo(file_name).isAbsolute())
+    if (QFileInfo(file_name).isAbsolute()) {
+        if (isTrace()) tracer() << "Absolute " << file_name;
         return file_name;
+    }
 
     QString res;
 
@@ -798,14 +801,18 @@ QString EnvImpl::findFile(QString const &file_name)
 
     auto script = scripts_.top().first;
     // first - relative to cwd
-    if (mkRelative(QDir(script->cwd())))
+    if (mkRelative(QDir(script->cwd()))) {
+        if (isTrace()) tracer() << "In cwd " << res;
         return res;
+    }
 
     // search in path
     for (auto &d : path_) {
         if (isTrace()) tracer() << "Find in " << d;
-        if (mkRelative(d))
+        if (mkRelative(d)) {
+            if (isTrace()) tracer() << "Found " << res;
             return res;
+        }
     }
     return QString();
 }
