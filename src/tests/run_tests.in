@@ -63,6 +63,7 @@ while true; do
         -v)
             echo "$TAG Verbose"
             VERBOSE=true
+            SILENT_INSTALL=false
             shift 1;
             ;;
         -l)

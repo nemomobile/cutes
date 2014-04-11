@@ -27,11 +27,11 @@ install(FILES cutes.pc DESTINATION ${DST_LIB}/pkgconfig)
 
 set(CUTES_LIB_PATH "${prefix}/share/cutes")
 
-if(${prefix} STREQUAL "/usr")
+if("${prefix}" STREQUAL "/usr")
   set(CUTES_LIB_PATH "${CUTES_LIB_PATH}:/usr/${DST_LIB}/qt5/cutes")
-else(${prefix} STREQUAL "/usr")
+else("${prefix}" STREQUAL "/usr")
   set(CUTES_LIB_PATH "${CUTES_LIB_PATH}:${prefix}/${DST_LIB}/qt5/cutes:/usr/share/cutes:/usr/${DST_LIB}/qt5/cutes")
-endif(${prefix} STREQUAL "/usr")
+endif("${prefix}" STREQUAL "/usr")
 message(STATUS "Using CUTES_LIB_PATH: ${CUTES_LIB_PATH}")
 
 find_package(Qt5Core REQUIRED)
