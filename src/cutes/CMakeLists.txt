@@ -5,6 +5,7 @@ set(QMLPKG Mer/Cutes)
 
 set(CMAKE_AUTOMOC TRUE)
 
+configure_file(config.hpp.in config.hpp @ONLY)
 add_definitions(-DQT_SHARED)
 
 qt5_wrap_cpp(GLOBAL_MOC_SRC
@@ -24,7 +25,7 @@ add_executable(${NAME} ${SRC})
 
 set_target_properties(${LIBNAME} PROPERTIES
   SOVERSION 0
-  VERSION ${CUTES_VERSION}
+  VERSION ${VERSION}
   )
 
 target_link_libraries(${PLUGIN_NAME}

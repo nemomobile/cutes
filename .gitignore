@@ -19,3 +19,4 @@ doc/doxygen
 src/tests/tests.xml
 src/tests/execute_qml
 src/tests/run_tests
+src/cutes/config.hpp

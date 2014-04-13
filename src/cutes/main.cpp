@@ -1,3 +1,5 @@
+#include "config.hpp"
+
 #include <iostream>
 
 #include <QGuiApplication>
@@ -12,8 +14,9 @@
 namespace cutes {
 
 typedef cor::OptParse<std::string> argv_parser_type;
-static argv_parser_type parser({{'h', "help"}, {'c', "cli"}},
-                               {{"help", "help"}, {"cli", "cli"}});
+static argv_parser_type parser({{'h', "help"}, {'c', "cli"}, {'V', "version"}},
+                               {{"help", "help"}, {"cli", "cli"}
+                                   , {"version", "version"}});
 struct CmdLine {
     CmdLine(int argc, char *argv[]) : argc_(argc), argv_(argv) {}
     mutable int argc_;
@@ -114,6 +117,11 @@ int main(int argc, char *argv[])
     parser.parse(argc, argv, cmd_line.opts, cmd_line.args);
     if (cmd_line.opts.count("help"))
         return usage(0);
+
+    if (cmd_line.opts.count("version")) {
+        std::cout << "cutes version " << CUTES_LONG_VERSION << std::endl;
+        return 0;
+    }
 
     if (cmd_line.args.size() == 1)
         return executeScript(cmd_line);

@@ -46,7 +46,7 @@ Requires:   %{name} = %{version}-%{release}
 %setup -q -n %{name}-%{version}
 
 %build
-%cmake -DUSEQT=5 -DCUTES_VERSION=%{version}
+%cmake -DUSEQT=5 -DVERSION=%{version}
 make %{?jobs:-j%jobs}
 
 %install

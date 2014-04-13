@@ -4,6 +4,6 @@ includedir=${prefix}/include
 
 Name: cutes
 Description: cutes execution environment
-Version: @CUTES_VERSION@
+Version: @VERSION@
 Libs: -lcutes-qt5 -L${libdir}
 Cflags: -I${includedir}

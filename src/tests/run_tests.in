@@ -24,7 +24,7 @@ function trace {
 function setup_local {
     echo "Setup local"
     pushd ../../ && \
-        ${CMAKE} -DCUTES_VERSION=0.9.8.1 \
+        ${CMAKE} -DVERSION=0.9.8.1 \
         -DCMAKE_INSTALL_PREFIX:PATH=/usr . && \
         (($SILENT_INSTALL && make install DESTDIR=${WORK_PATH} >/dev/null) || make install DESTDIR=${WORK_PATH}) && \
         popd
