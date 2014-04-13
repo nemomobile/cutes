@@ -1,7 +1,7 @@
 #ifndef _CUTES_V4_UTIL_HPP_
 #define _CUTES_V4_UTIL_HPP_
 
-#include <QJSEngine>
+#include <QQmlEngine>
 #include <QJSValue>
 #include <QVariant>
 #include <QVariantList>
@@ -19,6 +19,15 @@ static inline char const *cutesRegisterName()
 }
 
 typedef QJSValue (*cutesRegisterFnType)(QJSEngine *);
+
+
+template <typename T>
+static inline QJSValue getCppOwnedJSValue(QJSEngine &e, T *p)
+{
+    auto res = e.newQObject(p);
+    QQmlEngine::setObjectOwnership(p, QQmlEngine::CppOwnership);
+    return res;
+}
 
 namespace js {
 

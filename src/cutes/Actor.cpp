@@ -511,7 +511,7 @@ void Engine::processMessage(Message *msg)
         auto ctx = MessageContext::create(this, reply_ep);
         QJSValueList params;
         params.push_back(engine_->toScriptValue(msg->data_));
-        params.push_back(engine_->newQObject(ctx.get()));
+        params.push_back(ctx.jsObject(*engine_));
         ret = callConvertError(handler_, handler_, params);
     } else if (!(handler_.isNull() && handler_.isUndefined())) {
         qWarning() << "Handler is not a function but "
@@ -538,7 +538,7 @@ void Engine::processRequest(Request *req)
         auto ctx = MessageContext::create(this, reply_ep);
         QJSValueList params;
         params.push_back(engine_->toScriptValue(req->data_));
-        params.push_back(engine_->newQObject(ctx.get()));
+        params.push_back(ctx.jsObject(*engine_));
         ret = callConvertError(method, handler_, params);
     } else if (method.isUndefined() || method.isNull()) {
         qWarning() << "Actor does not have method" << req->method_name_;

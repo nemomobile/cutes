@@ -25,6 +25,7 @@
  */
 
 #include "Actor.hpp"
+#include <cutes/util.hpp>
 
 #include <QObject>
 #include <QVariant>
@@ -103,7 +104,7 @@ class MessageContext : public QObject
 {
     Q_OBJECT;
 
-    struct Handle {
+    struct Deleter {
         void operator ()(MessageContext *self)
         {
             self->disable();
@@ -111,19 +112,29 @@ class MessageContext : public QObject
         }
     };
 
-    typedef std::unique_ptr<MessageContext, Handle> handle_type;
+    class Handle {
+    public:
+        Handle(Engine *e, endpoint_handle reply_ep)
+            : p_(new MessageContext(e, reply_ep))
+        {}
+
+        QJSValue jsObject(QJSEngine &e)
+        {
+            return getCppOwnedJSValue(e, p_.get());
+        }
+    private:
+        std::unique_ptr<MessageContext, Deleter> p_;
+    };
+
 public:
-    virtual ~MessageContext();
+    ~MessageContext();
 
     Q_INVOKABLE void reply(QJSValue);
-
     void disable();
 
-    static handle_type create(Engine *e, endpoint_handle reply_ep)
+    static Handle create(Engine *e, endpoint_handle reply_ep)
     {
-        handle_type res(new MessageContext(e, reply_ep));
-        QQmlEngine::setObjectOwnership(res.get(), QQmlEngine::CppOwnership);
-        return res;
+        return Handle(e, reply_ep);
     }
 
 private:

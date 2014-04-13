@@ -274,7 +274,7 @@ void EnvImpl::trace(QVariant const &data)
 EnvImpl::EnvImpl(QObject *parent, QCoreApplication &app, QJSEngine &engine)
     : QObject(parent)
     , engine_(engine)
-    , this_(engine.newQObject(this))
+    , this_(getCppOwnedJSValue(engine, this))
     , globals_(new Globals(this))
     , actor_count_(0)
     , is_eval_(false)
@@ -284,7 +284,6 @@ EnvImpl::EnvImpl(QObject *parent, QCoreApplication &app, QJSEngine &engine)
     if (isTrace()) tracer() << "New js environment for " << &engine
                             << " in " << QThread::currentThreadId();
     setObjectName("cutes");
-    QQmlEngine::setObjectOwnership(this, QQmlEngine::CppOwnership);
 
     args_ = app.arguments();
     if (args_.size())
@@ -374,8 +373,7 @@ QJSValue EnvImpl::actor()
             this, SLOT(actorAcquired()));
     connect(actor, SIGNAL(released()),
             this, SLOT(actorReleased()));
-    QQmlEngine::setObjectOwnership(actor, QQmlEngine::CppOwnership);
-    return engine_.newQObject(actor);
+    return getCppOwnedJSValue(engine_, actor);
 }
 
 void EnvImpl::actorAcquired()
@@ -857,7 +855,6 @@ QJSValue EnvImpl::load(QString const &script_name, bool is_reload)
     }
 
     Module *script = new Module(this, file_name);
-    QQmlEngine::setObjectOwnership(script, QQmlEngine::CppOwnership);
 
     file_name = script->fileName();
     auto p = modules_.find(file_name);
@@ -884,8 +881,7 @@ QJSValue EnvImpl::load(QString const &script_name, bool is_reload)
 
 void EnvImpl::pushModule(Module *m)
 {
-    QQmlEngine::setObjectOwnership(m, QQmlEngine::CppOwnership);
-    scripts_.push(std::make_pair(m, engine_.newQObject(m)));
+    scripts_.push(std::make_pair(m, getCppOwnedJSValue(engine_, m)));
 }
 
 QJSValue EnvImpl::eval(QString const &line)
