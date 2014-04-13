@@ -43,9 +43,9 @@ class ByteArray : public JsObject<ByteArray, QByteArray>
     }
 
     // @custom_fn("split", js = {"convert" : "convert_array('ByteArray', 'split')"})
-    Q_INVOKABLE QVariantList split(char sep) const
+    Q_INVOKABLE QJSValue split(char sep) const
     {
-        return convert<QVariantList>(impl_->split(sep));
+        return convert<QJSValue>(impl_->split(sep));
     }
 
     static ctors_type ctors_;
@@ -206,9 +206,10 @@ class Dir : public JsObject<Dir, QDir>
     // @proxy("QStringList", "entryList", ["QStringList const&", {"sig" : "int", "default" : "NoFilter", "convert" : "(QDir::Filter){}"}, {"sig" : "int", "default" : "NoSort", "convert" : "(QDir::SortFlag){}"}])
 
     // @custom_fn("entryInfoList", js = {"convert" : "convert_array('FileInfo', 'entryInfoList')"})
-    Q_INVOKABLE QVariantList entryInfoList(const QStringList & nameFilters, int filters, int sort) const
+    Q_INVOKABLE QJSValue entryInfoList
+    (const QStringList & nameFilters, int filters, int sort) const
     {
-        return convert<QVariantList>
+        return convert<QJSValue>
             (impl_->entryInfoList
              (nameFilters, (QDir::Filter)filters, (QDir::SortFlag)sort));
     }

@@ -27,6 +27,7 @@ public:
     virtual ~{name} () {{}}
 
     {name}(QJSEngine &engine, QVariantList const &params);
+    {name}({name} &&from) : JsObject(std::move(from)) {{}}
 '''
 
 std_ctor_impl_format = '''

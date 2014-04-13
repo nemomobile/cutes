@@ -90,28 +90,22 @@ struct Converter<QJSValue>
             return QJSValue();
         }
     }
-};
 
-template <>
-struct Converter<QVariantList>
-{
     template <typename From>
-    static QVariantList convert(QJSEngine &engine, QList<From> &&src)
+    static QJSValue convert(QJSEngine &engine, QList<From> &&src)
     {
         typedef typename JsTraits<From>::js_type js_type;
-        QVariantList res;
         try {
-            while (!src.isEmpty()) {
-                auto converted = js_type(engine, src.takeFirst());
-                auto v = cutes::js::convert<QJSValue>(engine, std::move(converted));
-                res.push_back(v.toVariant());
+            auto res = engine.newArray(src.size());
+            for (size_t i = 0; !src.isEmpty(); ++i) {
+                auto v = engine.newQObject(new js_type(engine, src.takeFirst()));
+                res.setProperty(i, v);
             }
+            return res;
         } catch (std::exception const &e) {
-            qWarning() << "Creating object: C++ exception " << e.what();
-        } catch (...) {
-            qWarning() << "Got unknown exception converting";
+            qDebug() << "Creating object: C++ exception " << e.what();
+            return QJSValue();
         }
-        return res;
     }
 };
 
@@ -134,7 +128,8 @@ class AJsObject : public QObject
     Q_PROPERTY(QString cutesClass__ READ getClassName)
 public:
     AJsObject(QJSEngine &e)
-        : engine_(e)
+        : QObject(nullptr)
+        , engine_(e)
     {
     }
 
@@ -187,8 +182,12 @@ public:
         , impl_(p)
     {}
 
+    JsObject(JsObject &&from)
+        : AJsObject(from.engine_)
+        , impl_(from.impl_)
+    {}
+
     virtual ~JsObject() {
-        //qDebug() << "~JsObject" << getClassName();
     }
 
     virtual QString getClassName() const
