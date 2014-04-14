@@ -1,5 +1,5 @@
 PROJECT(CUTES)
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 2.8.8)
 
 set(NAME cutes)
 
@@ -40,25 +40,11 @@ message(STATUS "Using CUTES_LIB_PATH: ${CUTES_LIB_PATH}")
 
 find_package(Qt5Core REQUIRED)
 find_package(Qt5Gui REQUIRED)
-find_package(Qt5Widgets REQUIRED)
 find_package(Qt5Qml REQUIRED)
 find_package(Qt5Quick REQUIRED)
 
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/include
-  ${Qt5Core_INCLUDE_DIRS}
-  ${Qt5Gui_INCLUDE_DIRS}
-  ${Qt5Widgets_INCLUDE_DIRS}
-  ${Qt5Qml_INCLUDE_DIRS}
-  ${Qt5Quick_INCLUDE_DIRS}
-)
-
-add_definitions(
-  ${Qt5Core_DEFINITIONS}
-  ${Qt5Gui_DEFINITIONS}
-  ${Qt5Widgets_DEFINITIONS}
-  ${Qt5Qml_DEFINITIONS}
-  ${Qt5Quick_DEFINITIONS}
 )
 
 set(CMAKE_CXX_FLAGS
