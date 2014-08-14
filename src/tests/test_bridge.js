@@ -1,4 +1,4 @@
-var Q = require('qtcore');
+var Q = require('qt-core');
 
 var get_actor = function() {
     var actor = cutes.actor();

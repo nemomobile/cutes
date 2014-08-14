@@ -5,7 +5,7 @@ CutesActor {
     id: actor
     source: "actor_extend.js"
     Component.onCompleted: {
-        var Q = cutes.require("qtcore");
+        var Q = cutes.require("qt-core");
         actor.send("Ping", { on_reply: function(v) {
             console.log("Normal exit: got " + v)
             cutes.exit(0);

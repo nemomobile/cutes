@@ -52,6 +52,10 @@ make %{?jobs:-j%jobs}
 %install
 rm -rf %{buildroot}
 make install DESTDIR=%{buildroot}
+pushd %{buildroot}/%{jslibdir}
+# for backward compatibility
+ln -s qt-core.js qtcore.js
+popd
 
 %clean
 rm -rf %{buildroot}
