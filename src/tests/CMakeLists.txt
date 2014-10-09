@@ -3,6 +3,7 @@ set(TESTS_DIR /opt/tests/cutes)
 set(CMAKE_AUTOMOC TRUE)
 add_executable(execute_qml execute_qml.cpp)
 qt5_use_modules(execute_qml Core Qml)
+install(TARGETS execute_qml DESTINATION ${TESTS_DIR})
 
 configure_file(run_tests.in run_tests @ONLY)
 
