@@ -82,6 +82,7 @@ int executeQmlCli(CmdLine const &cmd_line)
     QString script_path(cmd_line.args.at(1));
     if (isTrace()) tracer() << "Execute qml cli " << script_path;
     QQmlApplicationEngine engine(script_path);
+    setupEngine(app, engine, QFileInfo(script_path).absoluteFilePath());
     return app.exec();
 }
 

@@ -14,7 +14,13 @@ void setupDeclarative
     QJSEngine *pengine = view.engine();
     if (!pengine)
         throw Error("View engine is null");
-    auto script_env = new EnvImpl(pengine, app, *pengine);
+    setupEngine(app, *pengine, qml_path);
+}
+
+void setupEngine
+(QCoreApplication &app, QJSEngine &engine, QString const &qml_path)
+{
+    auto script_env = new EnvImpl(&engine, app, engine);
     script_env->pushParentScriptPath(qml_path);
 
     registerDeclarativeTypes(DQUOTESTR(QML_NAMESPACE));

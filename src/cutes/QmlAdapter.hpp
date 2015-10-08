@@ -16,6 +16,8 @@ static inline void registerDeclarativeTypes(char const *uri)
 }
 
 void setupDeclarative(QCoreApplication &, QDeclarativeView &, QString const &);
+void setupEngine(QCoreApplication &, QJSEngine &, QString const &);
+
 QJSEngine *getDeclarativeScriptEngine(QDeclarativeContext &);
 QJSEngine *getDeclarativeScriptEngine(QDeclarativeEngine *decl_eng);
 
